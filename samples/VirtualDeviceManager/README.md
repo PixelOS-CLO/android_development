@@ -307,6 +307,17 @@ Each input screen has a "Back", "Home" and "Forward" buttons.
     adb shell am force-stop com.example.android.vdmdemo.host
     ```
 
+-   **Custom status bar**: Whether to add a custom status bar view on the
+    non-mirror virtual displays. Run the commands below to enable this
+    functionality. \
+    *This can be changed dynamically but only applies to newly created
+    displays.*
+
+    ```shell
+    adb shell device_config put virtual_devices android.companion.virtualdevice.flags.status_bar_and_insets true
+    adb shell am force-stop com.example.android.vdmdemo.host
+    ```
+
 #### Input method
 
 Note: The virtual keyboard acts like a physically connected keyboard to the host
@@ -394,7 +405,8 @@ display, if the mouse pointer is currently positioned on a streamed display.
     use. By default, will use the sensors of the device it's shown on.
 
 -   **Display Power**: A simple activity showcasing the behavior of proximity
-    locks, screen brightness override and requesting the screen to be kept on.
+    locks, screen brightness override and requesting the screen to be kept on
+    or turned on.
 
 -   **Rotation**: A simple activity that is in landscape by default and can send
     orientation change requests on demand. Showcases the display rotation on the
@@ -432,6 +444,8 @@ which showcases implicit intent handling.
 ## SDK Version
 
 ### Beyond Android 15
+
+-   Added support for custom system windows (like status bar) and insets.
 
 -   Added support for per-display activity policies.
 
