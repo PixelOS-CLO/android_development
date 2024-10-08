@@ -121,6 +121,7 @@ import {ShadingMode} from './shading_mode';
             (mouseenter)="onInteractionStart([zoomInButton])"
             (mouseleave)="onInteractionEnd([zoomInButton])"
             mat-icon-button
+            class="zoom-in-button"
             (click)="onZoomInClick()" #zoomInButton>
             <mat-icon aria-hidden="true"> zoom_in </mat-icon>
           </button>
@@ -129,6 +130,7 @@ import {ShadingMode} from './shading_mode';
             (mouseenter)="onInteractionStart([zoomOutButton])"
             (mouseleave)="onInteractionEnd([zoomOutButton])"
             mat-icon-button
+            class="zoom-out-button"
             (click)="onZoomOutClick()" #zoomOutButton>
             <mat-icon aria-hidden="true"> zoom_out </mat-icon>
           </button>
@@ -141,6 +143,7 @@ import {ShadingMode} from './shading_mode';
             (mouseleave)="onInteractionEnd([resetZoomButton])"
             mat-icon-button
             matTooltip="Restore camera settings"
+            class="reset-button"
             (click)="resetCamera()" #resetZoomButton>
             <mat-icon aria-hidden="true"> restore </mat-icon>
           </button>
@@ -340,6 +343,7 @@ export class RectsComponent implements OnInit, OnDestroy {
   @Input() userOptions: UserOptions = {};
   @Input() dependencies: TraceType[] = [];
   @Input() pinnedItems: UiHierarchyTreeNode[] = [];
+  @Input() isDarkMode = false;
 
   @Output() collapseButtonClicked = new EventEmitter();
 
@@ -347,6 +351,7 @@ export class RectsComponent implements OnInit, OnDestroy {
   private internalMiniRects?: UiRect[];
   private storeKeyZSpacingFactor = '';
   private storeKeyShadingMode = '';
+  private storeKeySelectedDisplays = '';
   private internalDisplays: DisplayIdentifier[] = [];
   private internalHighlightedItem = '';
   private currentDisplays: DisplayIdentifier[] = [];
@@ -355,18 +360,9 @@ export class RectsComponent implements OnInit, OnDestroy {
   private largeRectsCanvas?: Canvas;
   private miniRectsCanvas?: Canvas;
   private resizeObserver = new ResizeObserver((entries) => {
-    if (this.largeRectsCanvas?.isSceneInDarkMode() !== this.isDarkMode()) {
-      this.updateLargeRectsAndLabelsColors();
-    } else {
-      const scene =
-        this.largeRectsMapper3d.getLastScene() ??
-        this.largeRectsMapper3d.computeScene();
-      this.largeRectsCanvas?.updateViewPosition(
-        scene.camera,
-        scene.boundingBox,
-      );
-      this.largeRectsCanvas?.renderView();
-    }
+    const scene = this.largeRectsMapper3d.computeScene();
+    this.largeRectsCanvas?.updateViewPosition(scene.camera, scene.boundingBox);
+    this.largeRectsCanvas?.renderView();
   });
   private largeRectsCanvasElement?: HTMLCanvasElement;
   private miniRectsCanvasElement?: HTMLCanvasElement;
@@ -378,7 +374,7 @@ export class RectsComponent implements OnInit, OnDestroy {
   private static readonly ZOOM_SCROLL_RATIO = 0.3;
 
   constructor(
-    @Inject(ElementRef) private elementRef: ElementRef,
+    @Inject(ElementRef) private elementRef: ElementRef<HTMLElement>,
     @Inject(MatIconRegistry) private matIconRegistry: MatIconRegistry,
     @Inject(DomSanitizer) private domSanitizer: DomSanitizer,
   ) {
@@ -399,8 +395,11 @@ export class RectsComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.largeRectsMapper3d.setAllowedShadingModes(this.shadingModes);
 
-    const canvasContainer: HTMLElement =
-      this.elementRef.nativeElement.querySelector('.canvas-container');
+    const canvasContainer = assertDefined(
+      this.elementRef.nativeElement.querySelector<HTMLElement>(
+        '.canvas-container',
+      ),
+    );
     this.resizeObserver.observe(canvasContainer);
 
     this.largeRectsCanvasElement = canvasContainer.querySelector(
@@ -412,21 +411,18 @@ export class RectsComponent implements OnInit, OnDestroy {
     this.largeRectsCanvas = new Canvas(
       this.largeRectsCanvasElement,
       this.largeRectsLabelsElement,
-      () => this.isDarkMode(),
+      () => this.isDarkMode,
     );
     this.largeRectsCanvasElement.addEventListener('mousedown', (event) =>
       this.onCanvasMouseDown(event),
     );
 
+    this.largeRectsMapper3d.increaseZoomFactor(this.zoomFactor - 1);
+
     if (this.store) {
       this.updateControlsFromStore();
     }
 
-    this.currentDisplays =
-      this.internalDisplays.length > 0
-        ? [this.getActiveDisplay(this.internalDisplays)]
-        : [];
-    this.largeRectsMapper3d.increaseZoomFactor(this.zoomFactor - 1);
     this.redrawLargeRectsAndLabels();
 
     this.miniRectsCanvasElement = canvasContainer.querySelector(
@@ -435,7 +431,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     this.miniRectsCanvas = new Canvas(
       this.miniRectsCanvasElement,
       undefined,
-      () => this.isDarkMode(),
+      () => this.isDarkMode,
     );
     this.miniRectsMapper3d.setShadingMode(ShadingMode.GRADIENT);
     this.miniRectsMapper3d.resetToOrthogonalState();
@@ -445,14 +441,13 @@ export class RectsComponent implements OnInit, OnDestroy {
     }
   }
 
-  blurTab() {
-    (document.activeElement as HTMLElement).blur();
-  }
-
   ngOnChanges(simpleChanges: SimpleChanges) {
     this.handleLargeRectChanges(simpleChanges);
-    if (simpleChanges['miniRects']) {
-      this.internalMiniRects = simpleChanges['miniRects'].currentValue;
+    if (
+      simpleChanges['miniRects'] ||
+      (this.miniRects && simpleChanges['isDarkMode'])
+    ) {
+      this.internalMiniRects = this.miniRects;
       this.drawMiniRects();
     }
   }
@@ -481,6 +476,10 @@ export class RectsComponent implements OnInit, OnDestroy {
       this.largeRectsMapper3d.setHighlightedRectId(
         this.internalHighlightedItem,
       );
+      recolorRects = true;
+      recolorLabels = true;
+    }
+    if (simpleChanges['isDarkMode']) {
       recolorRects = true;
       recolorLabels = true;
     }
@@ -514,7 +513,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     }
 
     if (change.firstChange) {
-      this.updateCurrentDisplays([activeDisplay]);
+      this.updateCurrentDisplays([activeDisplay], false);
       return;
     }
 
@@ -544,6 +543,7 @@ export class RectsComponent implements OnInit, OnDestroy {
   updateControlsFromStore() {
     this.storeKeyZSpacingFactor = `rectsView.${this.title}.zSpacingFactor`;
     this.storeKeyShadingMode = `rectsView.${this.title}.shadingMode`;
+    this.storeKeySelectedDisplays = `rectsView.${this.title}.selectedDisplayId`;
 
     const storedZSpacingFactor = assertDefined(this.store).get(
       this.storeKeyZSpacingFactor,
@@ -560,6 +560,24 @@ export class RectsComponent implements OnInit, OnDestroy {
       this.shadingModes.includes(storedShadingMode as ShadingMode)
     ) {
       this.largeRectsMapper3d.setShadingMode(storedShadingMode as ShadingMode);
+    }
+
+    const storedSelectedDisplays = assertDefined(this.store).get(
+      this.storeKeySelectedDisplays,
+    );
+    if (storedSelectedDisplays !== undefined) {
+      const storedIds: Array<number | string> = JSON.parse(
+        storedSelectedDisplays,
+      );
+      const displays = this.internalDisplays.filter((display) => {
+        return storedIds.some((id) => display.displayId === id);
+      });
+      if (displays.length > 0) {
+        this.currentDisplays = displays;
+        this.largeRectsMapper3d.setCurrentGroupIds(
+          displays.map((d) => d.groupId),
+        );
+      }
     }
   }
 
@@ -628,7 +646,7 @@ export class RectsComponent implements OnInit, OnDestroy {
   }
 
   onDisplaySelectChange(event: MatSelectChange) {
-    const selectedDisplays = event.value;
+    const selectedDisplays: DisplayIdentifier[] = event.value;
     this.updateCurrentDisplays(selectedDisplays);
   }
 
@@ -720,7 +738,16 @@ export class RectsComponent implements OnInit, OnDestroy {
     );
   }
 
-  private updateCurrentDisplays(displays: DisplayIdentifier[]) {
+  private updateCurrentDisplays(
+    displays: DisplayIdentifier[],
+    storeChange = true,
+  ) {
+    if (storeChange) {
+      this.store?.add(
+        this.storeKeySelectedDisplays,
+        JSON.stringify(displays.map((d) => d.displayId)),
+      );
+    }
     this.currentDisplays = displays;
     this.largeRectsMapper3d.setCurrentGroupIds(displays.map((d) => d.groupId));
     this.redrawLargeRectsAndLabels();
@@ -810,9 +837,5 @@ export class RectsComponent implements OnInit, OnDestroy {
       },
     );
     this.elementRef.nativeElement.dispatchEvent(event);
-  }
-
-  private isDarkMode(): boolean {
-    return this.store?.get('dark-mode') === 'true';
   }
 }

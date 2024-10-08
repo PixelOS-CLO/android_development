@@ -32,6 +32,7 @@ import {VISIBLE_CHIP} from 'viewers/common/chip';
 import {LogPresenter} from 'viewers/common/log_presenter';
 import {PropertiesPresenter} from 'viewers/common/properties_presenter';
 import {RectsPresenter} from 'viewers/common/rects_presenter';
+import {TextFilter} from 'viewers/common/text_filter';
 import {LogField, LogFieldType} from 'viewers/common/ui_data_log';
 import {UI_RECT_FACTORY} from 'viewers/common/ui_rect_factory';
 import {UserOptions} from 'viewers/common/user_options';
@@ -71,12 +72,20 @@ export class Presenter extends AbstractLogViewerPresenter<UiData> {
   protected override logPresenter = new LogPresenter<InputEntry>();
   protected override propertiesPresenter = new PropertiesPresenter(
     {},
-    undefined,
+    PersistentStoreProxy.new<TextFilter>(
+      'InputPropertiesFilter',
+      new TextFilter('', []),
+      this.storage,
+    ),
     [],
   );
   protected dispatchPropertiesPresenter = new PropertiesPresenter(
     {},
-    undefined,
+    PersistentStoreProxy.new<TextFilter>(
+      'InputDispatchPropertiesFilter',
+      new TextFilter('', []),
+      this.storage,
+    ),
     Presenter.DENYLIST_DISPATCH_PROPERTIES,
     [new DispatchEntryFormatter(this.layerIdToName)],
   );
@@ -111,15 +120,24 @@ export class Presenter extends AbstractLogViewerPresenter<UiData> {
     traces: Traces,
     mergedInputEventTrace: Trace<PropertyTreeNode>,
     private readonly storage: Store,
-    private readonly notifyInputViewCallback: NotifyLogViewCallbackType<UiData>,
+    readonly notifyInputViewCallback: NotifyLogViewCallbackType<UiData>,
   ) {
+    const uiData = UiData.createEmpty();
+    uiData.isDarkMode = storage.get('dark-mode') === 'true';
     super(
       mergedInputEventTrace,
       (uiData) => notifyInputViewCallback(uiData as UiData),
-      UiData.createEmpty(),
+      uiData,
     );
     this.traces = traces;
     this.surfaceFlingerTrace = this.traces.getTrace(TraceType.SURFACE_FLINGER);
+  }
+
+  async onDispatchPropertiesFilterChange(textFilter: TextFilter) {
+    this.dispatchPropertiesPresenter.applyPropertiesFilterChange(textFilter);
+    await this.updateDispatchPropertiesTree();
+    this.uiData.dispatchPropertiesFilter = textFilter;
+    this.notifyViewChanged();
   }
 
   protected override async initializeIfNeeded() {
@@ -296,7 +314,11 @@ export class Presenter extends AbstractLogViewerPresenter<UiData> {
 
   protected override async updatePropertiesTree() {
     await super.updatePropertiesTree();
+    await this.updateDispatchPropertiesTree();
+    await this.updateRects();
+  }
 
+  private async updateDispatchPropertiesTree() {
     const inputEntry = this.getCurrentEntry();
     const tree = inputEntry?.dispatchPropertiesTree;
     this.dispatchPropertiesPresenter.setPropertiesTree(tree);
@@ -307,8 +329,6 @@ export class Presenter extends AbstractLogViewerPresenter<UiData> {
     );
     this.uiData.dispatchPropertiesTree =
       this.dispatchPropertiesPresenter.getFormattedTree();
-
-    await this.updateRects();
   }
 
   private async updateRects() {
@@ -379,17 +399,26 @@ export class Presenter extends AbstractLogViewerPresenter<UiData> {
     htmlElement.addEventListener(ViewerEvents.RectsDblClick, async (event) => {
       await this.onRectDoubleClick();
     });
+
+    htmlElement.addEventListener(
+      ViewerEvents.DispatchPropertiesFilterChange,
+      async (event) => {
+        const detail: TextFilter = (event as CustomEvent).detail;
+        await this.onDispatchPropertiesFilterChange(detail);
+      },
+    );
   }
 
   onHighlightedPropertyChange(id: string) {
     this.propertiesPresenter.applyHighlightedPropertyChange(id);
     this.dispatchPropertiesPresenter.applyHighlightedPropertyChange(id);
-    this.uiData.highlightedProperty = id;
+    this.uiData.highlightedProperty =
+      id === this.uiData.highlightedProperty ? '' : id;
     this.notifyViewChanged();
   }
 
   async onHighlightedIdChange(id: string) {
-    this.uiData.highlightedRect = id;
+    this.uiData.highlightedRect = id === this.uiData.highlightedRect ? '' : id;
     await this.updateRects();
     this.notifyViewChanged();
   }

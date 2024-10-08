@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {ArrayUtils} from 'common/array_utils';
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined, assertUnreachable} from 'common/assert_utils';
 import {Box3D} from 'common/geometry/box3d';
 import {Point3D} from 'common/geometry/point3d';
 import {Rect3D} from 'common/geometry/rect3d';
@@ -32,27 +32,34 @@ import {UiRect3D} from './ui_rect3d';
 
 export class Canvas {
   static readonly TARGET_SCENE_DIAGONAL = 4;
-  private static readonly RECT_COLOR_HIGHLIGHTED_LIGHT_MODE = new THREE.Color(
+  static readonly RECT_COLOR_HIGHLIGHTED_LIGHT_MODE = new THREE.Color(
     0xd2e3fc, // Keep in sync with :not(.dark-mode) --selected-element-color in material-theme.scss
   );
-  private static readonly RECT_COLOR_HIGHLIGHTED_DARK_MODE = new THREE.Color(
+  static readonly RECT_COLOR_HIGHLIGHTED_DARK_MODE = new THREE.Color(
     0x5f718a, // Keep in sync with .dark-mode --selected-element-color in material-theme.scss
   );
-  private static readonly RECT_COLOR_HAS_CONTENT = new THREE.Color(0xad42f5);
-  private static readonly RECT_EDGE_BOLD_WIDTH = 10;
-  private static readonly RECT_EDGE_COLOR_LIGHT_MODE = 0x000000;
-  private static readonly RECT_EDGE_COLOR_DARK_MODE = 0xffffff;
-  private static readonly RECT_EDGE_COLOR_ROUNDED = 0x848884;
-  private static readonly RECT_EDGE_COLOR_PINNED = 0xffc24b; // Keep in sync with Color#PINNED_ITEM_BORDER
-  private static readonly RECT_EDGE_COLOR_PINNED_ALT = 0xb34a24;
-  private static readonly LABEL_LINE_COLOR = 0x808080;
-  private static readonly OPACITY_REGULAR = 0.75;
-  private static readonly OPACITY_OVERSIZED = 0.25;
-  private static readonly TRANSPARENT_MATERIAL = new THREE.MeshBasicMaterial({
+  static readonly RECT_COLOR_HAS_CONTENT = new THREE.Color(0xad42f5);
+  static readonly RECT_EDGE_COLOR_LIGHT_MODE = 0x000000;
+  static readonly RECT_EDGE_COLOR_DARK_MODE = 0xffffff;
+  static readonly RECT_EDGE_COLOR_ROUNDED = 0x848884;
+  static readonly RECT_EDGE_COLOR_PINNED = 0xffc24b; // Keep in sync with Color#PINNED_ITEM_BORDER
+  static readonly RECT_EDGE_COLOR_PINNED_ALT = 0xb34a24;
+  static readonly LABEL_LINE_COLOR = 0x808080;
+  static readonly OPACITY_REGULAR = 0.75;
+  static readonly OPACITY_OVERSIZED = 0.25;
+  static readonly TRANSPARENT_MATERIAL = new THREE.MeshBasicMaterial({
     opacity: 0,
     transparent: true,
   });
+  private static readonly RECT_EDGE_BOLD_WIDTH = 10;
   private static readonly FILL_REGION_NAME = 'fillRegion';
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    canvas: this.canvasRects,
+    alpha: true,
+  });
+  labelRenderer?: CSS2DRenderer;
 
   private camera = new THREE.OrthographicCamera(
     -Canvas.TARGET_SCENE_DIAGONAL / 2,
@@ -63,27 +70,18 @@ export class Canvas {
     100,
   );
   private scene = new THREE.Scene();
-  private renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    canvas: this.canvasRects,
-    alpha: true,
-  });
-  private labelRenderer?: CSS2DRenderer;
   private pinnedIdToColorMap = new Map<string, number>();
   private lastAssignedDefaultPinnedColor = false;
   private firstDraw = true;
   private lastScene: SceneState = {
     isDarkMode: this.isDarkMode(),
     translatedPos: undefined,
-    rectIdToRectObjects: new Map<string, [UiRect3D, THREE.Mesh]>(),
-    rectIdToLabelObjects: new Map<
-      string,
-      [RectLabel, THREE.Mesh, THREE.Line, CSS2DObject]
-    >(),
+    rectIdToRectGraphics: new Map<string, RectGraphics>(),
+    rectIdToLabelGraphics: new Map<string, LabelGraphics>(),
   };
 
   constructor(
-    private canvasRects: HTMLCanvasElement,
+    private canvasRects: HTMLElement,
     private canvasLabels?: HTMLElement,
     private isDarkMode = () => false,
   ) {
@@ -154,28 +152,32 @@ export class Canvas {
   }
 
   updateRects(rects: UiRect3D[]) {
-    for (const key of this.lastScene.rectIdToRectObjects.keys()) {
+    for (const key of this.lastScene.rectIdToRectGraphics.keys()) {
       if (!rects.some((rect) => rect.id === key)) {
-        this.lastScene.rectIdToRectObjects.delete(key);
+        this.lastScene.rectIdToRectGraphics.delete(key);
         this.scene.remove(assertDefined(this.scene.getObjectByName(key)));
       }
     }
     rects.forEach((rect) => {
-      const obj = this.lastScene.rectIdToRectObjects.get(rect.id);
-      const rectMesh = !obj
+      const existingGraphics = this.lastScene.rectIdToRectGraphics.get(rect.id);
+      const mesh = !existingGraphics
         ? this.makeAndAddRectMesh(rect)
-        : this.updateExistingRectMesh(rect, obj[0], obj[1]);
-      this.lastScene.rectIdToRectObjects.set(rect.id, [rect, rectMesh]);
+        : this.updateExistingRectMesh(
+            rect,
+            existingGraphics.rect,
+            existingGraphics.mesh,
+          );
+      this.lastScene.rectIdToRectGraphics.set(rect.id, {rect, mesh});
     });
   }
 
   updateLabels(labels: RectLabel[]) {
     if (this.labelRenderer) {
-      this.updateLabelObjects(labels);
+      this.updateLabelGraphics(labels);
     }
   }
 
-  renderView(): [THREE.Scene, THREE.Camera] {
+  renderView(): [THREE.Scene, THREE.OrthographicCamera] {
     this.labelRenderer?.render(this.scene, this.camera);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     if (this.firstDraw) {
@@ -187,23 +189,16 @@ export class Canvas {
     return [this.scene, this.camera];
   }
 
-  isSceneInDarkMode(): boolean {
-    return this.lastScene.isDarkMode;
-  }
-
   getClickedRectId(x: number, y: number, z: number): undefined | string {
     const clickPosition = new THREE.Vector3(x, y, z);
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(clickPosition, assertDefined(this.camera));
     const intersected = raycaster.intersectObjects(
-      Array.from(this.lastScene.rectIdToRectObjects.values())
-        .filter((obj) => obj[0].isClickable)
-        .map((obj) => obj[1]),
+      Array.from(this.lastScene.rectIdToRectGraphics.values())
+        .filter((graphics) => graphics.rect.isClickable)
+        .map((graphics) => graphics.mesh),
     );
-    if (intersected.length > 0) {
-      return intersected[0].object.name;
-    }
-    return undefined;
+    return intersected.at(0)?.object.name;
   }
 
   private toMatrix4(transform: TransformMatrix): THREE.Matrix4 {
@@ -348,7 +343,7 @@ export class Canvas {
         return undefined;
       }
       default: {
-        throw new Error(`Unexpected color type: ${rect.colorType}`);
+        assertUnreachable(rect.colorType);
       }
     }
   }
@@ -652,28 +647,22 @@ export class Canvas {
     mesh.add(borderMesh);
   }
 
-  private updateLabelObjects(labels: RectLabel[]) {
+  private updateLabelGraphics(labels: RectLabel[]) {
     this.clearLabels(labels);
     labels.forEach((label) => {
-      let circleMesh: THREE.Mesh;
-      let line: THREE.Line;
-      let labelCss: CSS2DObject;
-      if (this.lastScene.rectIdToLabelObjects.get(label.rectId)) {
-        [circleMesh, line, labelCss] = this.updateExistingLabelObjects(label);
+      let graphics: LabelGraphics;
+      if (this.lastScene.rectIdToLabelGraphics.get(label.rectId)) {
+        graphics = this.updateExistingLabelGraphics(label);
       } else {
-        circleMesh = this.makeLabelCircleMesh(label);
-        this.scene.add(circleMesh);
-        line = this.makeLabelLine(label);
+        const circle = this.makeLabelCircleMesh(label);
+        this.scene.add(circle);
+        const line = this.makeLabelLine(label);
         this.scene.add(line);
-        labelCss = this.makeLabelCssObject(label);
-        this.scene.add(labelCss);
+        const text = this.makeLabelCssObject(label);
+        this.scene.add(text);
+        graphics = {label, circle, line, text};
       }
-      this.lastScene.rectIdToLabelObjects.set(label.rectId, [
-        label,
-        circleMesh,
-        line,
-        labelCss,
-      ]);
+      this.lastScene.rectIdToLabelGraphics.set(label.rectId, graphics);
     });
   }
 
@@ -686,13 +675,16 @@ export class Canvas {
       label.circle.center.y,
       label.circle.center.z,
     );
+    mesh.name = label.rectId + 'circle';
     return mesh;
   }
 
   private makeLabelLine(label: RectLabel): THREE.Line {
     const lineGeometry = this.makeLabelLineGeometry(label);
     const lineMaterial = this.makeLabelMaterial(label);
-    return new THREE.Line(lineGeometry, lineMaterial);
+    const line = new THREE.Line(lineGeometry, lineMaterial);
+    line.name = label.rectId + 'line';
+    return line;
   }
 
   private makeLabelLineGeometry(label: RectLabel): THREE.BufferGeometry {
@@ -749,24 +741,25 @@ export class Canvas {
       label.textCenter.y,
       label.textCenter.z,
     );
+    labelCss.name = label.rectId + 'text';
     return labelCss;
   }
 
-  private updateExistingLabelObjects(
-    newLabel: RectLabel,
-  ): [THREE.Mesh, THREE.Line, CSS2DObject] {
-    const [existingLabel, circleMesh, line, labelCss] = assertDefined(
-      this.lastScene.rectIdToLabelObjects.get(newLabel.rectId),
+  private updateExistingLabelGraphics(newLabel: RectLabel): LabelGraphics {
+    const {
+      label: existingLabel,
+      circle,
+      line,
+      text,
+    } = assertDefined(
+      this.lastScene.rectIdToLabelGraphics.get(newLabel.rectId),
     );
 
     if (newLabel.circle.radius !== existingLabel.circle.radius) {
-      circleMesh.geometry = new THREE.CircleGeometry(
-        newLabel.circle.radius,
-        20,
-      );
+      circle.geometry = new THREE.CircleGeometry(newLabel.circle.radius, 20);
     }
     if (!newLabel.circle.center.isEqual(existingLabel.circle.center)) {
-      circleMesh.position.set(
+      circle.position.set(
         newLabel.circle.center.x,
         newLabel.circle.center.y,
         newLabel.circle.center.z,
@@ -778,9 +771,9 @@ export class Canvas {
       this.isDarkMode() !== this.lastScene.isDarkMode
     ) {
       const lineMaterial = this.makeLabelMaterial(newLabel);
-      circleMesh.material = lineMaterial;
+      circle.material = lineMaterial;
       line.material = lineMaterial;
-      labelCss.element.style.color = newLabel.isHighlighted ? '' : 'gray';
+      text.element.style.color = newLabel.isHighlighted ? '' : 'gray';
     }
 
     if (
@@ -792,14 +785,14 @@ export class Canvas {
     }
 
     if (!newLabel.textCenter.isEqual(existingLabel.textCenter)) {
-      labelCss.position.set(
+      text.position.set(
         newLabel.textCenter.x,
         newLabel.textCenter.y,
         newLabel.textCenter.z,
       );
     }
 
-    return [circleMesh, line, labelCss];
+    return {label: newLabel, circle, line, text};
   }
 
   private propagateUpdateHighlightedItem(event: MouseEvent, newId: string) {
@@ -818,12 +811,12 @@ export class Canvas {
     if (this.canvasLabels) {
       this.canvasLabels.innerHTML = '';
     }
-    for (const [rectId, objects] of this.lastScene.rectIdToLabelObjects) {
+    for (const [rectId, graphics] of this.lastScene.rectIdToLabelGraphics) {
       if (!labels.some((label) => label.rectId === rectId)) {
-        this.scene.remove(objects[1]);
-        this.scene.remove(objects[2]);
-        this.scene.remove(objects[3]);
-        this.lastScene.rectIdToLabelObjects.delete(rectId);
+        this.scene.remove(graphics.circle);
+        this.scene.remove(graphics.line);
+        this.scene.remove(graphics.text);
+        this.lastScene.rectIdToLabelGraphics.delete(rectId);
       }
     }
   }
@@ -832,9 +825,18 @@ export class Canvas {
 interface SceneState {
   isDarkMode: boolean;
   translatedPos?: Point3D | undefined;
-  rectIdToRectObjects: Map<string, [UiRect3D, THREE.Mesh]>;
-  rectIdToLabelObjects: Map<
-    string,
-    [RectLabel, THREE.Mesh, THREE.Line, CSS2DObject]
-  >;
+  rectIdToRectGraphics: Map<string, RectGraphics>;
+  rectIdToLabelGraphics: Map<string, LabelGraphics>;
+}
+
+interface RectGraphics {
+  rect: UiRect3D;
+  mesh: THREE.Mesh;
+}
+
+interface LabelGraphics {
+  label: RectLabel;
+  circle: THREE.Mesh;
+  line: THREE.Line;
+  text: CSS2DObject;
 }

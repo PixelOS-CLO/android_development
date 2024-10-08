@@ -31,11 +31,12 @@ import {Box3D} from 'common/geometry/box3d';
 import {TransformMatrix} from 'common/geometry/transform_matrix';
 import {PersistentStore} from 'common/persistent_store';
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
+import {waitToBeCalled} from 'test/utils';
 import {TraceType} from 'trace/trace_type';
 import {VISIBLE_CHIP} from 'viewers/common/chip';
 import {DisplayIdentifier} from 'viewers/common/display_identifier';
 import {UiHierarchyTreeNode} from 'viewers/common/ui_hierarchy_tree_node';
-import {ViewerEvents} from 'viewers/common/viewer_events';
+import {RectDblClickDetail, ViewerEvents} from 'viewers/common/viewer_events';
 import {CollapsibleSectionTitleComponent} from 'viewers/components/collapsible_section_title_component';
 import {RectsComponent} from 'viewers/components/rects/rects_component';
 import {UiRect} from 'viewers/components/rects/ui_rect';
@@ -61,12 +62,15 @@ describe('RectsComponent', () => {
   let updateLabelsSpy: jasmine.Spy<(labels: RectLabel[]) => void>;
   let renderViewSpy: jasmine.Spy<() => void>;
 
+  beforeAll(() => {
+    localStorage.clear();
+  });
+
   beforeEach(async () => {
     updateViewPositionSpy = spyOn(Canvas.prototype, 'updateViewPosition');
     updateRectsSpy = spyOn(Canvas.prototype, 'updateRects');
     updateLabelsSpy = spyOn(Canvas.prototype, 'updateLabels');
     renderViewSpy = spyOn(Canvas.prototype, 'renderView');
-    localStorage.clear();
 
     await TestBed.configureTestingModule({
       imports: [
@@ -93,6 +97,10 @@ describe('RectsComponent', () => {
     fixture = TestBed.createComponent(TestHostComponent);
     component = fixture.componentInstance;
     htmlElement = fixture.nativeElement;
+  });
+
+  afterEach(() => {
+    localStorage.clear();
   });
 
   it('can be created', () => {
@@ -185,15 +193,8 @@ describe('RectsComponent', () => {
     ];
     await checkSelectedDisplay([0]);
 
-    const trigger = assertDefined(
-      htmlElement.querySelector('.displays-section .mat-select-trigger'),
-    );
-    (trigger as HTMLElement).click();
-    fixture.detectChanges();
-
-    const options = document.querySelectorAll<HTMLElement>(
-      '.mat-select-panel .mat-option',
-    );
+    openDisplaysSelect();
+    const options = getDisplayOptions();
 
     options.item(1).click();
     await checkSelectedDisplay([0, 1]);
@@ -218,11 +219,7 @@ describe('RectsComponent', () => {
     ];
     await checkSelectedDisplay([0]);
 
-    const trigger = assertDefined(
-      htmlElement.querySelector('.displays-section .mat-select-trigger'),
-    );
-    (trigger as HTMLElement).click();
-    fixture.detectChanges();
+    openDisplaysSelect();
 
     const onlyButtons = document.querySelectorAll<HTMLElement>(
       '.mat-select-panel .mat-option .option-only-button',
@@ -340,6 +337,44 @@ describe('RectsComponent', () => {
     expect(newRectsComponent.getShadingMode()).toEqual(ShadingMode.WIRE_FRAME);
   });
 
+  it('uses stored selected displays if present in new trace', async () => {
+    component.rects = [rectGroup0, rectGroup1];
+    component.displays = [
+      {displayId: 10, groupId: 0, name: 'Display 0', isActive: true},
+      {displayId: 20, groupId: 1, name: 'Display 1', isActive: true},
+    ];
+    await checkSelectedDisplay([0]);
+
+    openDisplaysSelect();
+    const options = getDisplayOptions();
+    options.item(1).click();
+    await checkSelectedDisplay([0, 1]);
+
+    const fixtureWithSameDisplays = TestBed.createComponent(TestHostComponent);
+    const componentWithSameDisplays = fixtureWithSameDisplays.componentInstance;
+    componentWithSameDisplays.rects = component.rects;
+    componentWithSameDisplays.displays = component.displays;
+    await checkSelectedDisplay(
+      [0, 1],
+      undefined,
+      fixtureWithSameDisplays,
+      fixtureWithSameDisplays.nativeElement,
+    );
+
+    const fixtureWithDisplay1 = TestBed.createComponent(TestHostComponent);
+    const componentWithDisplay1 = fixtureWithDisplay1.componentInstance;
+    componentWithDisplay1.rects = [rectGroup1];
+    componentWithDisplay1.displays = [
+      {displayId: 20, groupId: 1, name: 'Display 1', isActive: true},
+    ];
+    await checkSelectedDisplay(
+      [1],
+      undefined,
+      fixtureWithDisplay1,
+      fixtureWithDisplay1.nativeElement,
+    );
+  });
+
   it('defaults initial selection to first active display with rects', async () => {
     component.rects = [rectGroup0, rectGroup1];
     component.displays = [
@@ -439,17 +474,23 @@ describe('RectsComponent', () => {
     expect(miniRects[0].topLeft.z).toEqual(200);
   });
 
+  it('redraws mini rects on change', () => {
+    component.miniRects = [rectGroup0, rectGroup0];
+    fixture.detectChanges();
+    resetSpies();
+
+    component.miniRects = [rectGroup0, rectGroup0];
+    fixture.detectChanges();
+    checkAllSpiesCalled(1);
+  });
+
   it('handles collapse button click', () => {
     fixture.detectChanges();
     const spy = spyOn(
       assertDefined(component.rectsComponent).collapseButtonClicked,
       'emit',
     );
-    const collapseButton = assertDefined(
-      htmlElement.querySelector('collapsible-section-title button'),
-    ) as HTMLButtonElement;
-    collapseButton.click();
-    fixture.detectChanges();
+    findAndClickElement('collapsible-section-title button');
     expect(spy).toHaveBeenCalled();
   });
 
@@ -482,19 +523,14 @@ describe('RectsComponent', () => {
       id = (event as CustomEvent).detail.id;
     });
 
-    const canvas = assertDefined(
-      htmlElement.querySelector<HTMLElement>('.large-rects-canvas'),
-    );
-    canvas.click();
-    fixture.detectChanges();
+    clickLargeRectsCanvas();
     expect(id).toEqual(testString);
   });
 
   it('pans view without emitting rect id', () => {
     component.rects = [rectGroup0];
     fixture.detectChanges();
-    const cameraBefore: Camera =
-      updateViewPositionSpy.calls.mostRecent().args[0];
+    const cameraBefore = updateViewPositionSpy.calls.mostRecent().args[0];
     expect(cameraBefore.panScreenDistance.dx).toEqual(0);
     expect(cameraBefore.panScreenDistance.dy).toEqual(0);
     resetSpies();
@@ -506,34 +542,176 @@ describe('RectsComponent', () => {
       id = (event as CustomEvent).detail.id;
     });
 
-    const canvas = assertDefined(
-      htmlElement.querySelector<HTMLElement>('.large-rects-canvas'),
-    );
-    canvas.dispatchEvent(new MouseEvent('mousedown'));
-    const mouseMoveEvent = new MouseEvent('mousemove');
-    Object.defineProperty(mouseMoveEvent, 'movementX', {value: 5});
-    Object.defineProperty(mouseMoveEvent, 'movementY', {value: 10});
-    document.dispatchEvent(mouseMoveEvent);
-    document.dispatchEvent(new MouseEvent('mouseup'));
-    fixture.detectChanges();
-
+    panView();
     expect(updateViewPositionSpy).toHaveBeenCalledTimes(1);
     expect(updateRectsSpy).not.toHaveBeenCalled();
     expect(updateLabelsSpy).not.toHaveBeenCalled();
     expect(renderViewSpy).toHaveBeenCalled();
 
-    const cameraAfter: Camera =
-      updateViewPositionSpy.calls.mostRecent().args[0];
+    const cameraAfter = updateViewPositionSpy.calls.mostRecent().args[0];
     expect(cameraAfter.panScreenDistance.dx).toEqual(5);
     expect(cameraAfter.panScreenDistance.dy).toEqual(10);
 
-    canvas.click();
-    fixture.detectChanges();
+    clickLargeRectsCanvas();
     expect(id).toBeUndefined();
 
-    canvas.click();
-    fixture.detectChanges();
+    clickLargeRectsCanvas();
     expect(id).toEqual(testString);
+  });
+
+  it('handles window resize', async () => {
+    component.rects = [rectGroup0];
+    fixture.detectChanges();
+    resetSpies();
+
+    spyOnProperty(window, 'innerWidth').and.returnValue(window.innerWidth / 2);
+    window.dispatchEvent(new Event('resize'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await waitToBeCalled(renderViewSpy, 1);
+    expect(updateViewPositionSpy).toHaveBeenCalledTimes(1);
+    expect(updateRectsSpy).not.toHaveBeenCalled();
+    expect(updateLabelsSpy).not.toHaveBeenCalled();
+  });
+
+  it('handles change in dark mode', async () => {
+    component.rects = [rectGroup0];
+    component.miniRects = [rectGroup0];
+    fixture.detectChanges();
+    resetSpies();
+
+    component.isDarkMode = true;
+    fixture.detectChanges();
+    expect(updateRectsSpy).toHaveBeenCalledTimes(2);
+    expect(updateLabelsSpy).toHaveBeenCalledTimes(2);
+    expect(updateViewPositionSpy).toHaveBeenCalledTimes(1); // only for mini rects
+    expect(renderViewSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('handles zoom button clicks', () => {
+    component.rects = [rectGroup0];
+    fixture.detectChanges();
+    const zoomFactor =
+      updateViewPositionSpy.calls.mostRecent().args[0].zoomFactor;
+    resetSpies();
+
+    clickZoomInButton();
+    checkZoomedIn(zoomFactor);
+    const zoomedInFactor =
+      updateViewPositionSpy.calls.mostRecent().args[0].zoomFactor;
+    resetSpies();
+
+    findAndClickElement('.zoom-out-button');
+    checkZoomedOut(zoomedInFactor);
+  });
+
+  it('handles zoom change via scroll event', () => {
+    component.rects = [rectGroup0];
+    fixture.detectChanges();
+    const zoomFactor =
+      updateViewPositionSpy.calls.mostRecent().args[0].zoomFactor;
+    resetSpies();
+
+    const rectsElement = assertDefined(htmlElement.querySelector('rects-view'));
+
+    const zoomInEvent = new WheelEvent('wheel');
+    Object.defineProperty(zoomInEvent, 'target', {
+      value: htmlElement.querySelector('.large-rects-canvas'),
+    });
+    Object.defineProperty(zoomInEvent, 'deltaY', {value: 0});
+    rectsElement.dispatchEvent(zoomInEvent);
+    fixture.detectChanges();
+
+    checkZoomedIn(zoomFactor);
+    const zoomedInFactor =
+      updateViewPositionSpy.calls.mostRecent().args[0].zoomFactor;
+    resetSpies();
+
+    const zoomOutEvent = new WheelEvent('wheel');
+    Object.defineProperty(zoomOutEvent, 'target', {
+      value: htmlElement.querySelector('.large-rects-canvas'),
+    });
+    Object.defineProperty(zoomOutEvent, 'deltaY', {value: 1});
+    rectsElement.dispatchEvent(zoomOutEvent);
+    fixture.detectChanges();
+    checkZoomedOut(zoomedInFactor);
+  });
+
+  it('handles reset button click', () => {
+    component.rects = [rectGroup0];
+    fixture.detectChanges();
+    const [camera, boundingBox] = updateViewPositionSpy.calls.mostRecent().args;
+
+    updateRotationSlider();
+    updateSeparationSlider();
+    clickZoomInButton();
+    panView();
+    resetSpies();
+
+    findAndClickElement('.reset-button');
+    checkAllSpiesCalled(1);
+    const [newCamera, newBoundingBox] =
+      updateViewPositionSpy.calls.mostRecent().args;
+    expect(newCamera).toEqual(camera);
+    expect(newBoundingBox).toEqual(boundingBox);
+  });
+
+  it('handles change in highlighted item', () => {
+    component.rects = [rectGroup0];
+    fixture.detectChanges();
+    expect(updateRectsSpy.calls.mostRecent().args[0][0].colorType).toEqual(
+      ColorType.VISIBLE,
+    );
+    resetSpies();
+
+    component.highlightedItem = rectGroup0.id;
+    fixture.detectChanges();
+
+    expect(updateViewPositionSpy).not.toHaveBeenCalled();
+    expect(updateRectsSpy).toHaveBeenCalledTimes(1);
+    expect(updateLabelsSpy).toHaveBeenCalledTimes(1);
+    expect(renderViewSpy).toHaveBeenCalledTimes(1);
+    expect(updateRectsSpy.calls.mostRecent().args[0][0].colorType).toEqual(
+      ColorType.HIGHLIGHTED,
+    );
+  });
+
+  it('handles rect double click', () => {
+    component.rects = [rectGroup0];
+    fixture.detectChanges();
+    resetSpies();
+
+    const testString = 'test_id';
+    spyOn(Canvas.prototype, 'getClickedRectId').and.returnValue(testString);
+    let detail: RectDblClickDetail | undefined;
+    htmlElement.addEventListener(ViewerEvents.RectsDblClick, (event) => {
+      detail = (event as CustomEvent).detail;
+    });
+
+    const canvas = assertDefined(
+      htmlElement.querySelector<HTMLElement>('.large-rects-canvas'),
+    );
+    canvas.dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    expect(detail).toEqual(new RectDblClickDetail(testString));
+  });
+
+  it('handles mini rect double click', () => {
+    component.rects = [rectGroup0];
+    fixture.detectChanges();
+    resetSpies();
+
+    let miniRectDoubleClick = false;
+    htmlElement.addEventListener(ViewerEvents.MiniRectsDblClick, (event) => {
+      miniRectDoubleClick = true;
+    });
+
+    const canvas = assertDefined(
+      htmlElement.querySelector<HTMLElement>('.mini-rects-canvas'),
+    );
+    canvas.dispatchEvent(new MouseEvent('dblclick'));
+    fixture.detectChanges();
+    expect(miniRectDoubleClick).toBeTrue();
   });
 
   function resetSpies() {
@@ -548,19 +726,19 @@ describe('RectsComponent', () => {
   async function checkSelectedDisplay(
     displayNumbers: number[],
     testIds?: number[],
+    f = fixture,
+    el = htmlElement,
   ) {
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const displaySelect = assertDefined(
-      htmlElement.querySelector('.displays-select'),
-    );
+    f.detectChanges();
+    await f.whenStable();
+    f.detectChanges();
+    const displaySelect = assertDefined(el.querySelector('.displays-select'));
     expect(displaySelect.textContent?.trim()).toEqual(
       displayNumbers
         .map((displayNumber) => `Display ${displayNumber}`)
         .join(', '),
     );
-    const drawnRects: UiRect3D[] = updateRectsSpy.calls.mostRecent().args[0];
+    const drawnRects = updateRectsSpy.calls.mostRecent().args[0];
     expect(drawnRects.length).toEqual(displayNumbers.length);
     drawnRects.forEach((rect, index) => {
       expect(rect.id).toEqual(
@@ -571,9 +749,7 @@ describe('RectsComponent', () => {
   }
 
   function findAndClickElement(selector: string) {
-    const el = assertDefined(
-      htmlElement.querySelector(selector),
-    ) as HTMLElement;
+    const el = assertDefined(htmlElement.querySelector<HTMLElement>(selector));
     el.click();
     fixture.detectChanges();
   }
@@ -581,6 +757,7 @@ describe('RectsComponent', () => {
   function checkSliderUnfocusesOnClick(slider: Element, expectedValue: number) {
     const rectsComponent = assertDefined(component.rectsComponent);
     slider.dispatchEvent(new MouseEvent('mousedown'));
+    slider.dispatchEvent(new MouseEvent('mouseup'));
     expect(rectsComponent.getZSpacingFactor()).toEqual(expectedValue);
     htmlElement.dispatchEvent(
       new KeyboardEvent('keydown', {key: 'ArrowRight'}),
@@ -633,11 +810,62 @@ describe('RectsComponent', () => {
       .setIsActiveDisplay(false)
       .setId('test-id ' + groupId)
       .setGroupId(groupId)
-      .setIsClickable(false)
+      .setIsClickable(true)
       .setCornerRadius(0)
       .setDepth(0)
       .setOpacity(0.5)
       .build();
+  }
+
+  function panView() {
+    const canvas = assertDefined(
+      htmlElement.querySelector<HTMLElement>('.large-rects-canvas'),
+    );
+    canvas.dispatchEvent(new MouseEvent('mousedown'));
+    const mouseMoveEvent = new MouseEvent('mousemove');
+    Object.defineProperty(mouseMoveEvent, 'movementX', {value: 5});
+    Object.defineProperty(mouseMoveEvent, 'movementY', {value: 10});
+    document.dispatchEvent(mouseMoveEvent);
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+  }
+
+  function clickZoomInButton() {
+    findAndClickElement('.zoom-in-button');
+  }
+
+  function clickLargeRectsCanvas() {
+    findAndClickElement('.large-rects-canvas');
+  }
+
+  function checkZoomedIn(oldZoomFactor: number) {
+    expect(updateRectsSpy).toHaveBeenCalledTimes(0);
+    expect(updateLabelsSpy).toHaveBeenCalledTimes(1);
+    expect(updateViewPositionSpy).toHaveBeenCalledTimes(1);
+    expect(renderViewSpy).toHaveBeenCalledTimes(1);
+    expect(
+      updateViewPositionSpy.calls.mostRecent().args[0].zoomFactor,
+    ).toBeGreaterThan(oldZoomFactor);
+  }
+
+  function checkZoomedOut(oldZoomFactor: number) {
+    expect(updateRectsSpy).toHaveBeenCalledTimes(0);
+    expect(updateLabelsSpy).toHaveBeenCalledTimes(1);
+    expect(updateViewPositionSpy).toHaveBeenCalledTimes(1);
+    expect(renderViewSpy).toHaveBeenCalledTimes(1);
+    expect(
+      updateViewPositionSpy.calls.mostRecent().args[0].zoomFactor,
+    ).toBeLessThan(oldZoomFactor);
+  }
+
+  function openDisplaysSelect() {
+    findAndClickElement('.displays-section .mat-select-trigger');
+  }
+
+  function getDisplayOptions() {
+    return document.querySelectorAll<HTMLElement>(
+      '.mat-select-panel .mat-option',
+    );
   }
 
   function checkAllSpiesCalled(times: number) {
@@ -662,7 +890,9 @@ describe('RectsComponent', () => {
         [shadingModes]="shadingModes"
         [userOptions]="userOptions"
         [dependencies]="dependencies"
-        [pinnedItems]="pinnedItems"></rects-view>
+        [pinnedItems]="pinnedItems"
+        [isDarkMode]="isDarkMode"
+        [highlightedItem]="highlightedItem"></rects-view>
     `,
   })
   class TestHostComponent {
@@ -685,6 +915,8 @@ describe('RectsComponent', () => {
     };
     dependencies = [TraceType.SURFACE_FLINGER];
     pinnedItems: UiHierarchyTreeNode[] = [];
+    isDarkMode = false;
+    highlightedItem = '';
 
     @ViewChild(RectsComponent)
     rectsComponent: RectsComponent | undefined;
