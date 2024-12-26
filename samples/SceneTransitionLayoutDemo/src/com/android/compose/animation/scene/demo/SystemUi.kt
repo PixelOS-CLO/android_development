@@ -18,6 +18,7 @@ package com.android.compose.animation.scene.demo
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.OverscrollEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -281,13 +282,8 @@ fun SystemUi(
     val hapticFeedback = LocalHapticFeedback.current
     val revealHaptics = remember(hapticFeedback) { DemoContainerRevealHaptics(hapticFeedback) }
     val transitions =
-        remember(quickSettingsPagerState, springConfiguration, configuration) {
-            systemUiTransitions(
-                quickSettingsPagerState,
-                springConfiguration,
-                configuration,
-                revealHaptics,
-            )
+        remember(quickSettingsPagerState, springConfiguration, revealHaptics) {
+            systemUiTransitions(quickSettingsPagerState, springConfiguration, revealHaptics)
         }
 
     val sceneSaver =
@@ -370,8 +366,18 @@ fun SystemUi(
     }
 
     @Composable
-    fun SceneScope.NotificationList(maxNotificationCount: Int, isScrollable: Boolean = true) {
-        NotificationList(notifications, maxNotificationCount, configuration, isScrollable)
+    fun SceneScope.NotificationList(
+        maxNotificationCount: Int,
+        isScrollable: Boolean = true,
+        overscrollEffect: OverscrollEffect? = null,
+    ) {
+        NotificationList(
+            notifications = notifications,
+            maxNotificationCount = maxNotificationCount,
+            demoConfiguration = configuration,
+            isScrollable = isScrollable,
+            overscrollEffect = overscrollEffect,
+        )
     }
 
     if (showConfigurationDialog) {
@@ -591,9 +597,10 @@ fun SystemUi(
                             Shade.userActions(isLockscreenDismissed, lockscreenScene),
                         ) {
                             Shade(
-                                notificationList = {
+                                notificationList = { overscrollEffect ->
                                     NotificationList(
-                                        maxNotificationCount = configuration.notificationsInShade
+                                        maxNotificationCount = configuration.notificationsInShade,
+                                        overscrollEffect = overscrollEffect,
                                     )
                                 },
                                 mediaPlayer,

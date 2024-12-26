@@ -25,6 +25,7 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from 'common/assert_utils';
 import {getFixtureFile} from 'test/unit/fixture_utils';
 import {MediaBasedTraceEntry} from 'trace/media_based_trace_entry';
+import {ViewerEvents} from 'viewers/common/viewer_events';
 import {ViewerMediaBasedComponent} from './viewer_media_based_component';
 
 describe('ViewerMediaBasedComponent', () => {
@@ -242,6 +243,25 @@ describe('ViewerMediaBasedComponent', () => {
     spyOnProperty(window, 'innerWidth').and.returnValue(newWindowWidth);
     resizeWindow();
     expect(getContainerMaxWidth() < maxWidthAfterNewWindowHeight).toBeTrue();
+  });
+
+  it('emits event on double click', () => {
+    let index: number | undefined;
+    htmlElement.addEventListener(ViewerEvents.OverlayDblClick, (event) => {
+      index = (event as CustomEvent).detail;
+    });
+    expect(htmlElement.querySelector('.info-icon')).toBeNull();
+    const container = assertDefined(
+      htmlElement.querySelector<HTMLElement>('.container'),
+    );
+    container.dispatchEvent(new MouseEvent('dblclick'));
+    expect(index).toBeUndefined();
+
+    assertDefined(component.screenComponent).enableDoubleClick = true;
+    fixture.detectChanges();
+    expect(htmlElement.querySelector('.info-icon')).toBeTruthy();
+    container.dispatchEvent(new MouseEvent('dblclick'));
+    expect(index).toEqual(0);
   });
 
   function getContainerMaxWidth(): number {

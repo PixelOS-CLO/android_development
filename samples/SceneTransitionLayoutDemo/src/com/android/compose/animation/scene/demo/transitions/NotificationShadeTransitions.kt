@@ -17,7 +17,6 @@
 package com.android.compose.animation.scene.demo.transitions
 
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.Orientation
 import com.android.compose.animation.scene.BaseTransitionBuilder
 import com.android.compose.animation.scene.SceneTransitionsBuilder
 import com.android.compose.animation.scene.TransitionBuilder
@@ -41,18 +40,6 @@ fun SceneTransitionsBuilder.notificationShadeTransitions(revealHaptics: Containe
         spec = tween(500)
         reversed { toNotificationShade(revealHaptics) }
         sharedElement(NotificationList.Elements.Notifications, enabled = false)
-    }
-
-    overscroll(Overlays.Notifications, Orientation.Vertical) {
-        notifyStlThatShadeDoesNotResizeDuringThisTransition()
-
-        translate(PartialShade.Elements.Root, y = { absoluteDistance })
-    }
-
-    overscroll(Overlays.Notifications, Orientation.Horizontal) {
-        notifyStlThatShadeDoesNotResizeDuringThisTransition()
-
-        translate(PartialShade.Elements.Root, x = { absoluteDistance })
     }
 }
 
