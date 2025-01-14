@@ -26,6 +26,7 @@ import {CustomQueryType} from 'trace/custom_query';
 import {Trace} from 'trace/trace';
 import {Traces} from 'trace/traces';
 import {TraceEntryFinder} from 'trace/trace_entry_finder';
+import {TRACE_INFO} from 'trace/trace_info';
 import {TraceType} from 'trace/trace_type';
 import {
   EMPTY_OBJ_STRING,
@@ -44,13 +45,18 @@ import {
   SfSummaryProperty,
 } from 'viewers/common/curated_properties';
 import {DisplayIdentifier} from 'viewers/common/display_identifier';
-import {HierarchyPresenter} from 'viewers/common/hierarchy_presenter';
+import {
+  HierarchyPresenter,
+  SelectedTree,
+} from 'viewers/common/hierarchy_presenter';
 import {PropertiesPresenter} from 'viewers/common/properties_presenter';
 import {RectsPresenter} from 'viewers/common/rects_presenter';
 import {TextFilter} from 'viewers/common/text_filter';
 import {UiHierarchyTreeNode} from 'viewers/common/ui_hierarchy_tree_node';
 import {UI_RECT_FACTORY} from 'viewers/common/ui_rect_factory';
+import {RectType, UiRectType} from 'viewers/common/ui_rect_type';
 import {UserOptions} from 'viewers/common/user_options';
+import {ViewerEvents} from 'viewers/common/viewer_events';
 import {UiRect} from 'viewers/components/rects/ui_rect';
 import {UiData} from './ui_data';
 
@@ -110,8 +116,12 @@ export class Presenter extends AbstractHierarchyViewerPresenter<UiData> {
       },
       this.storage,
     ),
-    (tree: HierarchyTreeNode) =>
-      UI_RECT_FACTORY.makeUiRects(tree, this.viewCapturePackageNames),
+    (tree: HierarchyTreeNode) => {
+      if (this.rectTypes[this.rectTypeIndex].type === RectType.LAYERS) {
+        return UI_RECT_FACTORY.makeUiRects(tree, this.viewCapturePackageNames);
+      }
+      return UI_RECT_FACTORY.makeInputRects(tree, (id) => false);
+    },
     (displays: UiRect[]) =>
       makeDisplayIdentifiers(displays, this.wmFocusedDisplayId),
     convertRectIdToLayerorDisplayName,
@@ -146,6 +156,14 @@ the default for its data type.`,
   private curatedProperties: SfCuratedProperties | undefined;
   private wmTrace: Trace<HierarchyTreeNode> | undefined;
   private wmFocusedDisplayId: number | undefined;
+  private rectTypes: UiRectType[] = [
+    {type: RectType.LAYERS, icon: TRACE_INFO[TraceType.SURFACE_FLINGER].icon},
+    {
+      type: RectType.INPUT_WINDOWS,
+      icon: TRACE_INFO[TraceType.INPUT_EVENT_MERGED].icon,
+    },
+  ];
+  private rectTypeIndex = 0;
 
   constructor(
     trace: Trace<HierarchyTreeNode>,
@@ -185,11 +203,26 @@ the default for its data type.`,
     this.refreshUIData();
   }
 
+  onUiRectTypeButtonClicked() {
+    this.rectTypeIndex =
+      this.rectTypeIndex < this.rectTypes.length - 1
+        ? this.rectTypeIndex + 1
+        : 0;
+    const currentHierarchyTrees =
+      this.hierarchyPresenter.getAllCurrentHierarchyTrees();
+    if (currentHierarchyTrees) {
+      this.rectsPresenter?.applyHierarchyTreesChange(currentHierarchyTrees);
+    }
+    this.refreshUIData();
+  }
+
   protected override getOverrideDisplayName(
-    selected: [Trace<HierarchyTreeNode>, HierarchyTreeNode],
+    selected: SelectedTree,
   ): string | undefined {
-    return selected[1].isRoot()
-      ? this.hierarchyPresenter.getCurrentHierarchyTreeNames(selected[0])?.at(0)
+    return selected.tree.isRoot()
+      ? this.hierarchyPresenter
+          .getCurrentHierarchyTreeNames(selected.trace)
+          ?.at(0)
       : undefined;
   }
 
@@ -217,7 +250,18 @@ the default for its data type.`,
 
   protected override refreshUIData() {
     this.uiData.curatedProperties = this.curatedProperties;
+    this.uiData.rectType = this.rectTypes[this.rectTypeIndex];
     this.refreshHierarchyViewerUiData();
+  }
+
+  protected override addViewerSpecificListeners(htmlElement: HTMLElement) {
+    htmlElement.addEventListener(ViewerEvents.RectsDblClick, async (event) => {
+      const rectId = (event as CustomEvent).detail.clickedRectId;
+      await this.onRectDoubleClick(rectId);
+    });
+    htmlElement.addEventListener(ViewerEvents.RectTypeButtonClick, (event) => {
+      this.onUiRectTypeButtonClicked();
+    });
   }
 
   private updateCuratedProperties() {
@@ -225,11 +269,11 @@ the default for its data type.`,
     const propertiesTree = this.propertiesPresenter.getPropertiesTree();
 
     if (selectedHierarchyTree && propertiesTree) {
-      if (selectedHierarchyTree[1].isRoot()) {
+      if (selectedHierarchyTree.tree.isRoot()) {
         this.curatedProperties = undefined;
       } else {
         this.curatedProperties = this.getCuratedProperties(
-          selectedHierarchyTree[1],
+          selectedHierarchyTree.tree,
           propertiesTree,
         );
       }
@@ -283,12 +327,11 @@ the default for its data type.`,
       summary: this.getSummaryOfVisibility(pTree),
       flags: curatedFlags,
       calcTransform: pTree.getChildByName('transform'),
-      calcCrop: assertDefined(pTree.getChildByName('bounds')).formattedValue(),
+      calcCrop: this.getCropPropertyValue(pTree, 'bounds'),
       finalBounds: assertDefined(
         pTree.getChildByName('screenBounds'),
       ).formattedValue(),
       reqTransform: pTree.getChildByName('requestedTransform'),
-      reqCrop: this.getCropPropertyValue(pTree, 'bounds'),
       bufferSize: assertDefined(
         pTree.getChildByName('activeBuffer'),
       ).formattedValue(),

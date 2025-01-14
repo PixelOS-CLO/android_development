@@ -44,6 +44,7 @@ import {UpdateSfSubtreeDisplayNames} from './operations/update_sf_subtree_displa
 import {PropertiesPresenter} from './properties_presenter';
 import {UiHierarchyTreeNode} from './ui_hierarchy_tree_node';
 import {UiTreeUtils} from './ui_tree_utils';
+import {ViewerEvents} from './viewer_events';
 
 export abstract class AbstractPresenterInputMethod extends AbstractHierarchyViewerPresenter<ImeUiData> {
   protected getHierarchyTreeNameStrategy = (
@@ -132,7 +133,7 @@ the default for its data type.`,
 
   async onHighlightedIdChange(newId: string) {
     const selectedHierarchyTree = this.hierarchyPresenter.getSelectedTree();
-    if (!selectedHierarchyTree || selectedHierarchyTree[1].id !== newId) {
+    if (!selectedHierarchyTree || selectedHierarchyTree.tree.id !== newId) {
       this.clearOverridePropertiesTreeSelection();
     }
     await this.applyHighlightedIdChange(newId);
@@ -146,10 +147,11 @@ the default for its data type.`,
     this.updateHighlightedItem(selectedItem.treeNode.id);
     if (selectedItem.treeNode instanceof HierarchyTreeNode) {
       this.clearOverridePropertiesTreeSelection();
-      this.hierarchyPresenter.setSelectedTree([
-        assertDefined(this.wmTrace),
-        selectedItem.treeNode,
-      ]);
+      this.hierarchyPresenter.setSelectedTree({
+        trace: assertDefined(this.wmTrace),
+        tree: selectedItem.treeNode,
+        index: 0,
+      });
     } else if (selectedItem.treeNode instanceof PropertyTreeNode) {
       this.hierarchyPresenter.setSelectedTree(undefined);
       this.overridePropertiesTree = selectedItem.treeNode;
@@ -195,9 +197,7 @@ the default for its data type.`,
     return false;
   }
 
-  protected override getOverrideDisplayName(
-    selected: [Trace<HierarchyTreeNode>, HierarchyTreeNode],
-  ): string | undefined {
+  protected override getOverrideDisplayName(): string | undefined {
     return this.overridePropertiesTreeName;
   }
 
@@ -240,14 +240,25 @@ the default for its data type.`,
         }
 
         if (selectedTree) {
-          this.hierarchyPresenter.setSelectedTree([
-            assertDefined(this.sfTrace),
-            selectedTree,
-          ]);
+          this.hierarchyPresenter.setSelectedTree({
+            trace: assertDefined(this.sfTrace),
+            tree: selectedTree,
+            index: 1,
+          });
           await this.updatePropertiesTree();
         }
       }
     }
+  }
+
+  protected override addViewerSpecificListeners(htmlElement: HTMLElement) {
+    htmlElement.addEventListener(
+      ViewerEvents.AdditionalPropertySelected,
+      async (event) =>
+        await this.onAdditionalPropertySelected(
+          (event as CustomEvent).detail.selectedItem,
+        ),
+    );
   }
 
   private async makeSfSubtrees(
@@ -263,7 +274,7 @@ the default for its data type.`,
     }
     if (sfHierarchyTrees.length > 0) {
       await this.hierarchyPresenter.addCurrentHierarchyTrees(
-        [sfTrace, sfHierarchyTrees],
+        {trace: sfTrace, trees: sfHierarchyTrees},
         this.getHighlightedItem(),
       );
     }
@@ -320,7 +331,11 @@ the default for its data type.`,
       const wmHierarchyTree = additionalProperties.wm?.hierarchyTree;
       this.hierarchyPresenter.setSelectedTree(
         wmHierarchyTree
-          ? [assertDefined(this.wmTrace), wmHierarchyTree]
+          ? {
+              trace: assertDefined(this.wmTrace),
+              tree: wmHierarchyTree,
+              index: 0,
+            }
           : undefined,
       );
       this.overridePropertiesTreeName = wmHierarchyTree

@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 import {Component, Input} from '@angular/core';
-import {PersistentStore} from 'common/store/persistent_store';
 import {TraceType} from 'trace/trace_type';
 import {CollapsibleSections} from 'viewers/common/collapsible_sections';
 import {CollapsibleSectionType} from 'viewers/common/collapsible_section_type';
 import {ImeUiData} from 'viewers/common/ime_ui_data';
+import {ViewerComponent} from 'viewers/components/viewer_component';
 import {viewerCardStyle} from './styles/viewer_card.styles';
 
 @Component({
@@ -34,8 +34,7 @@ import {viewerCardStyle} from './styles/viewer_card.styles';
       <div class="left-views" *ngIf="!areLeftViewsCollapsed()">
         <hierarchy-view
           class="hierarchy-view"
-          [tree]="inputData?.hierarchyTrees?.at(0)"
-          [subtrees]="getSfSubtrees()"
+          [trees]="this.inputData?.hierarchyTrees ?? []"
           [dependencies]="inputData ? [inputData.traceType] : []"
           [highlightedItem]="inputData?.highlightedItem"
           [pinnedItems]="inputData?.pinnedItems ?? []"
@@ -79,9 +78,7 @@ import {viewerCardStyle} from './styles/viewer_card.styles';
     viewerCardStyle,
   ],
 })
-export class ViewerInputMethodComponent {
-  @Input() inputData: ImeUiData | undefined;
-  @Input() store: PersistentStore = new PersistentStore();
+export class ViewerInputMethodComponent extends ViewerComponent<ImeUiData> {
   @Input() active = false;
 
   CollapsibleSectionType = CollapsibleSectionType;
@@ -114,15 +111,5 @@ export class ViewerInputMethodComponent {
         CollapsibleSectionType.IME_ADDITIONAL_PROPERTIES,
       )
     );
-  }
-
-  getSfSubtrees() {
-    if (
-      !this.inputData?.hierarchyTrees ||
-      this.inputData.hierarchyTrees.length <= 1
-    ) {
-      return [];
-    }
-    return this.inputData.hierarchyTrees.slice(1);
   }
 }

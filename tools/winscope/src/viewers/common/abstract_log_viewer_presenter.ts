@@ -125,8 +125,11 @@ export abstract class AbstractLogViewerPresenter<
       if (!isViewerVisible || !isPositionChange) {
         return;
       }
+      event.preventDefault();
       await this.onPositionChangeByKeyPress(event);
     });
+
+    this.addViewerSpecificListeners(htmlElement);
   }
 
   async onAppEvent(event: WinscopeEvent) {
@@ -240,17 +243,26 @@ export abstract class AbstractLogViewerPresenter<
       } else {
         event.stopImmediatePropagation();
         if (currIndex > 0) {
-          return this.emitAppEvent(
-            new TracePositionUpdate(
-              TracePosition.fromTraceEntry(
-                this.uiData.entries[currIndex - 1].traceEntry,
-              ),
-              true,
-            ),
-          );
+          let prev = currIndex - 1;
+          while (prev >= 0) {
+            const prevEntry = this.uiData.entries[prev].traceEntry;
+            if (prevEntry.hasValidTimestamp()) {
+              return this.emitAppEvent(
+                new TracePositionUpdate(
+                  TracePosition.fromTraceEntry(prevEntry),
+                  true,
+                ),
+              );
+            }
+            prev--;
+          }
         }
       }
     }
+  }
+
+  protected addViewerSpecificListeners(htmlElement: HTMLElement) {
+    // do nothing
   }
 
   protected refreshUiData() {

@@ -22,7 +22,7 @@ import {TRACE_INFO} from 'trace/trace_info';
 import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
 import {AbstractPresenterInputMethod} from 'viewers/common/abstract_presenter_input_method';
 import {ImeUiData} from 'viewers/common/ime_ui_data';
-import {ViewerEvents} from 'viewers/common/viewer_events';
+import {ViewerComponent} from 'viewers/components/viewer_component';
 import {View, Viewer, ViewType} from 'viewers/viewer';
 
 export abstract class AbstractViewerInputMethod implements Viewer {
@@ -32,14 +32,15 @@ export abstract class AbstractViewerInputMethod implements Viewer {
   protected readonly view: View;
 
   protected imeUiCallback = (uiData: ImeUiData) => {
-    (this.htmlElement as any).inputData = uiData;
+    (this.htmlElement as unknown as ViewerComponent<ImeUiData>).inputData =
+      uiData;
   };
 
   constructor(trace: Trace<HierarchyTreeNode>, traces: Traces, storage: Store) {
     this.trace = trace;
     this.htmlElement = document.createElement('viewer-input-method');
     this.presenter = this.initializePresenter(trace, traces, storage);
-    this.addViewerEventListeners();
+    this.presenter.addEventListeners(this.htmlElement);
     this.view = new View(
       ViewType.TRACE_TAB,
       this.getTraces(),
@@ -62,17 +63,6 @@ export abstract class AbstractViewerInputMethod implements Viewer {
 
   getTraces(): Array<Trace<HierarchyTreeNode>> {
     return [this.trace];
-  }
-
-  protected addViewerEventListeners() {
-    this.presenter.addEventListeners(this.htmlElement);
-    this.htmlElement.addEventListener(
-      ViewerEvents.AdditionalPropertySelected,
-      async (event) =>
-        await this.presenter.onAdditionalPropertySelected(
-          (event as CustomEvent).detail.selectedItem,
-        ),
-    );
   }
 
   protected abstract initializePresenter(

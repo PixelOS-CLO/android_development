@@ -48,34 +48,54 @@ import {UiData} from './ui_data';
 class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
   override readonly expectedHeaders = [
     {
-      header: new LogHeader({
-        name: 'Type',
-        cssClass: 'input-type inline',
-      }),
+      header: new LogHeader(
+        {
+          name: 'Type',
+          cssClass: 'input-type inline',
+        },
+        new LogSelectFilter(['MOTION', 'KEY'], false, '80', '100%'),
+      ),
     },
     {
-      header: new LogHeader({
-        name: 'Source',
-        cssClass: 'input-source',
-      }),
+      header: new LogHeader(
+        {
+          name: 'Source',
+          cssClass: 'input-source',
+        },
+        new LogSelectFilter(['TOUCHSCREEN', 'KEYBOARD'], false, '200', '100%'),
+      ),
     },
     {
-      header: new LogHeader({
-        name: 'Action',
-        cssClass: 'input-action',
-      }),
+      header: new LogHeader(
+        {
+          name: 'Action',
+          cssClass: 'input-action',
+        },
+        new LogSelectFilter(
+          ['DOWN', 'OUTSIDE', 'MOVE', 'UP'],
+          false,
+          '100',
+          '100%',
+        ),
+      ),
     },
     {
-      header: new LogHeader({
-        name: 'Device',
-        cssClass: 'input-device-id right-align',
-      }),
+      header: new LogHeader(
+        {
+          name: 'Device',
+          cssClass: 'input-device-id right-align',
+        },
+        new LogSelectFilter(['4', '2'], false, '80', '100%'),
+      ),
     },
     {
-      header: new LogHeader({
-        name: 'Display',
-        cssClass: 'input-display-id right-align',
-      }),
+      header: new LogHeader(
+        {
+          name: 'Display',
+          cssClass: 'input-display-id right-align',
+        },
+        new LogSelectFilter(['0', '-1'], false, '80', '100%'),
+      ),
     },
     {
       header: new LogHeader({
@@ -234,18 +254,9 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
     const dispatchProperties = assertDefined(uiData.dispatchPropertiesTree);
     expect(dispatchProperties.getAllChildren().length).toEqual(5);
 
-    expect(
-      dispatchProperties
-        .getChildByName('0')
-        ?.getChildByName('windowId')
-        ?.getDisplayName(),
-    ).toEqual('TargetWindow');
-    expect(
-      dispatchProperties
-        .getChildByName('0')
-        ?.getChildByName('windowId')
-        ?.formattedValue(),
-    ).toEqual('212 - win-212');
+    expect(dispatchProperties.getChildByName('0')?.getDisplayName()).toEqual(
+      'win-212',
+    );
   }
 
   private expectEventPresented(
@@ -368,7 +379,7 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
         await this.setUpTestEnvironment();
       });
 
-      it('adds events listeners', async () => {
+      it('adds event listeners', async () => {
         const element = document.createElement('div');
         const presenter = await this.createPresenter(
           (uiDataLog) => (uiData = uiDataLog as UiData),

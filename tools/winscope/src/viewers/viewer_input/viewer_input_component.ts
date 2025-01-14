@@ -15,7 +15,6 @@
  */
 
 import {Component, Input} from '@angular/core';
-import {PersistentStore} from 'common/store/persistent_store';
 import {TraceType} from 'trace/trace_type';
 import {CollapsibleSections} from 'viewers/common/collapsible_sections';
 import {CollapsibleSectionType} from 'viewers/common/collapsible_section_type';
@@ -25,6 +24,7 @@ import {
   viewerCardInnerStyle,
   viewerCardStyle,
 } from 'viewers/components/styles/viewer_card.styles';
+import {ViewerComponent} from 'viewers/components/viewer_component';
 import {UiData} from './ui_data';
 
 @Component({
@@ -61,7 +61,7 @@ import {UiData} from './ui_data';
           [currentIndex]="inputData?.currentIndex"
           [entries]="inputData?.entries"
           [headers]="inputData?.headers"
-          [showFiltersInTitle]="true"
+          [showFiltersInTitle]="false"
           [traceType]="${TraceType.INPUT_EVENT_MERGED}"
           [showTraceEntryTimes]="false"
           [showCurrentTimeButton]="false"
@@ -113,9 +113,7 @@ import {UiData} from './ui_data';
     `,
   ],
 })
-export class ViewerInputComponent {
-  @Input() inputData: UiData | undefined;
-  @Input() store: PersistentStore | undefined;
+export class ViewerInputComponent extends ViewerComponent<UiData> {
   @Input() active = false;
   TraceType = TraceType;
   CollapsibleSectionType = CollapsibleSectionType;

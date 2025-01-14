@@ -20,7 +20,6 @@ import {
   Component,
   ElementRef,
   Inject,
-  Input,
   QueryList,
   SimpleChanges,
   ViewChild,
@@ -47,6 +46,7 @@ import {
   viewerCardInnerStyle,
   viewerCardStyle,
 } from 'viewers/components/styles/viewer_card.styles';
+import {ViewerComponent} from 'viewers/components/viewer_component';
 import {ActiveSearchComponent} from './active_search_component';
 import {ListItemOption} from './search_list_component';
 import {CurrentSearch, ListedSearch, UiData} from './ui_data';
@@ -339,8 +339,7 @@ import {CurrentSearch, ListedSearch, UiData} from './ui_data';
     viewerCardInnerStyle,
   ],
 })
-export class ViewerSearchComponent {
-  @Input() inputData: UiData | undefined;
+export class ViewerSearchComponent extends ViewerComponent<UiData> {
   @ViewChild('saveQueryField') saveQueryField: NgTemplateOutlet | undefined;
   @ViewChildren(MatTabGroup) matTabGroups: QueryList<MatTabGroup> | undefined;
   @ViewChildren(ActiveSearchComponent) activeSearchComponents:
@@ -546,11 +545,48 @@ INNER JOIN sf_hierarchy_root_search STATE
         },
       ],
     },
+    {
+      name: 'protolog',
+      dataType: 'ProtoLog',
+      spec: [
+        {
+          name: 'ts',
+          desc: 'Timestamp of log',
+        },
+        {
+          name: 'level',
+          desc: 'Log level',
+        },
+        {
+          name: 'tag',
+          desc: 'Logging group tag',
+        },
+        {
+          name: 'message',
+          desc: 'Log message',
+        },
+        {
+          name: 'stacktrace',
+          desc: 'Stacktrace (if available)',
+        },
+        {
+          name: 'location',
+          desc: 'Code location from which message originates',
+        },
+      ],
+      examples: [
+        {
+          query: `SELECT ts, message, location FROM protolog
+  WHERE message LIKE '%transition%'`,
+          desc: 'returns logs with message containing "transition"',
+        },
+      ],
+    },
   ];
 
-  constructor(
-    @Inject(ElementRef) private elementRef: ElementRef<HTMLElement>,
-  ) {}
+  constructor(@Inject(ElementRef) private elementRef: ElementRef<HTMLElement>) {
+    super();
+  }
 
   ngAfterViewInit() {
     this.saveOption.menu = this.saveQueryField;
