@@ -27,9 +27,12 @@ import com.android.compose.animation.scene.ContentScope
 import com.android.compose.animation.scene.ElementKey
 import com.android.compose.animation.scene.Swipe
 import com.android.compose.animation.scene.UserActionResult
+import com.android.compose.animation.scene.UserActionResult.ShowOverlay
+import com.android.compose.animation.scene.UserActionResult.ShowOverlay.HideCurrentOverlays
 
 object NotificationShade {
     object Elements {
+        val Root = ElementKey("NotificationShadeRoot")
         val Content = ElementKey("NotificationShadeContent")
     }
 
@@ -38,20 +41,27 @@ object NotificationShade {
             Back to UserActionResult.HideOverlay(Overlays.Notifications),
             Swipe.Up to UserActionResult.HideOverlay(Overlays.Notifications),
             Swipe.Down(fromSource = SceneContainerEdge.TopEnd) to
-                UserActionResult.ReplaceByOverlay(Overlays.QuickSettings),
+                ShowOverlay(
+                    Overlays.QuickSettings,
+                    hideCurrentOverlays = HideCurrentOverlays.Some(Overlays.Notifications),
+                ),
         )
 }
 
 @Composable
 fun ContentScope.NotificationShade(
+    clock: (@Composable ContentScope.() -> Unit)?,
     mediaPlayer: (@Composable ContentScope.() -> Unit)?,
     notificationList: @Composable ContentScope.() -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    PartialShade(modifier) {
+    PartialShade(NotificationShade.Elements.Root, modifier) {
         Column(Modifier.element(NotificationShade.Elements.Content)) {
-            if (mediaPlayer != null) {
-                Box(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp)) { mediaPlayer() }
+            if (clock != null || mediaPlayer != null) {
+                Column(Modifier.padding(horizontal = 16.dp).padding(top = 16.dp)) {
+                    clock?.let { it() }
+                    mediaPlayer?.let { it() }
+                }
             }
 
             // Don't resize the notifications during the reveal.

@@ -17,9 +17,11 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::{Args, Parser, Subcommand};
-use crate_tool::{default_repo_root, maybe_build_cargo_embargo, ManagedRepo};
+use crate_tool::{
+    default_repo_root, maybe_build_cargo_embargo, ManagedRepo, SemverCompatibilityRule,
+};
 use rooted_path::RootedPath;
 use semver::Version;
 
@@ -114,6 +116,13 @@ enum Cmd {
         /// Don't exclude crates that have patches.
         #[arg(long, default_value_t = false)]
         patches: bool,
+
+        /// How strict to be about enforcing semver compatibility.
+        #[arg(long, value_enum, default_value_t = SemverCompatibilityRule::Loose)]
+        semver_compatibility: SemverCompatibilityRule,
+
+        #[arg(long, default_value_t = false)]
+        json: bool,
     },
     /// Update a crate to the specified version.
     Update {
@@ -157,6 +166,9 @@ impl CrateList {
         Ok(if self.all {
             managed_repo.all_crate_names()?.difference(&self.exclude).cloned().collect::<Vec<_>>()
         } else {
+            if self.crates.is_empty() {
+                bail!("No crates specified");
+            }
             self.crates.clone()
         })
     }
@@ -238,7 +250,9 @@ fn main() -> Result<()> {
         }
         Cmd::UpdatableCrates {} => managed_repo.updatable_crates(),
         Cmd::AnalyzeUpdates { crate_name } => managed_repo.analyze_updates(crate_name),
-        Cmd::SuggestUpdates { patches } => managed_repo.suggest_updates(patches).map(|_x| ()),
+        Cmd::SuggestUpdates { patches, semver_compatibility, json } => {
+            managed_repo.suggest_updates(patches, semver_compatibility, json)
+        }
         Cmd::Update { crate_name, version } => managed_repo.update(crate_name, version),
         Cmd::Init {} => managed_repo.init(),
         Cmd::TestMapping { crates } => {

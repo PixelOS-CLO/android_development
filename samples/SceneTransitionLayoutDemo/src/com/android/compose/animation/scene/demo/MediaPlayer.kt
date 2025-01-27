@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.android.compose.animation.scene.ContentKey
 import com.android.compose.animation.scene.ContentScope
 import com.android.compose.animation.scene.ElementKey
+import com.android.compose.animation.scene.MovableElementContentPicker
 import com.android.compose.animation.scene.MovableElementKey
 import com.android.compose.animation.scene.StaticElementContentPicker
 import com.android.compose.animation.scene.content.state.TransitionState
@@ -43,6 +44,11 @@ import com.android.compose.animation.scene.content.state.TransitionState
 object MediaPlayer {
     object Elements {
         val MediaPlayer = MovableElementKey("MediaPlayer", contentPicker = ContentPicker)
+        val SmallMediaPlayer =
+            MovableElementKey(
+                "SmallMediaPlayer",
+                contentPicker = MovableElementContentPicker(setOf(Overlays.QuickSettings)),
+            )
     }
 
     object Dimensions {
@@ -62,15 +68,14 @@ object MediaPlayer {
                 Scenes.Shade,
                 Scenes.SplitShade,
                 Scenes.QuickSettings,
-                Overlays.QuickSettings,
                 Overlays.Notifications,
             )
 
         override fun contentDuringTransition(
             element: ElementKey,
             transition: TransitionState.Transition,
-            fromContentZIndex: Float,
-            toContentZIndex: Float,
+            fromContentZIndex: Long,
+            toContentZIndex: Long,
         ): ContentKey {
             return when {
                 // During the Lockscreen => Shade transition, the media player is visible in the
@@ -106,7 +111,6 @@ object MediaPlayer {
                 transition.isTransitioningBetween(Scenes.Lockscreen, Scenes.QuickSettings) ->
                     Scenes.QuickSettings
                 transition.isTransitioningFromOrTo(Overlays.Notifications) -> Overlays.Notifications
-                transition.isTransitioningFromOrTo(Overlays.QuickSettings) -> Overlays.QuickSettings
                 else -> pickSingleContentIn(contents, transition, element)
             }
         }
@@ -120,8 +124,10 @@ fun ContentScope.MediaPlayer(
     onIsPlayingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val key =
+        if (isSmall) MediaPlayer.Elements.SmallMediaPlayer else MediaPlayer.Elements.MediaPlayer
     MovableElement(
-        MediaPlayer.Elements.MediaPlayer,
+        key,
         modifier
             .fillMaxWidth()
             .height(

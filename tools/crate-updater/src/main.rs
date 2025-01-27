@@ -23,8 +23,10 @@ use std::{
 use anyhow::{bail, Result};
 use chrono::Datelike;
 use clap::Parser;
+use crate_updater::UpdatesTried;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use serde::Deserialize;
 
 #[derive(Parser)]
 struct Cli {
@@ -114,6 +116,17 @@ fn cleanup_and_sync_monorepo(monorepo_path: &Path) -> Result<()> {
     Ok(())
 }
 
+#[derive(Deserialize, Default, Debug)]
+struct UpdateSuggestions {
+    updates: Vec<UpdateSuggestion>,
+}
+
+#[derive(Deserialize, Default, Debug)]
+struct UpdateSuggestion {
+    name: String,
+    version: String,
+}
+
 fn sync_to_green(monorepo_path: &Path) -> Result<()> {
     Command::new("prodcertstatus").run_and_stream_output()?;
     Command::new("/google/data/ro/projects/android/smartsync_login").run_and_stream_output()?;
@@ -144,24 +157,24 @@ fn sync_to_green(monorepo_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn get_suggestions(monorepo_path: &Path) -> Result<Vec<(String, String)>> {
-    // TODO: Improve update suggestion algorithm, and produce output in machine-readable format.
-    let output = Command::new(monorepo_path.join("crate_tool"))
-        .args(["suggest-updates", "--patches"])
-        .current_dir(monorepo_path)
-        .output()?
-        .success_or_error()?;
-    let mut suggestions = from_utf8(&output.stdout)?
-        .trim()
-        .lines()
-        .map(|suggestion| {
-            let words = suggestion.split_whitespace().collect::<Vec<_>>();
-            if words.len() != 6 {
-                println!("Failed to parse suggestion {suggestion}");
-            }
-            (words[2].to_string(), words[5].to_string())
-        })
-        .collect::<Vec<_>>();
+fn get_suggestions(monorepo_path: &Path) -> Result<Vec<UpdateSuggestion>> {
+    // TODO: Improve update suggestion algorithm.
+    let mut suggestions = Vec::new();
+    for compatibility in ["ignore", "loose", "strict"] {
+        let output = Command::new(monorepo_path.join("crate_tool"))
+            .args([
+                "suggest-updates",
+                "--json",
+                "--patches",
+                "--semver-compatibility",
+                compatibility,
+            ])
+            .current_dir(monorepo_path)
+            .output()?
+            .success_or_error()?;
+        let json: UpdateSuggestions = serde_json::from_slice(&output.stdout)?;
+        suggestions.extend(json.updates);
+    }
 
     // Return suggestions in random order. This reduces merge conflicts and ensures
     // all crates eventually get tried, even if something goes wrong and the program
@@ -282,30 +295,6 @@ static DENYLIST: LazyLock<BTreeSet<&'static str>> = LazyLock::new(|| {
         "tikv-jemallocator",
         "zerocopy-derive",
         "zerocopy",
-
-        // Test failures
-        "ash",
-        "bindgen",
-        "bstr",
-        "config",
-        "half",
-        "mls-rs-core",
-        "named-lock",
-        "p9_wire_format_derive",
-        "tokio-test",
-        "tower",
-        "tungstenite",
-        "unicode-width", // Emoji test seems to need extra data downloaded.
-        "vm-memory",  // Compilation error with vhost
-        "xml-rs", // Unit test failure in serde-xml-rs.
-
-        // Other
-        "async-trait", // Needs to be deleted
-        "instant", // Needs to be deleted
-        "libz-sys", // Needs an update.
-        "rusqlite",
-        "uniffi_core",
-        "uniffi_meta",
     ])
 });
 
@@ -332,17 +321,22 @@ fn main() -> Result<()> {
         .current_dir(&args.android_root)
         .run_and_stream_output()?;
 
-    for (crate_name, version) in get_suggestions(&monorepo_path)?.iter() {
-        if DENYLIST.contains(crate_name.as_str()) {
+    let mut updates_tried = UpdatesTried::read()?;
+    for suggestion in get_suggestions(&monorepo_path)? {
+        let crate_name = suggestion.name.as_str();
+        let version = suggestion.version.as_str();
+        if DENYLIST.contains(crate_name) {
             println!("Skipping {crate_name} (on deny list)");
             continue;
         }
+        if updates_tried.contains(crate_name, version) {
+            println!("Skipping {crate_name} (already attempted recently)");
+            continue;
+        }
         cleanup_and_sync_monorepo(&monorepo_path)?;
-        let _res =
-            try_update(&args.android_root, &monorepo_path, crate_name.as_str(), version.as_str())
-                .inspect_err(|e| println!("Update failed: {}", e));
-        // TODO: Record updates we've tried in a file, so we can avoid
-        // repeating them too often.
+        let res = try_update(&args.android_root, &monorepo_path, crate_name, version)
+            .inspect_err(|e| println!("Update failed: {}", e));
+        updates_tried.record(suggestion.name, suggestion.version, res.is_ok())?;
     }
     cleanup_and_sync_monorepo(&monorepo_path)?;
 

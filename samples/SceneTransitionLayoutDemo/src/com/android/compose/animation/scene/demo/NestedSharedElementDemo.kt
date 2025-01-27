@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +37,7 @@ import com.android.compose.animation.scene.ElementKey
 import com.android.compose.animation.scene.MutableSceneTransitionLayoutState
 import com.android.compose.animation.scene.SceneKey
 import com.android.compose.animation.scene.SceneTransitionLayout
+import com.android.compose.animation.scene.rememberMutableSceneTransitionLayoutState
 import com.android.compose.animation.scene.transitions
 
 object ParentSTL {
@@ -49,8 +49,8 @@ object ParentSTL {
 
 object ChildSTL {
     object Scenes {
-        val Top = SceneKey("Red")
-        val Bottom = SceneKey("Red")
+        val Top = SceneKey("Top")
+        val Bottom = SceneKey("Bottom")
     }
 }
 
@@ -62,8 +62,8 @@ object Elements {
 @Composable
 fun NestedSharedElementDemo(modifier: Modifier = Modifier) {
     Column(modifier) {
-        val state = remember {
-            MutableSceneTransitionLayoutState(
+        val state =
+            rememberMutableSceneTransitionLayoutState(
                 ParentSTL.Scenes.Left,
                 transitions {
                     from(ParentSTL.Scenes.Left, to = ParentSTL.Scenes.Right) {
@@ -74,9 +74,8 @@ fun NestedSharedElementDemo(modifier: Modifier = Modifier) {
                     }
                 },
             )
-        }
-        val childState = remember {
-            MutableSceneTransitionLayoutState(
+        val childState =
+            rememberMutableSceneTransitionLayoutState(
                 ChildSTL.Scenes.Top,
                 transitions {
                     from(ChildSTL.Scenes.Top, to = ChildSTL.Scenes.Bottom) {
@@ -87,7 +86,6 @@ fun NestedSharedElementDemo(modifier: Modifier = Modifier) {
                     }
                 },
             )
-        }
         val scope = rememberCoroutineScope()
         SceneTransitionLayout(
             state,
@@ -103,18 +101,17 @@ fun NestedSharedElementDemo(modifier: Modifier = Modifier) {
                 }
                 .padding(16.dp),
         ) {
-            scene(ParentSTL.Scenes.Right) {
-                Box(Modifier.fillMaxSize()) {
-                    SharedElement(Modifier.size(30.dp).align(Alignment.TopEnd))
-                }
-            }
-
             scene(ParentSTL.Scenes.Left) {
                 Box(Modifier.fillMaxSize()) {
                     ChildSTL(
                         childState,
                         Modifier.align(Alignment.Center).fillMaxSize(fraction = 0.5f),
                     )
+                }
+            }
+            scene(ParentSTL.Scenes.Right) {
+                Box(Modifier.fillMaxSize()) {
+                    SharedElement(Modifier.size(30.dp).align(Alignment.TopEnd))
                 }
             }
         }

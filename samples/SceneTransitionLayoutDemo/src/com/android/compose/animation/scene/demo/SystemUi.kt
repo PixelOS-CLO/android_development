@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.android.compose.animation.scene.demo
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.OverscrollEffect
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -48,10 +49,13 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
@@ -98,7 +102,9 @@ import com.android.compose.animation.scene.SceneTransitions
 import com.android.compose.animation.scene.demo.notification.NotificationList
 import com.android.compose.animation.scene.demo.notification.notifications
 import com.android.compose.animation.scene.demo.transitions.systemUiTransitions
+import com.android.compose.gesture.effect.rememberOffsetOverscrollEffectFactory
 import com.android.compose.modifiers.thenIf
+import com.android.compose.windowsizeclass.calculateWindowSizeClass
 import kotlin.math.max
 
 object Scenes {
@@ -172,6 +178,7 @@ class MutableSceneTransitionLayoutSaver(
     private val sceneSaver: Scenes.SceneSaver,
     private val transitions: SceneTransitions,
     private val canChangeScene: (SceneKey) -> Boolean,
+    private val motionScheme: MotionScheme,
 ) : Saver<MutableSceneTransitionLayoutState, String> {
     override fun SaverScope.save(state: MutableSceneTransitionLayoutState): String {
         val currentScene = state.transitionState.currentScene
@@ -181,8 +188,9 @@ class MutableSceneTransitionLayoutSaver(
     override fun restore(value: String): MutableSceneTransitionLayoutState {
         val currentScene = sceneSaver.restore(value)
         return MutableSceneTransitionLayoutState(
-            currentScene,
-            transitions,
+            initialScene = currentScene,
+            motionScheme = motionScheme,
+            transitions = transitions,
             canChangeScene = canChangeScene,
         )
     }
@@ -197,6 +205,7 @@ fun SystemUi(modifier: Modifier = Modifier) {
     SystemUi(configuration, { configuration = it }, modifier)
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SystemUi(
     configuration: DemoConfiguration,
@@ -223,22 +232,22 @@ fun SystemUi(
     val notificationCountInLockscreen = configuration.notificationsInLockscreen
     val notificationCount = max(notificationCountInLockscreen, configuration.notificationsInShade)
     val interactiveNotifications = configuration.interactiveNotifications
-    val notificationSprings = configuration.springConfigurations.notificationSprings
     val notificationTextMeasurer = rememberTextMeasurer(cacheSize = notificationCount * 2)
+    val motionScheme = MaterialTheme.motionScheme
     val notifications =
         remember(
             interactiveNotifications,
             notificationCount,
             notificationCountInLockscreen,
-            notificationSprings,
             notificationTextMeasurer,
+            motionScheme,
         ) {
             notifications(
                 interactiveNotifications,
                 notificationCount,
                 notificationCountInLockscreen,
-                notificationSprings,
                 notificationTextMeasurer,
+                motionScheme,
             )
         }
     val expectedQsSize = 12
@@ -279,12 +288,11 @@ fun SystemUi(
         )
     val quickSettingsPagerState = rememberPagerState { nQuickSettingsPages }
 
-    val springConfiguration = configuration.springConfigurations.systemUiSprings
     val hapticFeedback = LocalHapticFeedback.current
     val revealHaptics = remember(hapticFeedback) { DemoContainerRevealHaptics(hapticFeedback) }
     val transitions =
-        remember(quickSettingsPagerState, springConfiguration, revealHaptics) {
-            systemUiTransitions(quickSettingsPagerState, springConfiguration, revealHaptics)
+        remember(quickSettingsPagerState, revealHaptics) {
+            systemUiTransitions(quickSettingsPagerState, revealHaptics)
         }
 
     val sceneSaver =
@@ -313,11 +321,22 @@ fun SystemUi(
         }
 
     val stateSaver =
-        remember(sceneSaver, transitions, canChangeScene) {
-            MutableSceneTransitionLayoutSaver(sceneSaver, transitions, canChangeScene)
+        remember(sceneSaver, transitions, canChangeScene, motionScheme) {
+            MutableSceneTransitionLayoutSaver(
+                sceneSaver = sceneSaver,
+                transitions = transitions,
+                canChangeScene = canChangeScene,
+                motionScheme = motionScheme,
+            )
         }
     val layoutState =
-        rememberSaveable(transitions, canChangeScene, configuration, saver = stateSaver) {
+        rememberSaveable(
+            transitions,
+            canChangeScene,
+            configuration,
+            motionScheme,
+            saver = stateSaver,
+        ) {
             val initialScene =
                 initialScene?.let {
                     Scenes.ensureCorrectScene(
@@ -328,8 +347,9 @@ fun SystemUi(
                 } ?: lockscreenScene
 
             MutableSceneTransitionLayoutState(
-                initialScene,
-                transitions,
+                initialScene = initialScene,
+                motionScheme = motionScheme,
+                transitions = transitions,
                 canChangeScene = canChangeScene,
                 canShowOverlay = { configuration.canChangeSceneOrOverlays },
                 canHideOverlay = { configuration.canChangeSceneOrOverlays },
@@ -437,26 +457,28 @@ fun SystemUi(
         val shape = RoundedCornerShape(Shade.Dimensions.ScrimCornerSize)
         val borderColor = MaterialTheme.colorScheme.onSurface
 
-        Box(
+        Surface(
             Modifier.thenIf(!configuration.isFullscreen) {
-                    Modifier.padding(3.dp)
-                        .then(
-                            if (configuration.transitionBorder) {
-                                Modifier.border(
-                                    5.dp,
-                                    if (layoutState.isTransitioning()) Color.Red else Color.Green,
-                                    shape,
-                                )
-                            } else {
-                                Modifier.border(1.dp, borderColor, shape)
-                            }
-                        )
-                        .clip(shape)
-                }
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                Modifier.padding(3.dp)
+                    .then(
+                        if (configuration.transitionBorder) {
+                            Modifier.border(
+                                5.dp,
+                                if (layoutState.isTransitioning()) Color.Red else Color.Green,
+                                shape,
+                            )
+                        } else {
+                            Modifier.border(1.dp, borderColor, shape)
+                        }
+                    )
+                    .clip(shape)
+            },
+            color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
+            val stretchOverscrollFactory = LocalOverscrollFactory.current
             CompositionLocalProvider(
-                LocalContentColor provides MaterialTheme.colorScheme.onSurface
+                LocalContentColor provides MaterialTheme.colorScheme.onSurface,
+                LocalOverscrollFactory provides rememberOffsetOverscrollEffectFactory(),
             ) {
                 var isMediaPlayerPlaying by remember { mutableStateOf(false) }
                 val mediaPlayer: (@Composable ContentScope.(isSmall: Boolean) -> Unit)? =
@@ -488,6 +510,9 @@ fun SystemUi(
                 // SceneTransitionLayout can only be bound to one SceneTransitionLayoutState, so
                 // make sure we recompose it fully when we create a new state object.
                 key(layoutState) {
+                    val overlayEffectFactory =
+                        if (shouldUseSplitScenes) null else stretchOverscrollFactory
+
                     SceneTransitionLayout(
                         state = layoutState,
                         transitionInterceptionThreshold =
@@ -644,6 +669,7 @@ fun SystemUi(
                             Overlays.QuickSettings,
                             userActions = QuickSettingsShade.UserActions,
                             alignment = Alignment.TopEnd,
+                            effectFactory = overlayEffectFactory,
                         ) {
                             QuickSettingsShade(qsPager, smallMediaPlayer)
                         }
@@ -652,8 +678,15 @@ fun SystemUi(
                             Overlays.Notifications,
                             userActions = NotificationShade.UserActions,
                             alignment = Alignment.TopStart,
+                            effectFactory = overlayEffectFactory,
                         ) {
                             NotificationShade(
+                                clock =
+                                    if (shouldUseSplitScenes) {
+                                        null
+                                    } else {
+                                        { Clock(MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    },
                                 mediaPlayer = largeMediaPlayer,
                                 notificationList = {
                                     NotificationList(
