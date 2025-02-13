@@ -8,9 +8,23 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
+rust_library_host {
+    name: "liblicense_checker",
+    crate_name: "license_checker",
+    cargo_env_compat: true,
+    cargo_pkg_version: "0.1.0",
+    crate_root: "src/lib.rs",
+    edition: "2021",
+    rustlibs: [
+        "libglob",
+        "libspdx",
+        "libthiserror",
+    ],
+}
+
 rust_test_host {
-    name: "crate_config_test_src_lib",
-    crate_name: "crate_config",
+    name: "license_checker_test_src_lib",
+    crate_name: "license_checker",
     cargo_env_compat: true,
     cargo_pkg_version: "0.1.0",
     crate_root: "src/lib.rs",
@@ -21,23 +35,8 @@ rust_test_host {
     },
     edition: "2021",
     rustlibs: [
-        "libserde",
-        "libtempfile",
+        "libglob",
+        "libspdx",
         "libthiserror",
-        "libtoml",
-    ],
-}
-
-rust_library_host {
-    name: "libcrate_config",
-    crate_name: "crate_config",
-    cargo_env_compat: true,
-    cargo_pkg_version: "0.1.0",
-    crate_root: "src/lib.rs",
-    edition: "2021",
-    rustlibs: [
-        "libserde",
-        "libthiserror",
-        "libtoml",
     ],
 }

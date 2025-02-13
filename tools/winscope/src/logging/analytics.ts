@@ -28,12 +28,14 @@ export class Analytics {
   private static DIFF_COMPUTATION_TIME = 'diff_computation_time';
   private static DOCUMENTATION_OPENED = 'documentation_opened';
   private static EXPANDED_TIMELINE_OPENED = 'expanded_timeline_opened';
+  private static FETCH_COMPONENT_DATA_TIME = 'fetch_component_data_time';
   private static FILE_EXTRACTION_TIME = 'file_extraction_time';
   private static FILE_PARSING_TIME = 'file_parsing_time';
   private static FRAME_MAP_BUILD_TIME = 'frame_map_build_time';
   private static FRAME_MAP_ERROR = 'frame_map_error';
   private static GLOBAL_EXCEPTION = 'global_exception';
   private static HIERARCHY_SETTINGS = 'hierarchy_settings';
+  private static JS_MEMORY_USAGE = 'js_memory_usage';
   private static NAVIGATION_ZOOM_EVENT = 'navigation_zoom';
   private static PROPERTIES_SETTINGS = 'properties_settings';
   private static PROXY_ERROR = 'proxy_error';
@@ -129,6 +131,23 @@ export class Analytics {
     }
   };
 
+  static Memory = class {
+    static logUsage(stage: string, params: object = {}) {
+      const memory: Memory | undefined = (performance as any).memory;
+      if (memory) {
+        Object.assign(params, {
+          stage,
+          heapSizeLimit: memory.jsHeapSizeLimit,
+          allocatedHeapSize: memory.totalJSHeapSize,
+          fractionAllocated: memory.totalJSHeapSize / memory.jsHeapSizeLimit,
+          usedHeapSize: memory.usedJSHeapSize,
+          fractionUsed: memory.usedJSHeapSize / memory.jsHeapSizeLimit,
+        });
+        Analytics.doLogEvent(Analytics.JS_MEMORY_USAGE, params);
+      }
+    }
+  };
+
   static Navigation = class {
     static logDiffComputationTime(
       component: 'hierarchy' | 'properties',
@@ -143,6 +162,19 @@ export class Analytics {
 
     static logExpandedTimelineOpened() {
       Analytics.doLogEvent(Analytics.EXPANDED_TIMELINE_OPENED);
+    }
+
+    static logFetchComponentDataTime(
+      component: 'hierarchy' | 'properties' | 'rects',
+      traceType: string,
+      withDiffs: boolean,
+      ms: number,
+    ) {
+      Analytics.logTimeMs(Analytics.FETCH_COMPONENT_DATA_TIME, ms, {
+        component,
+        traceType,
+        withDiffs,
+      });
     }
 
     static logHierarchySettingsChanged(
@@ -347,4 +379,16 @@ export class Analytics {
       Analytics.doLogEvent(eventName, finalParams);
     }
   }
+}
+
+// https://developer.mozilla.org/en-US/docs/Web/API/Performance/memory
+// This feature is deprecated so may not work in all browsers. We collect
+// metrics from the field based on the JS heap because the replacement API,
+// measureUserAgentSpecificMemory(), requires the app to be cross-origin
+// isolated, which is incompatible with Winscope cross-tool integration.
+
+interface Memory {
+  jsHeapSizeLimit: number; // Maximum heap size, in bytes, available to the context.
+  totalJSHeapSize: number; // Total allocated heap size, in bytes.
+  usedJSHeapSize: number; // Currently active segment of JS heap, in bytes.
 }

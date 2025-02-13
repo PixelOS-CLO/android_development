@@ -94,9 +94,14 @@ impl<State: ManagedCrateState> ManagedCrate<State> {
     }
     pub fn config(&self) -> &CrateConfig {
         self.config.get_or_init(|| {
-            let config_file = self.android_crate_path().join("android_config.toml").unwrap();
-            CrateConfig::read(&config_file)
-                .unwrap_or_else(|e| panic!("Failed to read {config_file}/android_config.toml: {e}"))
+            CrateConfig::read(self.android_crate_path().abs()).unwrap_or_else(|e| {
+                panic!(
+                    "Failed to read crate config {}/{}: {}",
+                    self.android_crate_path(),
+                    crate_config::CONFIG_FILE_NAME,
+                    e
+                )
+            })
         })
     }
     pub fn android_bp(&self) -> RootedPath {
@@ -232,11 +237,11 @@ impl<State: ManagedCrateState> ManagedCrate<State> {
     }
     pub fn fix_test_mapping(&self) -> Result<()> {
         let mut tm = TestMapping::read(self.android_crate_path().clone())?;
-        println!("{}", self.name());
         let mut changed = tm.fix_import_paths();
         changed |= tm.add_new_tests_to_postsubmit()?;
         changed |= tm.remove_unknown_tests()?;
         if changed {
+            println!("Updating TEST_MAPPING for {}", self.name());
             tm.write()?;
         }
         Ok(())
@@ -438,6 +443,7 @@ impl ManagedCrate<Vendored> {
                 writeback |= true;
             }
             if writeback {
+                println!("Updating METADATA for {}", staged.name());
                 metadata.write()?;
             }
         }
