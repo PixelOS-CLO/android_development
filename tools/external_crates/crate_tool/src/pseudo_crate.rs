@@ -24,7 +24,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Context, Result};
 use itertools::Itertools;
-use name_and_version::{NameAndVersionMap, NamedAndVersioned};
+use name_and_version::NamedAndVersioned;
 use rooted_path::RootedPath;
 use semver::Version;
 
@@ -162,11 +162,6 @@ impl PseudoCrate<CargoVendorClean> {
     pub fn cargo_add_unversioned(self, crate_name: &str) -> Result<PseudoCrate<CargoVendorDirty>> {
         let dirty: PseudoCrate<CargoVendorDirty> = self.mark_dirty();
         dirty.cargo_add_unversioned(crate_name)?;
-        Ok(dirty)
-    }
-    pub fn remove(self, crate_name: &str) -> Result<PseudoCrate<CargoVendorDirty>> {
-        let dirty: PseudoCrate<CargoVendorDirty> = self.mark_dirty();
-        dirty.remove(crate_name)?;
         Ok(dirty)
     }
 }
