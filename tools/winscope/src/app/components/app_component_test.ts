@@ -62,7 +62,6 @@ import {
 import {TracesBuilder} from 'test/unit/traces_builder';
 import {waitToBeCalled} from 'test/utils';
 import {ViewerSurfaceFlingerComponent} from 'viewers/viewer_surface_flinger/viewer_surface_flinger_component';
-import {AdbProxyComponent} from './adb_proxy_component';
 import {AppComponent} from './app_component';
 import {
   MatDrawer,
@@ -77,7 +76,7 @@ import {TimelineComponent} from './timeline/timeline_component';
 import {TraceConfigComponent} from './trace_config_component';
 import {TraceViewComponent} from './trace_view_component';
 import {UploadTracesComponent} from './upload_traces_component';
-import {WebAdbComponent} from './web_adb_component';
+import {WinscopeProxySetupComponent} from './winscope_proxy_setup_component';
 
 describe('AppComponent', () => {
   let fixture: ComponentFixture<AppComponent>;
@@ -112,7 +111,7 @@ describe('AppComponent', () => {
         OverlayModule,
       ],
       declarations: [
-        AdbProxyComponent,
+        WinscopeProxySetupComponent,
         AppComponent,
         CollectTracesComponent,
         MatDrawer,
@@ -124,7 +123,6 @@ describe('AppComponent', () => {
         TraceViewComponent,
         UploadTracesComponent,
         ViewerSurfaceFlingerComponent,
-        WebAdbComponent,
         ShortcutsComponent,
         SnackBarComponent,
       ],
