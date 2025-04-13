@@ -123,6 +123,7 @@ available devices, build the APKs and install them.
 1.  Start both the Client and the Host apps on each respective device.
 
 1.  They should find each other and connect automatically. On the first launch
+
     the Host app will ask to create a CDM association: allow it.
 
     WARNING: If there are other devices in the vicinity with one of these apps
@@ -226,6 +227,18 @@ Each input screen has a "Back", "Home" and "Forward" buttons.
     with the virtual device will the virtual cameras by default). \
     *Changing this will recreate the virtual device.*
 
+    Note: External cameras already present on the client are mapped as virtual external
+    cameras on the host virtual device. Test cameras can be created on the client device
+    with Android 15 or newer (SDK level 35) with:
+
+    ```shell
+    adb shell start virtual_camera
+    adb shell cmd virtual_camera enable_test_camera
+    ```
+
+    The front and back cameras of the client can be also mapped as virtual external
+    cameras on the virtual device from the **Debug** options of VdmHost.
+
 -   **Enable client Audio**: Enables audio output on the client device. Any
     context that is associated with the virtual device will play audio on the
     client by default. \
@@ -316,7 +329,7 @@ you likely need to enable this in the host Settings. On a Pixel device: System
     The contents of the virtual displays are rendered locally in a separate
     activity.
 
-- **Record encoder output**: Enables recording the output of the encoder on
+-   **Record encoder output**: Enables recording the output of the encoder on
     the host device to a local file on the device. This can be helpful with
     debugging Encoding related issues. To download and play the file locally:
 
@@ -324,6 +337,14 @@ you likely need to enable this in the host Settings. On a Pixel device: System
     adb pull /sdcard/Download/vdmdemo_encoder_output_<displayId>.h264
     ffplay -f h264 vdmdemo_encoder_output_<displayId>.h264
     ```
+
+-   **Duplicate front camera**: Creates an additional external camera
+    (if external virtual cameras are supported) that duplicates the **front** camera
+    stream of the remote device (if exists).
+
+-   **Duplicate back camera**: Creates an additional external camera
+    (if external virtual cameras are supported) that duplicates the **back** camera
+    stream of the remote device (if exists).
 
 -   **Network channel**: Select different communication channel between the
     client and the host to avoid collisions with other demo setups nearby.
