@@ -162,6 +162,10 @@ show a launcher-like list of installed apps on the host device.
     a new virtual display, mirror the default host display there and start
     streaming the display contents to the client.
 
+-   [WIP] The Host app has a **CREATE DESKTOP DISPLAY** button, clicking it will
+    create a new virtual display in desktop mode and start streaming the display
+    contents to the client.
+
 ### Settings
 
 #### Input
@@ -423,6 +427,9 @@ adb shell aflags enable android.companion.virtual.flags.device_aware_display_pow
 -   **Sensors**: A simple activity balancing a beam on the screen based on the
     accelerometer events, which allows for selecting which device's sensor to
     use. By default, will use the sensors of the device it's shown on.
+
+-   **Picture in Picture**: A simple activity with PiP support showing the
+    behavior of pinned windowing mode on the virtual display.
 
 -   **Display Power**: A simple activity showcasing the behavior of proximity
     locks, screen brightness override and requesting the screen to be kept on
