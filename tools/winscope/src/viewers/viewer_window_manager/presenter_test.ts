@@ -18,9 +18,10 @@ import {assertDefined} from 'common/assert_utils';
 import {InMemoryStorage} from 'common/store/in_memory_storage';
 import {Store} from 'common/store/store';
 import {TracePositionUpdate} from 'messaging/winscope_event';
+import {getWindowManagerState} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
+import {makeEmptyTrace} from 'test/unit/trace_utils';
 import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {UnitTestUtils} from 'test/unit/utils';
 import {Trace} from 'trace/trace';
 import {Traces} from 'trace/traces';
 import {TRACE_INFO} from 'trace/trace_info';
@@ -131,8 +132,8 @@ the default for its data type.`,
     this.trace = new TraceBuilder<HierarchyTreeNode>()
       .setType(TraceType.WINDOW_MANAGER)
       .setEntries([
-        await UnitTestUtils.getWindowManagerState(0),
-        await UnitTestUtils.getWindowManagerState(1),
+        await getWindowManagerState(0),
+        await getWindowManagerState(1),
       ])
       .build();
 
@@ -166,7 +167,7 @@ the default for its data type.`,
   override createPresenterWithEmptyTrace(
     callback: NotifyHierarchyViewCallbackType<UiData>,
   ): Presenter {
-    const trace = UnitTestUtils.makeEmptyTrace(TraceType.WINDOW_MANAGER);
+    const trace = makeEmptyTrace(TraceType.WINDOW_MANAGER);
     const traces = new Traces();
     traces.addTrace(trace);
     return new Presenter(trace, traces, new InMemoryStorage(), callback);
@@ -284,7 +285,6 @@ the default for its data type.`,
           TreeNodeUtils.makeUiPropertyNode('', 'hashCode', 32720206),
         );
         await presenter.onAppEvent(this.getPositionUpdate());
-        console.log(uiData.hierarchyTrees?.at(0)?.getAllChildren()[0].id);
         await presenter.onPropagatePropertyClick(validHashcode);
         expect(uiData.highlightedItem).toEqual(
           'DisplayContent 1f3454e Built-in Screen',

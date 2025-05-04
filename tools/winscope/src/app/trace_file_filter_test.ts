@@ -15,6 +15,10 @@
  */
 
 import {TraceOverridden} from 'messaging/user_warnings';
+import {
+  BugreportFileSelected,
+  WinscopeEventType,
+} from 'messaging/winscope_event';
 import {getFixtureFile} from 'test/unit/fixture_utils';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
 import {TraceFile} from 'trace/trace_file';
@@ -84,15 +88,12 @@ describe('TraceFileFilter', () => {
       userNotifierChecker.expectNone();
     });
 
-    it('picks perfetto systrace.pftrace', async () => {
-      const perfettoSystemTrace = makeTraceFile(
-        'FS/data/misc/perfetto-traces/bugreport/systrace.pftrace',
+    it('picks perfetto sysui.pftrace (persistent session)', async () => {
+      const perfettoSysUi = makeTraceFile(
+        'FS/data/misc/perfetto-traces/bugreport/sysui.pftrace',
         bugreportArchive,
       );
-      const bugreportFiles = [
-        await makeBugreportMainEntryTraceFile(),
-        await makeBugreportCodenameTraceFile(),
-        perfettoSystemTrace,
+      const otherFiles = [
         makeTraceFile(
           'FS/data/misc/perfetto-traces/other.perfetto-trace',
           bugreportArchive,
@@ -101,14 +102,63 @@ describe('TraceFileFilter', () => {
           'FS/data/misc/perfetto-traces/other.pftrace',
           bugreportArchive,
         ),
+        makeTraceFile(
+          'FS/data/misc/perfetto-traces/bugreport/other.pftrace',
+          bugreportArchive,
+          10,
+        ),
       ];
-      const result = await filter.filter(bugreportFiles);
-      expect(result.perfetto).toEqual(perfettoSystemTrace);
-      expect(result.legacy).toEqual([]);
-      userNotifierChecker.expectNone();
+      await checkPerfettoPicked(perfettoSysUi, otherFiles);
     });
 
-    it('ignores perfetto traces other than systrace.pftrace', async () => {
+    it('picks perfetto systrace.pftrace (traceur or aot session) over sysui.pftrace', async () => {
+      const perfettoSysTrace = makeTraceFile(
+        'FS/data/misc/perfetto-traces/bugreport/systrace.pftrace',
+        bugreportArchive,
+      );
+      await checkPerfettoPicked(perfettoSysTrace, [
+        makeTraceFile(
+          'FS/data/misc/perfetto-traces/bugreport/sysui.pftrace',
+          bugreportArchive,
+          10,
+        ),
+      ]);
+    });
+
+    it('picks single file in perfetto directory', async () => {
+      const perfettoTest = makeTraceFile(
+        'FS/data/misc/perfetto-traces/bugreport/test.pftrace',
+        bugreportArchive,
+      );
+      await checkPerfettoPicked(perfettoTest, []);
+    });
+
+    it('sends request for file selection if multiple files in perfetto directory', async () => {
+      let requested: string[] | undefined;
+      filter.setEmitEvent(async (event) => {
+        await event.visit(
+          WinscopeEventType.BUGREPORT_FILE_SELECTION_REQUEST,
+          async (event) => {
+            requested = event.filenames;
+            await filter.onWinscopeEvent(
+              new BugreportFileSelected(event.filenames[1]),
+            );
+          },
+        );
+      });
+
+      const perfettoTest = makeTraceFile(
+        'FS/data/misc/perfetto-traces/bugreport/test.pftrace',
+        bugreportArchive,
+      );
+      const perfettoOther = makeTraceFile(
+        'FS/data/misc/perfetto-traces/bugreport/other.pftrace',
+        bugreportArchive,
+      );
+      await checkPerfettoPicked(perfettoOther, [perfettoTest]);
+    });
+
+    it('ignores perfetto traces not in bugreport directory', async () => {
       const bugreportFiles = [
         await makeBugreportMainEntryTraceFile(),
         await makeBugreportCodenameTraceFile(),
@@ -164,6 +214,22 @@ describe('TraceFileFilter', () => {
       ]);
       userNotifierChecker.expectNone();
     });
+
+    async function checkPerfettoPicked(
+      perfetto: TraceFile,
+      other: TraceFile[],
+    ) {
+      const bugreportFiles = [
+        await makeBugreportMainEntryTraceFile(),
+        await makeBugreportCodenameTraceFile(),
+        ...other,
+        perfetto,
+      ];
+      const result = await filter.filter(bugreportFiles);
+      expect(result.perfetto).toEqual(perfetto);
+      expect(result.legacy).toEqual([]);
+      userNotifierChecker.expectNone();
+    }
   });
 
   describe('plain input (no bugreport)', () => {
