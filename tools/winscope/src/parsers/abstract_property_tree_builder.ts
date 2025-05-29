@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,15 @@
  */
 
 import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
-import {PropertyTreeNodeFactory} from './property_tree_node_factory';
 
-export class PropertyTreeBuilderFromProto {
-  private denylistProperties: string[] = [];
-  private duplicateCount = 0;
-  private proto: object | undefined;
+export abstract class AbstractPropertyTreeBuilder<T> {
+  protected data: T | undefined;
   private rootId: string | number = 'UnknownRootId';
-  private rootName: string | undefined = 'UnknownRootName';
-  private visitProtoType = true;
+  protected rootName: string | undefined = 'UnknownRootName';
+  private duplicateCount = 0;
 
-  setData(value: object | undefined): this {
-    this.proto = value;
+  setData(value: T | undefined): this {
+    this.data = value;
     return this;
   }
 
@@ -40,24 +37,14 @@ export class PropertyTreeBuilderFromProto {
     return this;
   }
 
-  setDenyList(value: string[]): this {
-    this.denylistProperties = value;
-    return this;
-  }
-
   setDuplicateCount(value: number): this {
     this.duplicateCount = value;
     return this;
   }
 
-  setVisitPrototype(value: boolean): this {
-    this.visitProtoType = value;
-    return this;
-  }
-
   build(): PropertyTreeNode {
-    if (this.proto === undefined) {
-      throw new Error('proto not set');
+    if (this.data === undefined) {
+      throw new Error('data not set');
     }
     if (this.rootId === undefined) {
       throw new Error('rootId not set');
@@ -65,12 +52,8 @@ export class PropertyTreeBuilderFromProto {
     if (this.rootName === undefined) {
       throw new Error('rootName not set');
     }
-    const factory = new PropertyTreeNodeFactory(
-      this.denylistProperties,
-      this.visitProtoType,
-    );
-
-    return factory.makeProtoProperty(this.makeNodeId(), '', this.proto);
+    const rootId = this.makeNodeId();
+    return this.buildPropertiesTree(rootId);
   }
 
   private makeNodeId(): string {
@@ -80,4 +63,6 @@ export class PropertyTreeBuilderFromProto {
     }
     return nodeId;
   }
+
+  protected abstract buildPropertiesTree(rootNodeId: string): PropertyTreeNode;
 }

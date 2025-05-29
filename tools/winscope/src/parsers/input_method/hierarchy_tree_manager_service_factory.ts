@@ -18,12 +18,12 @@ import {HierarchyTreeBuilderInputMethod} from 'parsers/input_method/hierarchy_tr
 import {AddDefaults} from 'parsers/operations/add_defaults';
 import {SetFormatters} from 'parsers/operations/set_formatters';
 import {TranslateIntDef} from 'parsers/operations/translate_intdef';
+import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {TamperedProtoField} from 'parsers/tampered_message_type';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
 import {LazyPropertiesStrategyType} from 'trace/tree_node/properties_provider';
 import {PropertiesProviderBuilder} from 'trace/tree_node/properties_provider_builder';
-import {PropertyTreeBuilderFromProto} from 'trace/tree_node/property_tree_builder_from_proto';
 import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
 
 export class HierarchyTreeManagerServiceFactory {
@@ -176,7 +176,6 @@ export class HierarchyTreeManagerServiceFactory {
       .setRootId('InputMethodManagerService')
       .setRootName('inputMethodManagerService')
       .setDenyList(denyList)
-      .setVisitPrototype(false)
       .build();
   }
 
@@ -191,7 +190,6 @@ export class HierarchyTreeManagerServiceFactory {
         .setDenyList(
           HierarchyTreeManagerServiceFactory.SERVICE_EAGER_PROPERTIES,
         )
-        .setVisitPrototype(false)
         .build();
     };
   }

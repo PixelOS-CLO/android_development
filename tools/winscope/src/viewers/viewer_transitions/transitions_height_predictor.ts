@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2024 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,24 @@
  * limitations under the License.
  */
 
-import {VariableHeightScrollStrategy} from 'viewers/common/variable_height_scroll_strategy';
-import {TransactionsEntry} from 'viewers/viewer_transactions/ui_data';
+import {assertString} from 'common/assert_utils';
+import {ItemHeightPredictor} from 'viewers/common/item_height_predictor';
+import {TransitionsEntry} from 'viewers/viewer_transitions/ui_data';
 
-export class TransactionsScrollStrategy extends VariableHeightScrollStrategy {
-  protected readonly defaultRowSize = 24;
-  private readonly flagCharsPerRow = 40;
+export class TransitionsHeightPredictor extends ItemHeightPredictor {
+  protected override readonly defaultRowSize = 36;
+  private readonly participantsCharsPerRow = 25;
   private readonly timestampCharsPerRow = 20;
 
-  protected override predictScrollItemHeight(entry: TransactionsEntry): number {
-    const flagsHeight = this.subItemHeight(
-      entry.fields[6].value as string,
-      this.flagCharsPerRow,
+  override predictHeight(entry: TransitionsEntry): number {
+    const participantsHeight = this.subItemHeight(
+      assertString(entry.fields[6].value),
+      this.participantsCharsPerRow,
     );
     const timestampHeight = this.subItemHeight(
       entry.traceEntry.getTimestamp().format(),
       this.timestampCharsPerRow,
     );
-    return Math.max(flagsHeight, timestampHeight);
+    return Math.max(participantsHeight, timestampHeight);
   }
 }

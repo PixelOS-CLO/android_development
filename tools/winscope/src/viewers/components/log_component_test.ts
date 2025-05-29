@@ -29,6 +29,7 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from 'common/assert_utils';
+import {KeyboardEventKey} from 'common/dom_utils';
 import {TimestampConverterUtils} from 'common/time/test_utils';
 import {Timestamp} from 'common/time/time';
 import {DOMTestHelper} from 'test/unit/dom_test_utils';
@@ -44,6 +45,7 @@ import {
   LogField,
   LogHeader,
 } from 'viewers/common/ui_data_log';
+import {VariableHeightScrollDirective} from 'viewers/common/variable_height_scroll_directive';
 import {
   LogFilterChangeDetail,
   LogTextFilterChangeDetail,
@@ -95,6 +97,7 @@ describe('LogComponent', () => {
         CollapsibleSectionTitleComponent,
         PropertiesComponent,
         SearchBoxComponent,
+        VariableHeightScrollDirective,
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(LogComponent);
@@ -317,6 +320,27 @@ describe('LogComponent', () => {
     expect(mockCopyText).toHaveBeenCalledOnceWith('123');
   });
 
+  it('propagates selected entry on keydown enter event', () => {
+    let entry: TraceEntry<object> | undefined;
+    dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
+      const detail: TimestampClickDetail = (event as CustomEvent).detail;
+      entry = detail.entry;
+    });
+    const keydownEnter = new KeyboardEvent('keydown', {
+      key: KeyboardEventKey.ENTER,
+    });
+
+    component.selectedIndex = undefined;
+    dom.detectChanges();
+    dom.dispatchEventInDocument(keydownEnter);
+    expect(entry).toBeUndefined();
+
+    component.selectedIndex = 1;
+    dom.detectChanges();
+    dom.dispatchEventInDocument(keydownEnter);
+    expect(entry).toEqual(component.entries[1].traceEntry);
+  });
+
   function setComponentInputData(elapsed = true) {
     let entryTime: Timestamp;
     let fieldTime: Timestamp;
@@ -346,10 +370,12 @@ describe('LogComponent', () => {
     const entry1: LogEntry = {
       traceEntry: trace.getEntry(0),
       fields: fields1,
+      getPropertiesTree: undefined,
     };
     const entry2: LogEntry = {
       traceEntry: trace.getEntry(1),
       fields: fields2,
+      getPropertiesTree: undefined,
     };
 
     const entries = [entry1, entry2];

@@ -20,11 +20,11 @@ import {AbstractInputEventParser} from 'parsers/input/perfetto/abstract_input_ev
 import {SetFormatters} from 'parsers/operations/set_formatters';
 import {TranslateIntDef} from 'parsers/operations/translate_intdef';
 import {FakeProtoTransformer} from 'parsers/perfetto/fake_proto_transformer';
-import {Utils} from 'parsers/perfetto/utils';
+import {queryEntry} from 'parsers/perfetto/utils';
+import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {TraceFile} from 'trace/trace_file';
 import {TraceType} from 'trace/trace_type';
-import {PropertyTreeBuilderFromProto} from 'trace/tree_node/property_tree_builder_from_proto';
 import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
 import {TraceProcessor} from 'trace_processor/trace_processor';
 
@@ -66,7 +66,7 @@ export class ParserMotionEvent extends AbstractInputEventParser {
   private async getMotionEventProto(
     index: number,
   ): Promise<perfetto.protos.AndroidMotionEvent> {
-    let motionEventProto = await Utils.queryEntry(
+    let motionEventProto = await queryEntry(
       this.traceProcessor,
       this.getTableName(),
       this.entryIndexToRowIdMap,

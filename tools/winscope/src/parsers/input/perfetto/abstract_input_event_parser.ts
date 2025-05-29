@@ -14,13 +14,19 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {
+  assertBigIntOrUndefined,
+  assertDefined,
+  assertNumberOrUndefined,
+  assertString,
+  assertStringOrUndefined,
+} from 'common/assert_utils';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {SetFormatters} from 'parsers/operations/set_formatters';
 import {TranslateIntDef} from 'parsers/operations/translate_intdef';
 import {AbstractParser} from 'parsers/perfetto/abstract_parser';
 import {FakeProtoBuilder} from 'parsers/perfetto/fake_proto_builder';
-import {Utils} from 'parsers/perfetto/utils';
+import {queryVsyncId} from 'parsers/perfetto/utils';
 import {TAMPERED_WINSCOPE_EXTENSIONS} from 'parsers/tampered_message_type';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {
@@ -75,7 +81,7 @@ export abstract class AbstractInputEventParser extends AbstractParser<PropertyTr
         WHERE d.event_id = ${eventId}
         ORDER BY d.id;
     `;
-    const result = await this.traceProcessor.queryAllRows(sql);
+    const result = await this.traceProcessor.query(sql);
 
     const dispatchEvents: perfetto.protos.AndroidWindowInputDispatchEvent[] =
       [];
@@ -84,11 +90,11 @@ export abstract class AbstractInputEventParser extends AbstractParser<PropertyTr
       const prevId = it.get('id');
       while (it.valid() && it.get('id') === prevId) {
         builder.addArg(
-          it.get('key') as string,
-          it.get('value_type') as string,
-          it.get('int_value') as bigint | undefined,
-          it.get('real_value') as number | undefined,
-          it.get('string_value') as string | undefined,
+          assertString(it.get('key')),
+          assertString(it.get('value_type')),
+          assertBigIntOrUndefined(it.get('int_value')),
+          assertNumberOrUndefined(it.get('real_value')),
+          assertStringOrUndefined(it.get('string_value')),
         );
         it.next();
       }
@@ -113,7 +119,7 @@ export abstract class AbstractInputEventParser extends AbstractParser<PropertyTr
   ): Promise<CustomQueryParserResultTypeMap[Q]> {
     return new VisitableParserCustomQuery(type)
       .visit(CustomQueryType.VSYNCID, async () => {
-        return Utils.queryVsyncId(
+        return queryVsyncId(
           this.traceProcessor,
           this.getTableName(),
           this.entryIndexToRowIdMap,

@@ -125,31 +125,10 @@ import {
       </div>
 
       <cdk-virtual-scroll-viewport
-          *ngIf="isTransactions()"
-          transactionsVirtualScroll
+          *ngIf="!isFixedSizeScrollViewport()"
+          variableHeightScroll
           class="scroll"
-          [scrollItems]="entries">
-        <ng-container
-            *cdkVirtualFor="let entry of entries; let i = index"
-            [ngTemplateOutlet]="content"
-            [ngTemplateOutletContext]="{entry: entry, i: i}"> </ng-container>
-      </cdk-virtual-scroll-viewport>
-
-      <cdk-virtual-scroll-viewport
-          *ngIf="isProtolog()"
-          protologVirtualScroll
-          class="scroll"
-          [scrollItems]="entries">
-        <ng-container
-            *cdkVirtualFor="let entry of entries; let i = index"
-            [ngTemplateOutlet]="content"
-            [ngTemplateOutletContext]="{entry: entry, i: i}"> </ng-container>
-      </cdk-virtual-scroll-viewport>
-
-      <cdk-virtual-scroll-viewport
-          *ngIf="isTransitions()"
-          transitionsVirtualScroll
-          class="scroll"
+          [traceType]="traceType"
           [scrollItems]="entries">
         <ng-container
             *cdkVirtualFor="let entry of entries; let i = index"
@@ -370,6 +349,18 @@ export class LogComponent {
       event.preventDefault();
       this.emitEvent(ViewerEvents.ArrowUpPress);
     }
+    if (
+      event.key === KeyboardEventKey.ENTER &&
+      logComponentVisible &&
+      this.selectedIndex !== undefined
+    ) {
+      event.stopPropagation();
+      event.preventDefault();
+      this.emitEvent(
+        ViewerEvents.TimestampClick,
+        new TimestampClickDetail(this.entries[this.selectedIndex].traceEntry),
+      );
+    }
   }
 
   isCurrentEntry(index: number): boolean {
@@ -380,23 +371,9 @@ export class LogComponent {
     return index === this.selectedIndex;
   }
 
-  isTransactions() {
-    return this.traceType === TraceType.TRANSACTIONS;
-  }
-
-  isProtolog() {
-    return this.traceType === TraceType.PROTO_LOG;
-  }
-
-  isTransitions() {
-    return this.traceType === TraceType.TRANSITION;
-  }
-
   isFixedSizeScrollViewport() {
-    return !(
-      this.isTransactions() ||
-      this.isProtolog() ||
-      this.isTransitions()
+    return (
+      this.traceType === TraceType.CUJS || this.traceType === TraceType.SEARCH
     );
   }
 

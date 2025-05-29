@@ -14,14 +14,22 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {
+  assertBigInt,
+  assertBigIntOrUndefined,
+  assertDefined,
+  assertNumberOrUndefined,
+  assertString,
+  assertStringOrUndefined,
+} from 'common/assert_utils';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {AddDefaults} from 'parsers/operations/add_defaults';
 import {SetFormatters} from 'parsers/operations/set_formatters';
 import {AbstractParser} from 'parsers/perfetto/abstract_parser';
 import {FakeProto, FakeProtoBuilder} from 'parsers/perfetto/fake_proto_builder';
 import {FakeProtoTransformer} from 'parsers/perfetto/fake_proto_transformer';
-import {Utils} from 'parsers/perfetto/utils';
+import {queryEntry} from 'parsers/perfetto/utils';
+import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {TAMPERED_WINSCOPE_EXTENSIONS} from 'parsers/tampered_message_type';
 import {RectsComputation} from 'parsers/view_capture/computations/rects_computation';
 import {VisibilityComputation} from 'parsers/view_capture/computations/visibility_computation';
@@ -37,7 +45,6 @@ import {TraceType} from 'trace/trace_type';
 import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
 import {PropertiesProvider} from 'trace/tree_node/properties_provider';
 import {PropertiesProviderBuilder} from 'trace/tree_node/properties_provider_builder';
-import {PropertyTreeBuilderFromProto} from 'trace/tree_node/property_tree_builder_from_proto';
 import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
 import {TraceProcessor} from 'trace_processor/trace_processor';
 import {HierarchyTreeBuilderVc} from './hierarchy_tree_builder_vc';
@@ -95,7 +102,7 @@ export class ParserViewCaptureWindow extends AbstractParser<HierarchyTreeNode> {
   }
 
   override async getEntry(index: number): Promise<HierarchyTreeNode> {
-    let snapshotProto = (await Utils.queryEntry(
+    let snapshotProto = (await queryEntry(
       this.traceProcessor,
       this.getTableName(),
       this.entryIndexToRowIdMap,
@@ -158,10 +165,10 @@ export class ParserViewCaptureWindow extends AbstractParser<HierarchyTreeNode> {
           args.string_value = '${this.windowName}'
         ORDER BY vc.ts;
     `;
-    const result = await this.traceProcessor.queryAllRows(sqlRowIdAndTimestamp);
+    const result = await this.traceProcessor.query(sqlRowIdAndTimestamp);
     const entryIndexToRowId: number[] = [];
     for (const it = result.iter({}); it.valid(); it.next()) {
-      const rowId = Number(it.get('id') as bigint);
+      const rowId = Number(it.get('id'));
       entryIndexToRowId.push(rowId);
     }
     return entryIndexToRowId;
@@ -192,16 +199,16 @@ export class ParserViewCaptureWindow extends AbstractParser<HierarchyTreeNode> {
           INNER JOIN args ON vcv.arg_set_id = args.arg_set_id
       WHERE snapshot_id = ${this.entryIndexToRowIdMap[index]};
     `;
-    const result = await this.traceProcessor.queryAllRows(sql);
+    const result = await this.traceProcessor.query(sql);
 
     for (const it = result.iter({}); it.valid(); it.next()) {
-      const builder = getBuilder(it.get('node_id') as number);
+      const builder = getBuilder(Number(assertBigInt(it.get('node_id'))));
       builder.addArg(
-        it.get('key') as string,
-        it.get('value_type') as string,
-        it.get('int_value') as bigint | undefined,
-        it.get('real_value') as number | undefined,
-        it.get('string_value') as string | undefined,
+        assertString(it.get('key')),
+        assertString(it.get('value_type')),
+        assertBigIntOrUndefined(it.get('int_value')),
+        assertNumberOrUndefined(it.get('real_value')),
+        assertStringOrUndefined(it.get('string_value')),
       );
     }
 
