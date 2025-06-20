@@ -30,6 +30,7 @@ export class GraphComponent implements AfterViewInit, OnChanges {
   @Input() actualData: MotionGoldenData | undefined;
   @Input() featureName: string | undefined;
   @Input() isExpanded: boolean = false;
+  @Input() showTestList: boolean = false;
   @Output() expand = new EventEmitter<string>();
 
   @ViewChild('chartContainer', { static: true })
@@ -41,12 +42,14 @@ export class GraphComponent implements AfterViewInit, OnChanges {
   private height!: number;
   private data: DataPoint[] = [];
   private visualization!: Visualization;
+  private resizeObserver: ResizeObserver | null = null;
 
   ngAfterViewInit(): void {
     this.graphId = `graph-${this.featureName}-${Date.now()}`;
     this.width = this.chartContainer.nativeElement.offsetWidth;
     this.height = this.chartContainer.nativeElement.offsetHeight;
     this.createChart();
+    this.setupResizeObserver();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -59,21 +62,48 @@ export class GraphComponent implements AfterViewInit, OnChanges {
       this.updateData();
       this.createChart();
     }
+    if(
+      changes['showTestList']
+    ){
+      this.graphId = `graph-${this.featureName}-${Date.now()}`;
+    }
+  }
+
+  private setupResizeObserver(): void {
+    if (this.chartContainer && this.chartContainer.nativeElement) {
+      this.resizeObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const newWidth = entry.contentRect.width;
+          if (this.width !== newWidth) {
+            this.width = newWidth;
+            this.createChart();
+          }
+        }
+      });
+      this.resizeObserver.observe(this.chartContainer.nativeElement);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
   }
 
   private updateData(): void {
+    if(!this.featureName) {
+      console.log("No feature name provided")
+      return
+    }
     this.data = [];
-    const actualFeature =
-      this.featureName && this.actualData
-        ? this.actualData.features.find((f) => f.name === this.featureName)
-        : undefined;
-    const expectedFeature =
-      this.featureName && this.expectedData
-        ? this.expectedData.features.find((f) => f.name === this.featureName)
-        : undefined;
-
+    const actualFeature = this.actualData?.features?.find(
+      (f) => f.name === this.featureName
+    )
+    const expectedFeature = this.expectedData?.features?.find(
+      (f) => f.name === this.featureName
+    )
     this.visualization = this.createVisualization(actualFeature);
-
     if (this.visualization instanceof LineGraphVisualization) {
       this.createLineChartData(actualFeature, expectedFeature);
     } else {
@@ -111,7 +141,6 @@ export class GraphComponent implements AfterViewInit, OnChanges {
       if (expectedDataPoint && typeof expectedDataPoint === 'number') {
         newPoint.expectedValue = expectedDataPoint;
       }
-
       this.data.push(newPoint);
     }
   }

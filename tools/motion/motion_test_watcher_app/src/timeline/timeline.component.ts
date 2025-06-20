@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, Inject } from '@angular/core';
 import {
   MotionGolden,
   MotionGoldenData,
@@ -11,10 +11,19 @@ import { NgFor, NgIf } from '@angular/common';
 import { forkJoin } from 'rxjs';
 import { GraphComponent } from './graph/graph.component';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
+import { FilterComponent, SelectOption } from '../filter/filter.component';
+import { FilterService } from '../service/filter.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-timeline',
-  imports: [NgIf, NgFor, GraphComponent],
+  imports: [
+    NgIf,
+    NgFor,
+    GraphComponent,
+    MatDialogModule],
   templateUrl: './timeline.component.html',
   styleUrl: './timeline.component.css',
 })
@@ -22,21 +31,62 @@ export class TimelineComponent implements OnChanges {
   constructor(
     private goldenService: GoldensService,
     private snackBar: MatSnackBar,
-    private preivewService: PreviewService
-  ) {}
+    private preivewService: PreviewService,
+    private dialog: MatDialog,
+    private filterService: FilterService
+  ) { }
 
   @Input() selectedGolden: MotionGolden | null = null;
+  @Input() showTestList: boolean = false;
 
   actualData: MotionGoldenData | undefined;
   expectedData: MotionGoldenData | undefined;
   loading: boolean = false;
   featureCount = 0;
   expandedGraphIdx: number = -1;
+  showUpdateButton: boolean = true;
+  availableOptions: SelectOption[] = [];
+  displayedData: SelectOption[] = [];
+
+  receivedSelectedOptions: SelectOption[] = [];
+  private selectedOptionsSubscription: Subscription | undefined;
+
+  ngOnInit(): void {
+    this.selectedOptionsSubscription = this.filterService.selectedOptions$
+      .subscribe((options: SelectOption[]) => {
+        this.receivedSelectedOptions = options;
+        this.applyReceivedFilter(this.receivedSelectedOptions);
+      });
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedGolden']) {
+      this.receivedSelectedOptions = [];
+      if(this.selectedGolden?.isLocalData){
+        this.showUpdateButton = false
+        this.updatePageFromData(
+          this.selectedGolden.actualData,
+          this.selectedGolden.expectedData
+        );
+      } else {
+        this.showUpdateButton = true
+        this.updatePage();
+      }
+    }
+    if (changes['displayedData']) {
       this.updatePage();
     }
+  }
+
+  applyReceivedFilter(options: SelectOption[]): void {
+    this.displayedData = [...this.receivedSelectedOptions];
+
+  }
+
+  openFilter() {
+    this.dialog.open(FilterComponent, {
+      panelClass: ['w-1/2', 'h-1/2', 'rounded-none', 'shadow-lg']
+    })
   }
 
   updatePage() {
@@ -49,10 +99,7 @@ export class TimelineComponent implements OnChanges {
     ]).subscribe({
       next: ([actualData, expectedData]) => {
         this.loading = false;
-        this.expectedData = expectedData;
-        this.actualData = actualData;
-        this.preivewService.updateFrames(this.actualData.frame_ids);
-        this.buildUi();
+        this.updatePageFromData(actualData, expectedData)
       },
       error: (err) => {
         this.loading = false;
@@ -62,12 +109,24 @@ export class TimelineComponent implements OnChanges {
     });
   }
 
+  updatePageFromData(actualData: MotionGoldenData, expectedData: MotionGoldenData){
+    this.expectedData = expectedData
+    this.actualData = actualData
+    this.preivewService.updateFrames(this.actualData.frame_ids)
+    this.buildUi();
+  }
+
   buildUi() {
     if (!this.selectedGolden) return;
-    if (!this.actualData || !this.expectedData) return;
-    this.processData(this.actualData);
-    this.processData(this.expectedData);
-    this.featureCount = this.actualData.features.length;
+    if(this.actualData
+      && Object.keys(this.actualData).length > 0) {
+        this.processData(this.actualData)
+      }
+    if(this.expectedData
+      && Object.keys(this.expectedData).length > 0) {
+        this.processData(this.expectedData)
+      }
+    this.featureCount = this.actualData?.features.length ?? this.expectedData?.features?.length ?? 0
   }
 
   processData(data: MotionGoldenData) {
@@ -105,7 +164,6 @@ export class TimelineComponent implements OnChanges {
         newFeatures.push(feature);
       }
     });
-
     data.features = newFeatures;
   }
 
@@ -165,5 +223,41 @@ export class TimelineComponent implements OnChanges {
       return this.actualData.features[index]?.name;
     }
     return undefined;
+  }
+
+  openModal(): void {
+    const dialogRef = this.dialog.open(FilterComponent, {
+      width: '60%',
+      height: '400px'
+    });
+  }
+
+  populateFeatureOptions(): void {
+    this.availableOptions = [];
+    if (this.actualData && this.actualData.features) {
+      let nextId = 1;
+      this.actualData.features.forEach((feature) => {
+        const featureName = feature.name;
+        if (featureName) {
+          this.availableOptions.push({
+            id: nextId++,
+            name: featureName,
+            selected: true
+          });
+        }
+      });
+      this.displayedData = [...this.availableOptions];
+    }
+    this.filterService.sendSelectOption(this.availableOptions);
+  }
+
+  shouldDisplayGraph(featureName: string): boolean {
+    if (this.receivedSelectedOptions.length === 0) {
+      return true;
+    }
+
+    return this.receivedSelectedOptions.some(selectedOption =>
+      selectedOption.name === featureName
+    );
   }
 }

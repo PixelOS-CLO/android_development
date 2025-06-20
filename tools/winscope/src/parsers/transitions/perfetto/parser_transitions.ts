@@ -46,11 +46,7 @@ import {Operation} from 'trace/tree_node/operations/operation';
 import {PropertiesProvider} from 'trace/tree_node/properties_provider';
 import {PropertiesProviderBuilder} from 'trace/tree_node/properties_provider_builder';
 import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
-import {
-  QueryResult,
-  RowIteratorBase,
-  SqlValue,
-} from 'trace_processor/query_result';
+import {ColumnType, RowIterator} from 'trace_processor/query_result';
 
 export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
   private static readonly TRANSITION_FIELD =
@@ -112,16 +108,19 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
     const sql =
       `SELECT ${columns} FROM ${this.getTableName()} as transitions` +
       ` WHERE transitions.id = ${this.entryIndexToRowIdMap[index]};`;
-    const queryResult = await this.traceProcessor.query(sql);
+    return this.makeHierarchyTrees(sql).then((trees) =>
+      assertDefined(trees[0]),
+    );
+  }
 
-    if (this.handlerIdToName === undefined) {
-      const handlers = await this.queryHandlers();
-      this.handlerIdToName = {};
-      handlers.forEach(
-        (it) => (assertDefined(this.handlerIdToName)[it.id] = it.name),
-      );
-    }
-    return this.makeHierarchyTree(queryResult);
+  override async getAllEntries(): Promise<
+    Array<HierarchyTreeNode | undefined>
+  > {
+    const columns = ParserTransitions.EAGER_COLUMNS.map(
+      (column) => `transitions.${column}`,
+    ).join(', ');
+    const sql = `SELECT ${columns} FROM ${this.getTableName()} as transitions;`;
+    return this.makeHierarchyTrees(sql);
   }
 
   protected override getTableName(): string {
@@ -130,6 +129,28 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
 
   protected override getStdLibModuleName(): string {
     return 'android.winscope.transitions';
+  }
+
+  private async makeHierarchyTrees(
+    sql: string,
+  ): Promise<Array<HierarchyTreeNode | undefined>> {
+    if (this.handlerIdToName === undefined) {
+      await this.updateHandlers();
+    }
+    const queryResult = await this.traceProcessor.query(sql);
+    const trees = [];
+    for (const it = queryResult.iter({}); it.valid(); it.next()) {
+      trees.push(await this.makeHierarchyTree(it));
+    }
+    return trees;
+  }
+
+  private async updateHandlers() {
+    const handlers = await this.queryHandlers();
+    this.handlerIdToName = {};
+    handlers.forEach(
+      (it) => (assertDefined(this.handlerIdToName)[it.id] = it.name),
+    );
   }
 
   private async queryHandlers(): Promise<TransitionHandler[]> {
@@ -151,20 +172,22 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
   }
 
   private async makeHierarchyTree(
-    result: QueryResult,
-  ): Promise<HierarchyTreeNode> {
-    const transitionRow = result.iter({});
-    const transition = await this.makeTransitionsPropertiesProvider(
-      transitionRow,
-    );
-    return new HierarchyTreeBuilderLog()
-      .setRoot(transition)
-      .setChildren([])
-      .build();
+    row: RowIterator,
+  ): Promise<HierarchyTreeNode | undefined> {
+    try {
+      const transition = await this.makeTransitionsPropertiesProvider(row);
+      return new HierarchyTreeBuilderLog()
+        .setRoot(transition)
+        .setChildren([])
+        .build();
+    } catch (e) {
+      console.error(e);
+      return undefined;
+    }
   }
 
   private async makeTransitionsPropertiesProvider(
-    transitionRow: RowIteratorBase,
+    transitionRow: RowIterator,
   ): Promise<PropertiesProvider> {
     const eagerProperties = await this.makeEagerPropertiesTree(transitionRow);
 
@@ -183,7 +206,7 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
   }
 
   private async makeEagerPropertiesTree(
-    transitionRow: RowIteratorBase,
+    transitionRow: RowIterator,
   ): Promise<PropertyTreeNode> {
     const eagerProperties = new PropertyTreeBuilderFromQueryRow()
       .setData(transitionRow)
@@ -203,7 +226,7 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
   }
 
   private async makeParticipants(
-    transitionRow: RowIteratorBase,
+    transitionRow: RowIterator,
   ): Promise<PropertyTreeNode> {
     const transitionId = assertDefined(
       transitionRow.get('transition_id'),
@@ -278,7 +301,7 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
     ];
   }
 
-  private makeLazyPropertiesStrategy(argSetId: SqlValue) {
+  private makeLazyPropertiesStrategy(argSetId: ColumnType) {
     return async () => {
       const data = await queryArgs(this.traceProcessor, Number(argSetId));
       return new PropertyTreeBuilderFromProto()
