@@ -307,7 +307,6 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
         .setHeight(1)
         .setId('layerRect')
         .setName('layerRect')
-        .setCornerRadius(0)
         .setTransform(Transform.EMPTY.matrix)
         .setDepth(1)
         .setGroupId(0)
@@ -323,7 +322,6 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
         .setHeight(3)
         .setId('inputRect')
         .setName('inputRect')
-        .setCornerRadius(0)
         .setTransform(Transform.EMPTY.matrix)
         .setDepth(1)
         .setGroupId(0)
@@ -823,6 +821,17 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
             )?.value;
           }),
         ).toEqual(['DOWN', 'UP', 'POINTER_DOWN(2)', 'POINTER_UP(5)']);
+      });
+
+      it('handles undefined entries', async () => {
+        const presenter = await this.createPresenter(
+          (uiDataLog) => (uiData = uiDataLog as UiData),
+          false,
+        );
+        spyOn(assertDefined(this.trace), 'getAllEntryValues').and.returnValue(
+          Promise.resolve([]),
+        );
+        await sendFirstPositionUpdate(this.getPositionUpdate(), presenter);
       });
 
       async function getTracesWithSf(
