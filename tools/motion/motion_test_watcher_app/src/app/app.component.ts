@@ -46,39 +46,16 @@ import { TestModeComponent } from '../testMode/test-mode.component';
     trigger('sidebarMenuAnimation', [
       state('void', style({
         width: '0',
-        'min-width': '0',
-        marginRight: '0',
         opacity: 0,
-        paddingLeft: '0',
-        paddingRight: '0',
         overflow: 'hidden'
       })),
-      transition(':leave', [
-        style({
-          width: '*',
-          marginRight: '*',
-          opacity: 1,
-          paddingLeft: '*',
-          paddingRight: '*'
-        }),
-        animate('250ms ease-in')
-      ]),
       transition(':enter', [
-        style({
-          width: '0',
-          'min-width': '0',
-          marginRight: '0',
-          opacity: 0,
-          paddingLeft: '0',
-          paddingRight: '0'
-        }),
-        animate('300ms ease-out', style({
-          width: '*',
-          marginRight: '*',
-          opacity: 1,
-          paddingLeft: '*',
-          paddingRight: '*'
-        }))
+        style({ width: '0', opacity: 0 }),
+        animate('300ms ease-out', style({ width: '*', opacity: 1 }))
+      ]),
+      transition(':leave', [
+        style({ width: '*', opacity: 1 }),
+        animate('250ms ease-in', style({ width: '0', opacity: 0 }))
       ])
     ]),
 
@@ -105,7 +82,7 @@ import { TestModeComponent } from '../testMode/test-mode.component';
     ]),
     trigger('timelineHeightChange', [
       state('true', style({ height: 'calc(66.6666% - 16px)' })),
-      state('false', style({ height: 'calc(100% - 16px)' })),
+      state('false', style({ height: '100%' })),
       transition('true <=> false', [
         animate('300ms ease-in-out')
       ])
@@ -126,6 +103,7 @@ export class AppComponent implements DoCheck, OnInit {
 
  switchMode(mode : String) {
     this.showLoaderBar()
+    this.testMode = ""
     this.goldenService.switchMode(mode).
     pipe(finalize(() => this.hideLoaderBar()))
     .subscribe((goldens) => {
@@ -137,7 +115,9 @@ export class AppComponent implements DoCheck, OnInit {
   }
 
   openDialog(): void {
-    const dialogRef = this.dialog.open(DialogContentComponent);
+    const dialogRef = this.dialog.open(DialogContentComponent, {
+      maxWidth: '55vw'
+    });
 
     dialogRef.afterClosed().subscribe(invocationID => {
       if (invocationID) {
@@ -155,6 +135,7 @@ export class AppComponent implements DoCheck, OnInit {
             this.goldens = []
             this.selectedGolden = null
             this.testNames = fetchedTestNames
+            this.testMode = "PRESUBMIT"
           },
           error : (err) => {
             this.testNames = []
@@ -168,6 +149,7 @@ export class AppComponent implements DoCheck, OnInit {
   }
 
   showProgress = false;
+  testMode = "";
   showLoader = false;
   goldens: MotionGolden[] = [];
   testNames: String[] = [];
@@ -207,6 +189,7 @@ export class AppComponent implements DoCheck, OnInit {
     const rightLink = searchParams.get('rightLink') ?? ""
 
     if(leftLink || rightLink){
+      this.testMode = "GERRIT"
       this.fetchGerritData(leftLink, rightLink)
     } else {
       console.log("GERRIT: left and right is null")

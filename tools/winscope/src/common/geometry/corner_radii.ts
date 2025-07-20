@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,20 @@
  * limitations under the License.
  */
 
-import {ObjectUtils} from './object_utils';
+export class CornerRadii {
+  constructor(
+    public tl: number,
+    public tr: number,
+    public bl: number,
+    public br: number,
+  ) {}
 
-describe('ObjectUtils', () => {
-  it('setProperty()', () => {
-    const obj = {};
-
-    ObjectUtils.setProperty(obj, 'child0.key0', 'value0');
-    expect(obj).toEqual({
-      child0: {
-        key0: 'value0',
-      },
-    });
-
-    ObjectUtils.setProperty(obj, 'child1[0].key1', 'value1');
-    ObjectUtils.setProperty(obj, 'child1[1]', 10);
-    expect(obj).toEqual({
-      child0: {
-        key0: 'value0',
-      },
-      child1: [{key1: 'value1'}, 10],
-    });
-  });
-});
+  isEqual(other: CornerRadii) {
+    return (
+      this.tl === other.tl &&
+      this.tr === other.tr &&
+      this.bl === other.bl &&
+      this.br === other.br
+    );
+  }
+}
