@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalAnimatableApi::class)
-
 package com.android.mechanics.demo.presentation
 
-import androidx.compose.animation.core.ExperimentalAnimatableApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.Orientation
@@ -51,12 +48,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.android.mechanics.debug.DebugMotionValueVisualization
 import com.android.mechanics.debug.debugMotionValue
-import com.android.mechanics.demo.staging.rememberDistanceGestureContext
-import com.android.mechanics.demo.staging.rememberMotionValue
 import com.android.mechanics.demo.tuneable.Demo
 import com.android.mechanics.demo.tuneable.HasMotionValueVisualization
 import com.android.mechanics.effects.MagneticDetach
-import com.android.mechanics.spec.builder.rememberMotionBuilderContext
+import com.android.mechanics.rememberDistanceGestureContext
+import com.android.mechanics.rememberMotionSpecAsState
+import com.android.mechanics.rememberMotionValue
 import com.android.mechanics.spec.builder.spatialMotionSpec
 
 object MagneticDetachDemo : Demo<Unit>, HasMotionValueVisualization {
@@ -67,12 +64,15 @@ object MagneticDetachDemo : Demo<Unit>, HasMotionValueVisualization {
         val colors = MaterialTheme.colorScheme
 
         val gestureContext = rememberDistanceGestureContext()
-        val motionBuilderContext = rememberMotionBuilderContext()
-        val spec =
-            remember(motionBuilderContext) {
-                motionBuilderContext.spatialMotionSpec { after(50.dp.toPx(), MagneticDetach()) }
-            }
-        val motionValue = rememberMotionValue(gestureContext::dragOffset, { spec }, gestureContext)
+        val motionValue =
+            rememberMotionValue(
+                input = { gestureContext.dragOffset },
+                gestureContext = gestureContext,
+                spec =
+                    rememberMotionSpecAsState {
+                        spatialMotionSpec { after(50.dp.toPx(), MagneticDetach()) }
+                    },
+            )
 
         Column(
             verticalArrangement = Arrangement.spacedBy(24.dp),

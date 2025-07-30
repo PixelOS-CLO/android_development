@@ -143,8 +143,9 @@ export const logComponentStyles = `
   }
 
   .header {
-    display: flex;
     align-items: center;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
   }
 
   .transition-type {
@@ -228,10 +229,12 @@ export const logComponentStyles = `
   }
   .input-display-id {
     flex: 1;
+    padding-right: 12px;
     min-width: 50px;
   }
   .entry .input-details {
     flex: 4;
+    padding-left: 12px;
     min-width: 50px;
   }
   .headers .input-details {

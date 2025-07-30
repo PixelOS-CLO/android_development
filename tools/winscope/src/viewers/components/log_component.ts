@@ -27,12 +27,21 @@ import {
 } from '@angular/core';
 import {MatSelectChange} from '@angular/material/select';
 
-import {isElementVisible, KeyboardEventKey} from 'common/dom_utils';
+import {
+  isElementOverflowing,
+  isElementVisible,
+  KeyboardEventKey,
+} from 'common/dom_utils';
 import {Timestamp, TimestampFormatType} from 'common/time/time';
 import {TimeUtils} from 'common/time/time_utils';
 import {TraceType} from 'trace/trace_type';
 import {TextFilter} from 'viewers/common/text_filter';
-import {LogEntry, LogField, LogHeader} from 'viewers/common/ui_data_log';
+import {
+  LogEntry,
+  LogField,
+  LogFieldValue,
+  LogHeader,
+} from 'viewers/common/ui_data_log';
 import {
   LogFilterChangeDetail,
   LogTextFilterChangeDetail,
@@ -41,6 +50,7 @@ import {
 } from 'viewers/common/viewer_events';
 import {
   inlineButtonStyle,
+  targetWindowButtonStyle,
   timeButtonStyle,
 } from 'viewers/components/styles/clickable_property.styles';
 import {currentElementStyle} from 'viewers/components/styles/current_element.styles';
@@ -98,9 +108,13 @@ import {
 
         <ng-container *ngFor="let header of headers">
           <div
+            #headerEl
             *ngIf="!isHeaderWithFilter(header)"
             class="mat-body-2 header"
-            [class]="header.spec.cssClass">
+            [class]="header.spec.cssClass"
+            [matTooltip]="header.spec.name"
+            [matTooltipDisabled]="disableHeaderTooltip(headerEl)"
+            matTooltipPosition="above">
           {{header.spec.name}}</div>
 
           <div
@@ -187,15 +201,32 @@ import {
           </div>
 
           <div [class]="field.spec.cssClass + ' cell'" *ngFor="let field of entry.fields; index as i">
-            <span class="mat-body-1" *ngIf="!showFieldButton(entry, field)">{{ field.value }}</span>
+            <span class="mat-body-1" *ngIf="!showFieldButton(entry, field) && !isClickableArray(field.value)">{{ field.value }}</span>
             <button
                 *ngIf="showFieldButton(entry, field)"
                 mat-button
                 class="time-button"
                 color="primary"
                 (click)="onFieldButtonClick($event, entry, field)">
-              {{ formatFieldButton(field) }}
+              {{ formatFieldButton(field.value) }}
             </button>
+            <ng-container *ngIf="isClickableArray(field.value)">
+              <ng-container *ngFor="let item of field.value; let index=index">
+                  <span *ngIf ="isString(item)" class='mat-body-1'>{{item}}</span>
+                  <button
+                    *ngIf ="!isString(item)"
+                    mat-button
+                    class="window-button"
+                    color="primary"
+                    [matTooltip]="item.tooltip"
+                    matTooltipPosition = "above"
+                    matTooltipShowDelay = 100
+                    (click)="item.onClick()">
+                    {{ item.propertyValue }}
+                  </button>
+              </ng-container>
+            </ng-container>
+
             <mat-icon
                 *ngIf="field.icon"
                 aria-hidden="false"
@@ -214,6 +245,9 @@ import {
   `,
   styles: [
     `
+      .log-title {
+        padding-bottom: 8px;
+      }
       .view-header {
         display: flex;
         flex-direction: column;
@@ -229,6 +263,7 @@ import {
     selectedElementStyle,
     currentElementStyle,
     timeButtonStyle,
+    targetWindowButtonStyle,
     inlineButtonStyle,
     viewerCardStyle,
     viewerCardInnerStyle,
@@ -265,16 +300,26 @@ export class LogComponent {
     return header.filter !== undefined;
   }
 
+  disableHeaderTooltip(header: HTMLElement): boolean {
+    return !isElementOverflowing(header);
+  }
+
+  isClickableArray(value: LogFieldValue): boolean {
+    return Array.isArray(value);
+  }
+
+  isString(item: LogFieldValue) {
+    return typeof item === 'string';
+  }
+
   showFieldButton(entry: LogEntry, field: LogField): boolean {
     const propagateEntryTimestamp =
       !!field.propagateEntryTimestamp && entry.traceEntry.hasValidTimestamp();
     return field.value instanceof Timestamp || propagateEntryTimestamp;
   }
 
-  formatFieldButton(field: LogField): string | number {
-    return field.value instanceof Timestamp
-      ? this.formatTimestamp(field.value)
-      : field.value;
+  formatFieldButton(field: string | number | Timestamp): string | number {
+    return field instanceof Timestamp ? this.formatTimestamp(field) : field;
   }
 
   areMultipleDatesPresent(): boolean {
@@ -418,9 +463,7 @@ export class LogComponent {
   }
 
   isFixedSizeScrollViewport() {
-    return (
-      this.traceType === TraceType.CUJS || this.traceType === TraceType.SEARCH
-    );
+    return this.traceType === TraceType.CUJS;
   }
 
   updateTableMarginEnd() {
