@@ -1,12 +1,12 @@
 import { ProgressTracker } from './../util/progress';
 import { GoldensService } from './../service/goldens.service';
-import { Component, DoCheck, OnInit } from '@angular/core';
+import { Component, DoCheck, OnDestroy, OnInit } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { TestListComponent } from '../test-list/test-list.component';
 import { PreviewComponent } from '../preview/preview.component';
 import { TimelineComponent } from '../timeline/timeline.component';
 import { MotionGolden } from '../model/golden';
-import { finalize } from 'rxjs';
+import { finalize, Subscription } from 'rxjs';
 import { NgFor } from '@angular/common';
 import { JsonPipe, NgIf, NgStyle } from '@angular/common';
 import {
@@ -24,6 +24,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { TestModeComponent } from '../testMode/test-mode.component';
+import { PreviewService } from '../service/preview.service';
+import { ErrorService } from '../service/error.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 @Component({
   selector: 'app-root',
   imports: [
@@ -89,12 +92,17 @@ import { TestModeComponent } from '../testMode/test-mode.component';
     ])
   ]
 })
-export class AppComponent implements DoCheck, OnInit {
+export class AppComponent implements DoCheck, OnInit, OnDestroy {
   constructor(
     private goldenService: GoldensService,
     private progressTracker: ProgressTracker,
-    public dialog: MatDialog
+    public dialog: MatDialog,
+    private errorService: ErrorService,
+    private snackBar: MatSnackBar,
+    private previewService: PreviewService
     ) {}
+
+  private errorSubscription!: Subscription;
 
   isNullOrEmpty(obj : any) : Boolean {
     return (obj == null || obj.length == 0)
@@ -158,6 +166,7 @@ export class AppComponent implements DoCheck, OnInit {
   showTestList: boolean = true;
   showCheckBoxes: boolean =false;
   showPreviewComponent: boolean = true;
+  isRefreshing: boolean = false;
 
   get isVideoPresent(): boolean {
     return this.selectedGolden?.videoUrl != null;
@@ -187,6 +196,13 @@ export class AppComponent implements DoCheck, OnInit {
     const searchParams = new URLSearchParams(window.location.search);
     const leftLink = searchParams.get('leftLink') ?? ""
     const rightLink = searchParams.get('rightLink') ?? ""
+
+    this.errorSubscription = this.errorService.error$.subscribe(message => {
+      this.snackBar.open(message, undefined, {
+        horizontalPosition: 'left',
+        verticalPosition: 'bottom',
+      });
+    });
 
     if(leftLink || rightLink){
       this.testMode = "GERRIT"
@@ -220,15 +236,32 @@ export class AppComponent implements DoCheck, OnInit {
   }
 
   refreshGoldens(clear: boolean): void {
+    this.isRefreshing = true;
     this.progressTracker.beginProgress();
     this.goldenService
       .refreshGoldens(clear)
-      .pipe(finalize(() => this.progressTracker.endProgress))
-      .subscribe((goldens) => (this.goldens = goldens));
+      .pipe(
+        finalize(() => {
+          this.isRefreshing = false;
+          this.progressTracker.endProgress();
+        })
+      )
+      .subscribe({
+        next: (goldens) => {
+          this.goldens = goldens;
+          this.snackBar.open('Refresh successful!', 'Dismiss', {
+            duration: 3000,
+            horizontalPosition: 'center',
+            verticalPosition: 'bottom',
+            panelClass: ['snackbar-success']
+          });
+        },
+      });
   }
 
   setSelectedGolden(golden: MotionGolden): void {
     this.selectedGolden = golden;
+    this.previewService.setShowMarker(this.showPreviewComponent && this.isVideoPresent);
   }
 
    setSelectedTest(testName: String): void {
@@ -251,5 +284,11 @@ export class AppComponent implements DoCheck, OnInit {
   }
   openPreviewComponent(): void {
     this.showPreviewComponent = !this.showPreviewComponent;
+    this.previewService.setShowMarker(this.showPreviewComponent && this.isVideoPresent);
+  }
+  ngOnDestroy() {
+    if (this.errorSubscription) {
+      this.errorSubscription.unsubscribe();
+    }
   }
 }
