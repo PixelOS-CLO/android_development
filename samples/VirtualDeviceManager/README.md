@@ -241,6 +241,10 @@ Each input screen has a "Back", "Home" and "Forward" buttons.
     launched on that display. \
     *Changing this will recreate the virtual device.*
 
+-   **Public displays**: Whether to make the virtual displays public. \
+    *This can be changed dynamically but only applies to newly created
+    displays.*
+
 -   **Always unlocked**: Whether the virtual displays should remain unlocked and
     interactive when the host device is locked. Disabling this will result in a
     simple lock screen shown on these displays when the host device is locked. \
@@ -432,8 +436,8 @@ adb shell aflags enable android.companion.virtual.flags.device_aware_display_pow
     behavior of pinned windowing mode on the virtual display.
 
 -   **Display Power**: A simple activity showcasing the behavior of proximity
-    locks, screen brightness override and requesting the screen to be kept on
-    or turned on.
+    locks, screen brightness override and requesting the screen to be kept on or
+    turned on.
 
 -   **Rotation**: A simple activity that is in landscape by default and can send
     orientation change requests on demand. Showcases the display rotation on the
@@ -464,6 +468,8 @@ adb shell aflags enable android.companion.virtual.flags.device_aware_display_pow
 
 -   **Recorder**: A simple activity that can start multiple audio recorders.
     This helps test audio recording permissions and concurrent recordings.
+
+-   **Sound**: A simple activity that can play sounds from a SoundPool.
 
 The demo activity depends on whether the **Display Category** Host preference is
 enabled or not. If enabled, it becomes equivalent to the **Home** demo activity,
