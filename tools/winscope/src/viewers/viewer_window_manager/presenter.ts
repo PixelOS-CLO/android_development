@@ -16,11 +16,11 @@
 
 import {PersistentStoreProxy} from 'common/store/persistent_store_proxy';
 import {Store} from 'common/store/store';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {Trace} from 'trace_api/trace';
+import {Traces} from 'trace_api/traces';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {
   AbstractHierarchyViewerPresenter,
   NotifyHierarchyViewCallbackType,
@@ -45,7 +45,6 @@ import {
 } from 'viewers/components/rects/rect_spec';
 import {UiRect} from 'viewers/components/rects/ui_rect';
 import {PropagateHashCodes} from './operations/propagate_hash_codes';
-import {UpdateDisplayNames} from './operations/update_display_names';
 import {UiData} from './ui_data';
 
 export class Presenter extends AbstractHierarchyViewerPresenter<UiData> {
@@ -86,7 +85,6 @@ export class Presenter extends AbstractHierarchyViewerPresenter<UiData> {
     true,
     false,
     this.getEntryFormattedTimestamp,
-    [[TraceType.WINDOW_MANAGER, [new UpdateDisplayNames()]]],
   );
   protected override rectsPresenter = new RectsPresenter(
     PersistentStoreProxy.new<UserOptions>(

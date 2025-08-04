@@ -22,11 +22,11 @@ import {
   MissingLayerIds,
   RecursiveLayerIds,
 } from 'messaging/user_warnings';
-import {TraceRect} from 'trace/trace_rect';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
 import {QueryResult, RowIterator} from 'trace_processor/query_result';
 import {makeSpyRowIterator} from 'trace_processor/test_utils';
 import {TraceProcessor} from 'trace_processor/trace_processor';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {TraceRect} from 'tree_node/trace_rect';
 import {EntryHierarchyTreeFactory} from './entry_hierarchy_tree_factory';
 import {RectExtractor} from './rect_extractor';
 
@@ -177,12 +177,23 @@ describe('EntryHierarchyTreeFactory', () => {
           return;
         }
         calls++;
+        layersIter.get.withArgs('id').and.returnValue(1n);
         layersIter.get.withArgs('layer_id').and.returnValue(7n);
         layersIter.get.withArgs('parent').and.returnValue(7n);
       });
 
       const tree = makeEntryHierarchyTree();
-      expect(tree.getAllChildren().length).toEqual(0);
+      const recursiveLayers = tree.getAllChildren()[0].getAllChildren();
+      expect(
+        recursiveLayers.map((c) =>
+          c.getEagerPropertyByName('layerId')?.getValue(),
+        ),
+      ).toEqual([1n, 7n]);
+      expect(
+        recursiveLayers.map((c) =>
+          c.getEagerPropertyByName('parent')?.getValue(),
+        ),
+      ).toEqual([1n, 7n]);
       expect(tree.getWarnings()).toEqual([new RecursiveLayerIds([1, 7])]);
     });
   });

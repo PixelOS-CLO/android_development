@@ -19,10 +19,10 @@ import {InMemoryStorage} from 'common/store/in_memory_storage';
 import {TimestampConverterUtils} from 'common/time/test_utils';
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {PropertySource} from 'trace/tree_node/property_tree_node';
+import {UiTreeNodeUtils} from 'test/unit/ui_tree_node_utils';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertySource} from 'tree_node/property_tree_node';
 import {TextFilter} from 'viewers/common/text_filter';
 import {DiffType} from './diff_type';
 import {HierarchyPresenter} from './hierarchy_presenter';
@@ -113,7 +113,7 @@ describe('HierarchyPresenter', () => {
   let presenter: HierarchyPresenter;
 
   beforeAll(async () => {
-    jasmine.addCustomEqualityTester(TreeNodeUtils.treeNodeEqualityTester);
+    jasmine.addCustomEqualityTester(UiTreeNodeUtils.treeNodeEqualityTester);
   });
 
   beforeEach(() => {
@@ -375,7 +375,7 @@ describe('HierarchyPresenter', () => {
 
   it('handles pinned item change', () => {
     expect(presenter.getPinnedItems()).toEqual([]);
-    const item = TreeNodeUtils.makeUiHierarchyNode({id: '', name: ''});
+    const item = UiTreeNodeUtils.makeUiHierarchyNode({id: '', name: ''});
     presenter.applyPinnedItemChange(item);
     expect(presenter.getPinnedItems()).toEqual([item]);
     presenter.applyPinnedItemChange(item);

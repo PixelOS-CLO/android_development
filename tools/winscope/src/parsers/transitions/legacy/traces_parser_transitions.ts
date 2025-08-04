@@ -22,11 +22,11 @@ import Long from 'long';
 import {AbstractTracesParser} from 'parsers/traces/abstract_traces_parser';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {com} from 'protos/transitions/udc/static';
-import {CoarseVersion} from 'trace/coarse_version';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TraceType} from 'trace/trace_type';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+import {CoarseVersion} from 'trace_api/coarse_version';
+import {Trace} from 'trace_api/trace';
+import {Traces} from 'trace_api/traces';
+import {TraceType} from 'trace_api/trace_type';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
 import {ParserTransitionsShell} from './parser_transitions_shell';
 
 export class TracesParserTransitions extends AbstractTracesParser<PropertyTreeNode> {

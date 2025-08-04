@@ -21,12 +21,12 @@ import {TracePositionUpdate} from 'messaging/winscope_event';
 import {getWindowManagerState} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {makeEmptyTrace} from 'test/unit/trace_utils';
-import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {UiTreeNodeUtils} from 'test/unit/ui_tree_node_utils';
+import {Trace} from 'trace_api/trace';
+import {Traces} from 'trace_api/traces';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {NotifyHierarchyViewCallbackType} from 'viewers/common/abstract_hierarchy_viewer_presenter';
 import {AbstractHierarchyViewerPresenterTest} from 'viewers/common/abstract_hierarchy_viewer_presenter_test';
 import {VISIBLE_CHIP} from 'viewers/common/chip';
@@ -234,7 +234,7 @@ the default for its data type.`,
 
   override executeSpecializedTests(): void {
     const invalidNode = UiPropertyTreeNode.from(
-      TreeNodeUtils.makeUiPropertyNode('', '', 0),
+      UiTreeNodeUtils.makeUiPropertyNode('', '', 0),
     );
 
     describe('Specialized tests', () => {
@@ -275,7 +275,7 @@ the default for its data type.`,
 
       it('does not propagate hashcode if matching node not found', async () => {
         const missingHashcode = UiPropertyTreeNode.from(
-          TreeNodeUtils.makeUiPropertyNode('', 'hashCode', 0),
+          UiTreeNodeUtils.makeUiPropertyNode('', 'hashCode', 0),
         );
         await presenter.onPropagatePropertyClick(missingHashcode);
         expect(uiData.highlightedItem).toEqual('');
@@ -283,7 +283,7 @@ the default for its data type.`,
 
       it('propagates node with matching hashcode', async () => {
         const validHashcode = UiPropertyTreeNode.from(
-          TreeNodeUtils.makeUiPropertyNode('', 'hashCode', 32720206),
+          UiTreeNodeUtils.makeUiPropertyNode('', 'hashCode', 32720206),
         );
         await presenter.onAppEvent(this.getPositionUpdate());
         await presenter.onPropagatePropertyClick(validHashcode);

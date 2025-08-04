@@ -27,14 +27,14 @@ import {TraceBuilder} from 'test/unit/trace_builder';
 import {makeEmptyTrace} from 'test/unit/trace_utils';
 import {TreeNodeUtils} from 'test/unit/tree_node_utils';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {CustomQueryType} from 'trace/custom_query';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TraceType} from 'trace/trace_type';
-import {EMPTY_OBJ_STRING} from 'trace/tree_node/formatters';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {PropertySource} from 'trace/tree_node/property_tree_node';
+import {EMPTY_OBJ_STRING} from 'trace/formatters';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {Trace} from 'trace_api/trace';
+import {Traces} from 'trace_api/traces';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertySource} from 'tree_node/property_tree_node';
 import {NotifyHierarchyViewCallbackType} from 'viewers/common/abstract_hierarchy_viewer_presenter';
 import {AbstractHierarchyViewerPresenterTest} from 'viewers/common/abstract_hierarchy_viewer_presenter_test';
 import {VISIBLE_CHIP} from 'viewers/common/chip';
@@ -568,6 +568,19 @@ the default for its data type.`,
         expect(uiData.propertiesTree?.getDisplayName()).toEqual(
           '1970-01-01, 00:00:00.000',
         );
+        expect(uiData.curatedProperties).toBeUndefined();
+      });
+
+      it('sets properties tree but no curated properties for recursive root node', async () => {
+        await presenter.onAppEvent(this.getPositionUpdate());
+        const hierarchyTree = assertDefined(uiData.hierarchyTrees?.[0]);
+        Object.assign(hierarchyTree.getAllChildren()[0], {
+          name: 'WinscopeRecursiveLayerRoot',
+        });
+        await presenter.onHighlightedNodeChange(
+          hierarchyTree.getAllChildren()[0],
+        );
+        expect(uiData.propertiesTree).toBeDefined();
         expect(uiData.curatedProperties).toBeUndefined();
       });
 

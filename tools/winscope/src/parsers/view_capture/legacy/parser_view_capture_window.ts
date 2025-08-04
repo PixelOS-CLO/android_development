@@ -22,15 +22,15 @@ import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import Long from 'long';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {com} from 'protos/viewcapture/udc/static';
-import {CoarseVersion} from 'trace/coarse_version';
+import {CoarseVersion} from 'trace_api/coarse_version';
 import {
   CustomQueryParserResultTypeMap,
   CustomQueryType,
-} from 'trace/custom_query';
-import {EntriesRange} from 'trace/index_types';
-import {Parser} from 'trace/parser';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+} from 'trace_api/custom_query';
+import {EntriesRange} from 'trace_api/index_types';
+import {Parser} from 'trace_api/parser';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 
 export class ParserViewCaptureWindow implements Parser<HierarchyTreeNode> {
   private static readonly PACKAGE_OR_WINDOW_IID = 1;
@@ -50,6 +50,10 @@ export class ParserViewCaptureWindow implements Parser<HierarchyTreeNode> {
 
   parse() {
     throw NOT_IMPLEMENTED_ERROR;
+  }
+
+  isPerfetto(): boolean {
+    return false;
   }
 
   getTraceType(): TraceType {

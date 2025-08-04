@@ -26,22 +26,16 @@ import {
   TabbedViewSwitchRequest,
   TracePositionUpdate,
 } from 'messaging/winscope_event';
-import {CustomQueryType} from 'trace/custom_query';
+import {EMPTY_OBJ_STRING, FixedStringFormatter} from 'trace/formatters';
 import {LayerFlag} from 'trace/surface_flinger/layer_flag';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TraceEntryFinder} from 'trace/trace_entry_finder';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TraceType} from 'trace/trace_type';
-import {
-  EMPTY_OBJ_STRING,
-  FixedStringFormatter,
-} from 'trace/tree_node/formatters';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {
-  PropertySource,
-  PropertyTreeNode,
-} from 'trace/tree_node/property_tree_node';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {Trace} from 'trace_api/trace';
+import {Traces} from 'trace_api/traces';
+import {TraceEntryFinder} from 'trace_api/trace_entry_finder';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertySource, PropertyTreeNode} from 'tree_node/property_tree_node';
 import {
   AbstractHierarchyViewerPresenter,
   NotifyHierarchyViewCallbackType,
@@ -285,7 +279,10 @@ the default for its data type.`,
     const propertiesTree = this.propertiesPresenter.getPropertiesTree();
 
     if (selectedHierarchyTree && propertiesTree) {
-      if (selectedHierarchyTree.tree.isRoot()) {
+      if (
+        selectedHierarchyTree.tree.isRoot() ||
+        selectedHierarchyTree.tree.name === 'WinscopeRecursiveLayerRoot'
+      ) {
         this.curatedProperties = undefined;
       } else {
         const layerIdToNodeId = this.makeLayerIdToNodeIdMap();
