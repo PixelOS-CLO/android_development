@@ -21,17 +21,17 @@ import {TransformToTimestamp} from 'parsers/operations/transform_to_timestamp';
 import {AbstractParser} from 'parsers/perfetto/abstract_parser';
 import {getDistinctValues} from 'parsers/perfetto/utils';
 import {PropertyTreeBuilderFromQueryRow} from 'parsers/property_tree_builder_from_query_row';
+import {ProtologColumnType} from 'trace/protolog/protolog_column_type';
 import {
   CustomQueryParamTypeMap,
   CustomQueryParserResultTypeMap,
   CustomQueryType,
   VisitableParserCustomQuery,
-} from 'trace/custom_query';
-import {EntriesRange} from 'trace/index_types';
-import {ProtologColumnType} from 'trace/protolog/protolog_column_type';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {PropertiesProviderBuilder} from 'trace/tree_node/properties_provider_builder';
+} from 'trace_api/custom_query';
+import {EntriesRange} from 'trace_api/index_types';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertiesProviderBuilder} from 'tree_node/properties_provider_builder';
 
 export class ParserProtolog extends AbstractParser<HierarchyTreeNode> {
   override getTraceType(): TraceType {

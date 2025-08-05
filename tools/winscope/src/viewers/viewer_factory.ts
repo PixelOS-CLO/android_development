@@ -17,9 +17,9 @@
 import {assertTrue} from 'common/assert_utils';
 import {Store} from 'common/store/store';
 import {TimestampConverter} from 'common/time/timestamp_converter';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TraceType, TraceTypeUtils} from 'trace/trace_type';
+import {Trace} from 'trace_api/trace';
+import {Traces} from 'trace_api/traces';
+import {TraceType, TraceTypeUtils} from 'trace_api/trace_type';
 import {Viewer, ViewType} from './viewer';
 import {ViewerInput} from './viewer_input/viewer_input';
 import {ViewerInputMethodClients} from './viewer_input_method_clients/viewer_input_method_clients';

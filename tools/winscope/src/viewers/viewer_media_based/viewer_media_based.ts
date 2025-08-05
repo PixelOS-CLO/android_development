@@ -16,10 +16,10 @@
 
 import {assertDefined} from 'common/assert_utils';
 import {Store} from 'common/store/store';
-import {MediaBasedTraceEntry} from 'trace/media_based_trace_entry';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TraceType} from 'trace/trace_type';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {Trace} from 'trace_api/trace';
+import {Traces} from 'trace_api/traces';
+import {TraceType} from 'trace_api/trace_type';
 import {AbstractViewer} from 'viewers/abstract_viewer';
 import {ViewType} from 'viewers/viewer';
 import {Presenter} from './presenter';

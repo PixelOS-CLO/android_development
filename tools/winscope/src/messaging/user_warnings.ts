@@ -17,8 +17,8 @@
 import {BugreportData, BuildType} from 'app/trace_file_filter';
 import {TimeRange} from 'common/time/time';
 import {TimeDuration} from 'common/time/time_duration';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TraceType} from 'trace/trace_type';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TraceType} from 'trace_api/trace_type';
 import {UserWarning} from './user_warning';
 
 export class CorruptedArchive extends UserWarning {
@@ -328,7 +328,10 @@ export class RecursiveLayerIds extends UserWarning {
   getMessage(): string {
     const optionalPlural = this.layerIds.length > 1 ? 's' : '';
     const layerIds = this.layerIds.join(', ');
-    return `Recursive SF layer id${optionalPlural} ${layerIds} found - same value set for id and parent, so omitted from the hierarchy`;
+    return (
+      `Recursive SF layer${optionalPlural} ${layerIds} found - same value set for id and parent,` +
+      ` so added to separate root in hierarchy.`
+    );
   }
 }
 

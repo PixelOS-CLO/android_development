@@ -17,12 +17,12 @@
 import {assertDefined} from 'common/assert_utils';
 import {Store} from 'common/store/store';
 import {Timestamp} from 'common/time/time';
-import {CustomQueryType} from 'trace/custom_query';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TraceType} from 'trace/trace_type';
 import {TransitionStatus} from 'trace/transitions/status';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {Trace} from 'trace_api/trace';
+import {Traces} from 'trace_api/traces';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {
   AbstractLogViewerPresenter,
   NotifyLogViewCallbackType,
