@@ -13,16 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {CommonModule} from '@angular/common';
 import {Component, Input} from '@angular/core';
+import {MatDividerModule} from '@angular/material/divider';
 import {VcCuratedProperties} from 'viewers/common/curated_properties';
 
 @Component({
   selector: 'view-capture-property-groups',
+  standalone: true,
+  imports: [CommonModule, MatDividerModule],
   template: `
     <div *ngIf="properties" class="group view">
-      <h3 class="group-header mat-subheading-2">View</h3>
-      <div class="left-column class-name">
-        <p class="mat-body-2">
+      <h3 class="group-header mat-subtitle-1">View</h3>
+      <div class="left-column">
+        <p class="mat-body-2 class-name">
           <span class="mat-body-1">Class: </span>
           &ngsp;
           {{ properties.className }}
@@ -32,11 +36,16 @@ import {VcCuratedProperties} from 'viewers/common/curated_properties';
           &ngsp;
           {{ properties.hashcode }}
         </p>
+        <p class="mat-body-2 view-id">
+          <span class="mat-body-1">View Id: </span>
+          &ngsp;
+          {{ properties.viewId }}
+        </p>
       </div>
     </div>
     <mat-divider></mat-divider>
     <div *ngIf="properties" class="group geometry">
-      <h3 class="group-header mat-subheading-2">Geometry</h3>
+      <h3 class="group-header mat-subtitle-1">Geometry</h3>
       <div class="left-column coordinates">
         <p class="column-header mat-small">Coordinates</p>
         <p class="mat-body-2 left">
@@ -70,7 +79,7 @@ import {VcCuratedProperties} from 'viewers/common/curated_properties';
       </div>
     </div>
     <div *ngIf="properties" class="group geometry">
-      <h3 class="group-header mat-subheading-2"></h3>
+      <h3 class="group-header mat-subtitle-1"></h3>
       <div class="left-column translation">
         <p class="column-header mat-small">Translation</p>
         <p class="mat-body-2 translationx">
@@ -99,7 +108,7 @@ import {VcCuratedProperties} from 'viewers/common/curated_properties';
       </div>
     </div>
     <div *ngIf="properties" class="group geometry">
-      <h3 class="group-header mat-subheading-2"></h3>
+      <h3 class="group-header mat-subtitle-1"></h3>
       <div class="left-column scale">
         <p class="column-header mat-small">Scale</p>
         <p class="mat-body-2 scalex">
@@ -116,7 +125,7 @@ import {VcCuratedProperties} from 'viewers/common/curated_properties';
     </div>
     <mat-divider></mat-divider>
     <div *ngIf="properties" class="group effects">
-      <h3 class="group-header mat-subheading-2">Effects</h3>
+      <h3 class="group-header mat-subtitle-1">Effects</h3>
       <div class="left-column translation">
         <p class="column-header mat-small">Translation</p>
         <p class="mat-body-2 visibility">

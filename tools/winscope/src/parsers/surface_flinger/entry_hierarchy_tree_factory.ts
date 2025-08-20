@@ -27,15 +27,14 @@ import {
   RecursiveLayerIds,
 } from 'messaging/user_warnings';
 import {AddDefaults} from 'parsers/operations/add_defaults';
-import {SetFormatters} from 'parsers/operations/set_formatters';
 import {TranslateIntDef} from 'parsers/operations/translate_intdef';
 import {FakeProtoTransformer} from 'parsers/perfetto/fake_proto_transformer';
 import {queryArgs} from 'parsers/perfetto/utils';
 import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {PropertyTreeBuilderFromQueryRow} from 'parsers/property_tree_builder_from_query_row';
-import {TAMPERED_TRACE_PACKET} from 'parsers/tampered_message_type';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {EnumFormatter, LAYER_ID_FORMATTER} from 'trace/formatters';
+import {TAMPERED_TRACE_PACKET} from 'trace/proto_utils/tampered_message_type';
 import {QueryResult, RowIterator} from 'trace_processor/query_result';
 import {TraceProcessor} from 'trace_processor/trace_processor';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
@@ -45,6 +44,8 @@ import {
 } from 'tree_node/properties_provider';
 import {PropertiesProviderBuilder} from 'tree_node/properties_provider_builder';
 import {PropertyTreeNode} from 'tree_node/property_tree_node';
+import {TraceRect} from 'tree_node/trace_rect';
+import {SetFormatters} from 'viewers/operations/set_formatters';
 import {ZOrderPathsComputation} from './computations/z_order_paths_computation';
 import {DENYLIST_PROPERTIES} from './denylist_properties';
 import {HierarchyTreeBuilderSf} from './hierarchy_tree_builder_sf';
@@ -110,20 +111,66 @@ export class EntryHierarchyTreeFactory {
     UpdateCornerRadii: new UpdateCornerRadii(),
   };
 
-  makeEntryHierarchyTree(
-    snapshotResult: QueryResult,
-    layersResult: QueryResult,
+  makeEntryHierarchyTrees(
+    snapshotResults: QueryResult,
+    layersResults: QueryResult,
+    visibleRectsResults: Map<
+      bigint,
+      {displayRects: TraceRect[]; layerRects: Map<bigint, LayerRects>}
+    >,
     traceProcessor: TraceProcessor,
+  ): HierarchyTreeNode[] {
+    const currLayer = layersResults.iter({});
+    const currSnapshot = snapshotResults.iter({});
+    const trees: HierarchyTreeNode[] = [];
+    while (currSnapshot.valid()) {
+      const currentId = assertBigInt(currSnapshot.get('id'));
+
+      const currSnapshotProperties = this.makeEntryProperties(
+        currSnapshot,
+        traceProcessor,
+      );
+      const visibleRects = assertDefined(visibleRectsResults.get(currentId));
+      const displayRects = visibleRects.displayRects;
+      const visibleLayerRects = visibleRects.layerRects;
+
+      const {layers, rects, warnings} = this.makeLayersAndNonvisibleRects(
+        currLayer,
+        traceProcessor,
+        currentId,
+        visibleLayerRects,
+      );
+
+      const tree = this.buildHierarchyTree(
+        currSnapshotProperties,
+        layers,
+        warnings,
+        rects,
+        displayRects,
+      );
+      // Since our query uses left joins there might be multiple rows for the same snapshotID
+      // We've already processed the unique information for the currentId, so we skip any remaining rows for this ID.
+      while (
+        currSnapshot.valid() &&
+        assertBigInt(currSnapshot.get('id')) === currentId
+      ) {
+        currSnapshot.next();
+      }
+      trees.push(tree);
+    }
+
+    return trees;
+  }
+
+  private buildHierarchyTree(
+    root: PropertiesProvider,
+    layers: PropertiesProvider[],
+    warnings: UserWarning[],
+    rects: Map<bigint, LayerRects>,
+    displayRects: TraceRect[],
   ): HierarchyTreeNode {
-    const entry = this.makeEntryProperties(snapshotResult, traceProcessor);
-
-    const {layers, rects, warnings} = this.makeLayerPropertiesAndRects(
-      layersResult,
-      traceProcessor,
-    );
-
     const tree = new HierarchyTreeBuilderSf()
-      .setRoot(entry)
+      .setRoot(root)
       .setChildren(layers)
       .setComputations([new ZOrderPathsComputation()])
       .build();
@@ -132,8 +179,7 @@ export class EntryHierarchyTreeFactory {
 
     tree.forEachNodeDfs((node) => {
       if (node.isRoot()) {
-        const displays = RectExtractor.extractDisplayRects(snapshotResult);
-        node.setRects(displays);
+        node.setRects(displayRects);
         return;
       }
       const layerRects = rects.get(
@@ -146,12 +192,11 @@ export class EntryHierarchyTreeFactory {
         node.setSecondaryRects([layerRects.input]);
       }
     });
-
     return tree;
   }
 
   private makeEntryProperties(
-    snapshotResult: QueryResult,
+    snapshotResult: RowIterator,
     traceProcessor: TraceProcessor,
   ): PropertiesProvider {
     const eagerProperties = new PropertyTreeBuilderFromProto()
@@ -159,7 +204,7 @@ export class EntryHierarchyTreeFactory {
       .setRootId('LayerTraceEntry')
       .setRootName('root')
       .build();
-    const argSetId = assertDefined(snapshotResult.iter({}).get('arg_set_id'));
+    const argSetId = assertDefined(snapshotResult.get('arg_set_id'));
     const entryProps = new PropertiesProviderBuilder()
       .setEagerProperties(eagerProperties)
       .setLazyPropertiesStrategy(
@@ -176,54 +221,69 @@ export class EntryHierarchyTreeFactory {
     return entryProps;
   }
 
-  private makeLayerPropertiesAndRects(
-    layersResult: QueryResult,
+  private makeLayersAndNonvisibleRects(
+    layersIter: RowIterator,
     traceProcessor: TraceProcessor,
+    currSnapshotId: bigint | undefined,
+    visibleLayerInputRects: Map<bigint, LayerRects>,
   ): {
     layers: PropertiesProvider[];
     rects: Map<bigint, LayerRects>;
     warnings: UserWarning[];
   } {
-    const processed = new Map<number, number>();
     let missingLayerIds = false;
-    const recursiveIds: number[] = [];
-
-    const layers: PropertiesProvider[] = [];
     const rects = new Map<bigint, LayerRects>();
-    let prevUniqueRowId: bigint | undefined;
+    const layers: PropertiesProvider[] = [];
+    const recursiveIds: number[] = [];
+    const processedUniqueRowIds = new Set<bigint>();
+    const processedLayerIdCounts = new Map<number, number>();
 
-    for (const it = layersResult.iter({}); it.valid(); it.next()) {
+    for (const it = layersIter; it.valid(); it.next()) {
+      if (currSnapshotId !== undefined) {
+        const snapshotId = assertBigIntOrUndefined(
+          it.get('snapshot_id') ?? undefined,
+        );
+        if (snapshotId !== currSnapshotId) {
+          break;
+        }
+      }
+
+      const uniqueRowId = assertBigInt(it.get('id'));
+
+      if (processedUniqueRowIds.has(uniqueRowId)) {
+        // some row ids will be repeated due querying multiple fill region rects
+        const layerIdBigint = assertBigInt(it.get('layer_id'));
+        const layerRects = rects.get(layerIdBigint);
+        if (layerRects?.input) {
+          const fillRegionRect = RectExtractor.extractFillRegionRect(it);
+          if (fillRegionRect) {
+            assertDefined(layerRects.input.fillRegion).rects.push(
+              fillRegionRect,
+            );
+          }
+        }
+        continue;
+      }
+
+      processedUniqueRowIds.add(uniqueRowId);
       const layerIdBigint = assertBigIntOrUndefined(
         it.get('layer_id') ?? undefined,
       );
+
       if (layerIdBigint === undefined) {
         missingLayerIds = true;
         continue;
       }
-
       const layerId = Number(layerIdBigint);
 
       if (layerIdBigint === it.get('parent')) {
         recursiveIds.push(layerId);
       }
 
-      const uniqueRowId = assertBigInt(it.get('id'));
-      if (prevUniqueRowId !== undefined && uniqueRowId === prevUniqueRowId) {
-        // some row ids will be repeated due querying multiple fill region rects
-        const inputRect = assertDefined(rects.get(layerIdBigint)?.input);
-        const fillRegionRect = RectExtractor.extractFillRegionRect(it);
-        if (fillRegionRect) {
-          assertDefined(inputRect.fillRegion).rects.push(fillRegionRect);
-        }
-        continue;
-      }
-      prevUniqueRowId = uniqueRowId;
-
-      const duplicateCount = processed.get(layerId) ?? 0;
-      processed.set(assertDefined(layerId), duplicateCount + 1);
+      const duplicateCount = processedLayerIdCounts.get(layerId) ?? 0;
+      processedLayerIdCounts.set(layerId, duplicateCount + 1);
 
       const layerName = assertString(it.get('layer_name'));
-
       const layerProps = this.makeLayerPropertiesProvider(
         it,
         layerId,
@@ -233,10 +293,28 @@ export class EntryHierarchyTreeFactory {
       );
       layers.push(layerProps);
 
-      const nodeId = layerProps.getEagerProperties().id;
-      const layerRects = RectExtractor.extractLayerRects(it, nodeId, layerName);
-      if (layerRects) {
-        rects.set(layerIdBigint, layerRects);
+      if (visibleLayerInputRects.has(layerIdBigint)) {
+        const precomputedRects = assertDefined(
+          visibleLayerInputRects.get(layerIdBigint),
+        );
+        rects.set(layerIdBigint, precomputedRects);
+      } else {
+        const layerRects = RectExtractor.extractLayerRects(
+          it,
+          uniqueRowId.toString(),
+          layerName,
+        );
+        if (layerRects) {
+          rects.set(layerIdBigint, layerRects);
+          if (layerRects?.input) {
+            const fillRegionRect = RectExtractor.extractFillRegionRect(it);
+            if (fillRegionRect) {
+              assertDefined(layerRects.input.fillRegion).rects.push(
+                fillRegionRect,
+              );
+            }
+          }
+        }
       }
     }
 
@@ -244,8 +322,8 @@ export class EntryHierarchyTreeFactory {
     if (missingLayerIds) {
       warnings.push(new MissingLayerIds());
     }
-    const duplicateIds = Array.from(processed.keys()).filter(
-      (layerId) => assertDefined(processed.get(layerId)) > 1,
+    const duplicateIds = Array.from(processedLayerIdCounts.keys()).filter(
+      (layerId) => assertDefined(processedLayerIdCounts.get(layerId)) > 1,
     );
     if (duplicateIds.length > 0) {
       warnings.push(new DuplicateLayerIds(duplicateIds));
@@ -254,7 +332,11 @@ export class EntryHierarchyTreeFactory {
       warnings.push(new RecursiveLayerIds(recursiveIds));
     }
 
-    return {layers, rects, warnings};
+    return {
+      layers,
+      rects,
+      warnings,
+    };
   }
 
   private makeLayerPropertiesProvider(

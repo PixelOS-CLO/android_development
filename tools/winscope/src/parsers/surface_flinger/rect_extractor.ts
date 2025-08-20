@@ -15,9 +15,11 @@
  */
 
 import {
+  assertBigInt,
   assertBigIntOrUndefined,
   assertNumber,
   assertNumberOrUndefined,
+  assertString,
   assertStringOrUndefined,
 } from 'common/assert_utils';
 import {Rect} from 'common/geometry/rect';
@@ -26,21 +28,121 @@ import {QueryResult, RowIterator} from 'trace_processor/query_result';
 import {TraceRect} from 'tree_node/trace_rect';
 
 export class RectExtractor {
-  static extractDisplayRects(snapshotResult: QueryResult): TraceRect[] {
-    const displayRects = [];
-    for (const it = snapshotResult.iter({}); it.valid(); it.next()) {
+  static extractAllVisibleAndDisplayRects(
+    snapshotResult: QueryResult,
+    rectsResult: QueryResult,
+  ) {
+    const allRectsMap = new Map<
+      bigint,
+      {displayRects: TraceRect[]; layerRects: Map<bigint, LayerRects>}
+    >();
+    const currRect = rectsResult.iter({});
+    const currSnapshot = snapshotResult.iter({});
+    while (currSnapshot.valid()) {
+      const currentId = assertBigInt(currSnapshot.get('id'));
+      // currSnapshot is iterated in extractDisplayRectsForSnapshot
+      const {displayRects} = RectExtractor.extractDisplayRectsForSnapshot(
+        currSnapshot,
+        currentId,
+      );
+      // currRect is iterated in extractLayerInputRectsForSnapshot
+      const {rects} = RectExtractor.extractLayerInputRectsForSnapshot(
+        currRect,
+        currentId,
+      );
+      const combinedRects = {
+        displayRects,
+        layerRects: rects,
+      };
+      allRectsMap.set(currentId, combinedRects);
+    }
+    return allRectsMap;
+  }
+
+  static extractLayerInputRectsForSnapshot(
+    rectIter: RowIterator,
+    currSnapshotId: bigint,
+  ): {rects: Map<bigint, LayerRects>} {
+    const rects = new Map<bigint, LayerRects>();
+    let prevUniqueRowId: bigint | undefined;
+
+    while (rectIter.valid()) {
+      const snapshotId = assertBigIntOrUndefined(
+        rectIter.get('snapshot_id') ?? undefined,
+      );
+
+      if (snapshotId !== currSnapshotId) {
+        break;
+      }
+
+      const layerIdBigint = assertBigIntOrUndefined(
+        rectIter.get('layer_id') ?? undefined,
+      );
+      if (layerIdBigint === undefined) {
+        rectIter.next();
+        continue;
+      }
+
+      const layerId = Number(layerIdBigint);
+      const uniqueRowId = assertBigInt(rectIter.get('id'));
+
+      if (prevUniqueRowId !== undefined && uniqueRowId === prevUniqueRowId) {
+        const layerEntry = rects.get(layerIdBigint);
+        if (layerEntry?.input?.fillRegion) {
+          const fillRegionRect = RectExtractor.extractFillRegionRect(rectIter);
+          if (fillRegionRect) {
+            layerEntry.input.fillRegion.rects.push(fillRegionRect);
+          }
+        }
+      } else {
+        prevUniqueRowId = uniqueRowId;
+        const layerName = assertString(rectIter.get('layer_name'));
+        const nodeId = `${layerId} ${layerName}`;
+
+        const layerRects = RectExtractor.extractLayerRects(
+          rectIter,
+          nodeId,
+          layerName,
+        );
+        if (layerRects) {
+          rects.set(layerIdBigint, layerRects);
+        }
+      }
+      rectIter.next();
+    }
+    return {rects};
+  }
+
+  static extractDisplayRectsForSnapshot(
+    snapshotIter: RowIterator,
+    targetSnapshotId: bigint | undefined,
+  ): {displayRects: TraceRect[]} {
+    const displayRects: TraceRect[] = [];
+
+    for (snapshotIter; snapshotIter.valid(); snapshotIter.next()) {
+      const snapshotId = assertBigIntOrUndefined(
+        snapshotIter.get('id') ?? undefined,
+      );
+
+      if (snapshotId !== targetSnapshotId) {
+        break;
+      }
+
       const displayId = assertBigIntOrUndefined(
-        it.get('display_id') ?? undefined,
+        snapshotIter.get('display_id') ?? undefined,
       );
       if (displayId === undefined) {
         continue;
       }
       const displayIdString = displayId.toString();
-      const isActiveDisplay = it.get('is_on') && !it.get('is_virtual');
-      const name = assertStringOrUndefined(it.get('display_name') ?? undefined);
+      const isActiveDisplay =
+        snapshotIter.get('is_on') && !snapshotIter.get('is_virtual');
+      const name = assertStringOrUndefined(
+        snapshotIter.get('display_name') ?? undefined,
+      );
 
       const rect = new TraceRectBuilderFromQueryRow()
-        .setRow(it)
+        .setRow(snapshotIter)
         .setId('Display - ' + displayIdString)
         .setName(name ?? 'Unknown Display')
         .setIsDisplay(true)
@@ -49,7 +151,7 @@ export class RectExtractor {
         .build();
       displayRects.push(rect);
     }
-    return displayRects;
+    return {displayRects};
   }
 
   static extractFillRegionRect(row: RowIterator): Rect | undefined {
