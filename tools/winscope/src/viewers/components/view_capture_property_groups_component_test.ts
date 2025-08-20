@@ -29,11 +29,12 @@ describe('ViewCapturePropertyGroupsComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       providers: [{provide: ComponentFixtureAutoDetect, useValue: true}],
-      imports: [MatDividerModule, MatTooltipModule],
-      declarations: [
-        TestHostComponent,
+      imports: [
         ViewCapturePropertyGroupsComponent,
         TransformMatrixComponent,
+        TestHostComponent,
+        MatDividerModule,
+        MatTooltipModule,
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(TestHostComponent);
@@ -50,6 +51,7 @@ describe('ViewCapturePropertyGroupsComponent', () => {
     const section = dom.get('.view');
     section.get('.class-name').checkText('test.package.name');
     section.get('.hashcode').checkText('12345678');
+    section.get('.view-id').checkText('package/name');
   });
 
   it('displays geometry coordinates section', () => {
@@ -96,6 +98,7 @@ describe('ViewCapturePropertyGroupsComponent', () => {
   });
 
   @Component({
+    imports: [ViewCapturePropertyGroupsComponent],
     selector: 'host-component',
     template: `
       <view-capture-property-groups [properties]="properties"></view-capture-property-groups>
@@ -104,6 +107,7 @@ describe('ViewCapturePropertyGroupsComponent', () => {
   class TestHostComponent {
     properties: VcCuratedProperties = {
       className: 'test.package.name',
+      viewId: 'package/name',
       hashcode: '12345678',
       left: '0',
       top: '5',

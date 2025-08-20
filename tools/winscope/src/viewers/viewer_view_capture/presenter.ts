@@ -23,10 +23,10 @@ import {
 } from 'messaging/winscope_event';
 import {CustomQueryType} from 'trace_api/custom_query';
 import {Trace} from 'trace_api/trace';
-import {Traces} from 'trace_api/traces';
 import {TraceEntryFinder} from 'trace_api/trace_entry_finder';
 import {TRACE_INFO} from 'trace_api/trace_info';
 import {TraceType} from 'trace_api/trace_type';
+import {Traces} from 'trace_api/traces';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {PropertyTreeNode} from 'tree_node/property_tree_node';
 import {
@@ -292,6 +292,7 @@ the default for its data type.`,
     const curated: VcCuratedProperties = {
       className: tree.name,
       hashcode: assertDefined(tree.getChildByName('hashcode')).formattedValue(),
+      viewId: assertDefined(tree.getChildByName('viewId')).formattedValue(),
       left: assertDefined(tree.getChildByName('left')).formattedValue(),
       top: assertDefined(tree.getChildByName('top')).formattedValue(),
       elevation: assertDefined(
