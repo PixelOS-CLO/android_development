@@ -26,7 +26,7 @@ import {
   CustomQueryParserResultTypeMap,
   CustomQueryResultTypeMap,
   CustomQueryType,
-  ProcessParserResult,
+  ProcessCustomQueryParserResult,
 } from './custom_query';
 import {FrameMap} from './frame_map';
 import {
@@ -246,16 +246,16 @@ export class Trace<T> {
       });
     };
 
-    const processParserResult = ProcessParserResult[type] as (
+    const processParserResult = ProcessCustomQueryParserResult[type] as (
       parserResult: CustomQueryParserResultTypeMap[Q],
       make: typeof makeTraceEntry,
     ) => CustomQueryResultTypeMap<T>[Q];
 
-    const parserResult = (await this.parser.customQuery(
+    const parserResult = await this.parser.customQuery<Q>(
       type,
       this.entriesRange,
       param,
-    )) as CustomQueryParserResultTypeMap[Q];
+    );
     const finalResult = processParserResult(parserResult, makeTraceEntry);
     return Promise.resolve(finalResult);
   }
@@ -390,18 +390,18 @@ export class Trace<T> {
     const startEntry =
       start === undefined
         ? this.entriesRange.start
-        : this.clampEntryToSliceBounds(
+        : (this.clampEntryToSliceBounds(
             binarySearchFirstGreaterOrEqual(
               this.getFullTraceTimestamps(),
               start,
             ),
-          ) ?? this.entriesRange.end;
+          ) ?? this.entriesRange.end);
     const endEntry =
       end === undefined
         ? this.entriesRange.end
-        : this.clampEntryToSliceBounds(
+        : (this.clampEntryToSliceBounds(
             binarySearchFirstGreaterOrEqual(this.getFullTraceTimestamps(), end),
-          ) ?? this.entriesRange.end;
+          ) ?? this.entriesRange.end);
     const entries: EntriesRange = {
       start: startEntry,
       end: endEntry,

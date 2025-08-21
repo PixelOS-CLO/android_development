@@ -44,8 +44,10 @@ import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {Operation} from 'tree_node/operation';
 import {PropertiesProvider} from 'tree_node/properties_provider';
 import {PropertiesProviderBuilder} from 'tree_node/properties_provider_builder';
-import {PropertyFormatter} from 'tree_node/property_formatter';
-import {PropertyTreeNode} from 'tree_node/property_tree_node';
+import {
+  PropertyTreeNode,
+  PropertyFormatter,
+} from 'tree_node/property_tree_node';
 import {SetFormatters} from 'viewers/operations/set_formatters';
 
 export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
@@ -119,7 +121,7 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
     const columns = ParserTransitions.EAGER_COLUMNS.map(
       (column) => `transitions.${column}`,
     ).join(', ');
-    const sql = `SELECT ${columns} FROM ${this.getTableName()} as transitions;`;
+    const sql = `SELECT ${columns} FROM ${this.getTableName()} as transitions ORDER BY transitions.ts;`;
     return this.makeHierarchyTrees(sql);
   }
 
