@@ -32,6 +32,12 @@ import {Parser} from 'trace_api/parser';
 import {TRACE_INFO} from 'trace_api/trace_info';
 import {TraceEntryTypeMap, TraceType} from 'trace_api/trace_type';
 
+/**
+ * A collection of parsers loaded from user-provided files.
+ *
+ * The collection can be updated with new parsers. When this happens, the collection tries to
+ * filter out parsers with old data that would produce a confusing visualization.
+ */
 export class LoadedParsers {
   static readonly MAX_ALLOWED_TIME_GAP_BETWEEN_TRACES_NS = BigInt(
     5 * TIME_UNIT_TO_NANO.m,
@@ -65,6 +71,7 @@ export class LoadedParsers {
     );
     legacyParsers = this.filterOutLegacyParsersWithOldData(legacyParsers);
     legacyParsers = this.filterScreenshotParsersIfRequired(legacyParsers);
+    legacyParsers = this.filterEventlogParsersIfRequired(legacyParsers);
 
     this.addLegacyParsers(legacyParsers);
   }
@@ -393,6 +400,25 @@ export class LoadedParsers {
       (fileAndParser) =>
         fileAndParser.parser.getTraceType() !== TraceType.SCREENSHOT,
     );
+  }
+
+  private filterEventlogParsersIfRequired(
+    newLegacyParsers: FileAndParser[],
+  ): FileAndParser[] {
+    const hasCujParsers = this.perfettoParsers.some(
+      (entry) => entry.parser.getTraceType() === TraceType.CUJS,
+    );
+    if (!hasCujParsers) {
+      return newLegacyParsers;
+    }
+    this.legacyParsers.forEach((fileAndParser) => {
+      if (fileAndParser.parser.getTraceType() === TraceType.EVENT_LOG) {
+        this.remove(fileAndParser.parser);
+      }
+    });
+    return newLegacyParsers.filter((fileAndParser) => {
+      return fileAndParser.parser.getTraceType() !== TraceType.EVENT_LOG;
+    });
   }
 
   private filterOutParsersWithoutOffsetsIfRequired(

@@ -18,6 +18,7 @@ import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {Analytics} from 'logging/analytics';
 import {ProgressListener} from 'messaging/progress_listener';
 import {InvalidPerfettoTrace} from 'messaging/user_warnings';
+import {ParserCujs} from 'parsers/events/perfetto/parser_cujs';
 import {ParserKeyEvent} from 'parsers/input/perfetto/parser_key_event';
 import {ParserMotionEvent} from 'parsers/input/perfetto/parser_motion_event';
 import {ParserInputMethodClients} from 'parsers/input_method/perfetto/parser_input_method_clients';
@@ -25,6 +26,7 @@ import {ParserInputMethodManagerService} from 'parsers/input_method/perfetto/par
 import {ParserInputMethodService} from 'parsers/input_method/perfetto/parser_input_method_service';
 import {ParserProtolog} from 'parsers/protolog/perfetto/parser_protolog';
 import {ParserSurfaceFlinger} from 'parsers/surface_flinger/perfetto/parser_surface_flinger';
+import {TraceGeometryData} from 'parsers/trace_geometry_data';
 import {ParserTransactions} from 'parsers/transactions/perfetto/parser_transactions';
 import {ParserTransitions} from 'parsers/transitions/perfetto/parser_transitions';
 import {ParserViewCapture} from 'parsers/view_capture/perfetto/parser_view_capture';
@@ -53,6 +55,7 @@ export class ParserFactory {
     ParserWindowManager,
     ParserMotionEvent,
     ParserKeyEvent,
+    ParserCujs,
   ];
   private static readonly CHUNK_SIZE_BYTES = 50 * 1024 * 1024;
   private static readonly NO_ENTRIES_ERROR_REGEX =
@@ -78,6 +81,13 @@ export class ParserFactory {
     );
 
     await this.processGeometryTables(traceProcessor);
+    let traceGeometryData: TraceGeometryData | undefined;
+    try {
+      traceGeometryData = new TraceGeometryData(traceProcessor);
+      await traceGeometryData.fetchAndBuild();
+    } catch (e) {
+      traceGeometryData = undefined;
+    }
 
     const parsers: Array<Parser<object>> = [];
     let hasFoundParser = false;
@@ -89,6 +99,7 @@ export class ParserFactory {
           traceFile,
           traceProcessor,
           timestampConverter,
+          traceGeometryData,
         );
         await parser.parse();
         if (parser instanceof ParserViewCapture) {
@@ -114,6 +125,8 @@ export class ParserFactory {
       if (errors.length === 0) {
         errors.push('Perfetto trace has no Winscope trace entries');
       }
+    }
+    if (errors.length > 0) {
       UserNotifier.add(
         new InvalidPerfettoTrace(traceFile.getDescriptor(), errors),
       );

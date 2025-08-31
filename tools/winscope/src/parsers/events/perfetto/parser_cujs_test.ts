@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,28 +19,27 @@ import {
   TimestampConverterUtils,
   timestampEqualityTester,
 } from 'common/time/test_utils';
-import {getTracesParser} from 'test/unit/fixture_utils';
+import {getPerfettoParser} from 'test/unit/fixture_utils';
 import {PropertyTreeBuilder} from 'test/unit/property_tree_builder';
 import {
-  CUJ_TYPE_FORMATTER,
   DEFAULT_PROPERTY_FORMATTER,
   TIMESTAMP_NODE_FORMATTER,
 } from 'trace/formatters';
 import {CoarseVersion} from 'trace_api/coarse_version';
 import {Parser} from 'trace_api/parser';
 import {TraceType} from 'trace_api/trace_type';
-import {PropertyTreeNode} from 'tree_node/property_tree_node';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertySource} from 'tree_node/property_tree_node';
 
-describe('TracesParserCujs', () => {
-  let parser: Parser<PropertyTreeNode>;
+describe('ParserCujs', () => {
+  let parser: Parser<HierarchyTreeNode>;
 
   beforeAll(async () => {
     jasmine.addCustomEqualityTester(timestampEqualityTester);
-    parser = (
-      await getTracesParser([
-        'traces/elapsed_and_real_timestamp/eventlog.winscope',
-      ])
-    ).tracesParser as Parser<PropertyTreeNode>;
+    parser = (await getPerfettoParser(
+      TraceType.CUJS,
+      'traces/perfetto/cujs.perfetto-trace',
+    )) as Parser<HierarchyTreeNode>;
   });
 
   it('has expected trace type', () => {
@@ -48,27 +47,24 @@ describe('TracesParserCujs', () => {
   });
 
   it('has expected coarse version', () => {
-    expect(parser.getCoarseVersion()).toEqual(CoarseVersion.LEGACY);
+    expect(parser.getCoarseVersion()).toEqual(CoarseVersion.LATEST);
   });
 
   it('has expected descriptors', () => {
-    expect(parser.getDescriptors()).toEqual(['eventlog.winscope']);
+    expect(parser.getDescriptors()).toEqual(['cujs.perfetto-trace']);
   });
 
   it('provides timestamps', () => {
     const expected = [
-      TimestampConverterUtils.makeRealTimestamp(1681207048025446000n),
-      TimestampConverterUtils.makeRealTimestamp(1681207048025551000n),
-      TimestampConverterUtils.makeRealTimestamp(1681207048025580000n),
+      TimestampConverterUtils.makeRealTimestamp(1754580961363780030n),
+      TimestampConverterUtils.makeRealTimestamp(1754580962747188031n),
+      TimestampConverterUtils.makeRealTimestamp(1754580962769690133n),
     ];
-
-    const timestamps = assertDefined(parser.getTimestamps());
-    expect(timestamps.length).toEqual(16);
-    expect(timestamps.slice(0, 3)).toEqual(expected);
+    expect(assertDefined(parser.getTimestamps())).toEqual(expected);
   });
 
   it('contains parsed CUJ events', async () => {
-    const entry = await parser.getEntry(2);
+    const entries = await parser.getAllEntries();
 
     const expected = new PropertyTreeBuilder()
       .setRootId('CujTrace')
@@ -77,14 +73,15 @@ describe('TracesParserCujs', () => {
       .setChildren([
         {
           name: 'cujType',
-          value: 66,
-          formatter: CUJ_TYPE_FORMATTER,
+          value: 'LAUNCHER_APP_CLOSE_TO_HOME',
+          formatter: DEFAULT_PROPERTY_FORMATTER,
+          source: PropertySource.TP,
         },
         {
-          name: 'startTimestamp',
+          name: 'ts',
           value:
             TimestampConverterUtils.TIMESTAMP_CONVERTER.makeTimestampFromNs(
-              1681207048025580000n,
+              1754580962747188031n,
             ),
           formatter: TIMESTAMP_NODE_FORMATTER,
         },
@@ -92,14 +89,20 @@ describe('TracesParserCujs', () => {
           name: 'endTimestamp',
           value:
             TimestampConverterUtils.TIMESTAMP_CONVERTER.makeTimestampFromNs(
-              1681207048643085000n,
+              1754580963548041327n,
             ),
           formatter: TIMESTAMP_NODE_FORMATTER,
         },
-        {name: 'canceled', value: true, formatter: DEFAULT_PROPERTY_FORMATTER},
+        {
+          name: 'canceled',
+          value: false,
+          source: PropertySource.TP,
+          formatter: DEFAULT_PROPERTY_FORMATTER,
+        },
       ])
       .build();
+    expected.setIsRoot(true);
 
-    expect(entry).toEqual(expected);
+    expect(await entries[1]?.getAllProperties()).toEqual(expected);
   });
 });
