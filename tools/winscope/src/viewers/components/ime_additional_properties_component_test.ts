@@ -20,7 +20,7 @@ import {MatDividerModule} from '@angular/material/divider';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {DOMTestHelper} from 'test/unit/dom_test_utils';
-import {TreeNodeUtils} from 'test/unit/tree_node_utils';
+import {makeHierarchyNode, makePropertyNode} from 'test/unit/tree_node_utils';
 import {ImeAdditionalProperties} from 'viewers/common/ime_additional_properties';
 import {ViewerEvents} from 'viewers/common/viewer_events';
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
@@ -91,7 +91,7 @@ describe('ImeAdditionalPropertiesComponent', () => {
     const button = dom.get('.ime-container-button');
     button.checkClassName('selected', false);
     button.click();
-    expect(component.highlightedItem).toEqual('123');
+    expect(component.highlightedItem).toBe('123');
     button.checkClassName('selected', true);
   });
 
@@ -99,7 +99,7 @@ describe('ImeAdditionalPropertiesComponent', () => {
     const button = dom.get('.input-method-surface-button');
     button.checkClassName('selected', false);
     button.click();
-    expect(component.highlightedItem).toEqual('456');
+    expect(component.highlightedItem).toBe('456');
     button.checkClassName('selected', true);
   });
 
@@ -119,7 +119,7 @@ describe('ImeAdditionalPropertiesComponent', () => {
     const button = dom.get('.ime-control-target-button');
     button.checkClassName('selected', false);
     button.click();
-    expect(component.additionalPropertieTreeName).toEqual('Ime Control Target');
+    expect(component.additionalPropertieTreeName).toBe('Ime Control Target');
     button.checkClassName('selected', true);
   });
 
@@ -154,7 +154,7 @@ describe('ImeAdditionalPropertiesComponent', () => {
             focusedWindow: undefined,
             focusedActivity: undefined,
             isInputMethodWindowVisible: false,
-            imeControlTarget: TreeNodeUtils.makePropertyNode(
+            imeControlTarget: makePropertyNode(
               'DisplayContent.inputMethodControlTarget',
               'inputMethodControlTarget',
               null,
@@ -163,7 +163,7 @@ describe('ImeAdditionalPropertiesComponent', () => {
             imeLayeringTarget: undefined,
             imeInsetsSourceProvider: undefined,
           },
-          hierarchyTree: TreeNodeUtils.makeHierarchyNode({
+          hierarchyTree: makeHierarchyNode({
             name: 'wmStateProto',
           }),
         },

@@ -28,9 +28,9 @@ import {makeSpyRowIterator} from 'trace_processor/test_utils';
 import {TraceProcessor} from 'trace_processor/trace_processor';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {TraceRect} from 'tree_node/trace_rect';
+import {TraceRectBuilder} from 'tree_node/trace_rect_builder';
 import {EntryHierarchyTreeFactory} from './entry_hierarchy_tree_factory';
 import {LayerRects, RectExtractor} from './rect_extractor';
-import {TraceRectBuilder} from 'tree_node/trace_rect_builder';
 
 describe('EntryHierarchyTreeFactory', () => {
   const factory = new EntryHierarchyTreeFactory();
@@ -260,7 +260,7 @@ describe('EntryHierarchyTreeFactory', () => {
         createMapWithoutLayerRects(defaultSnapshotId),
       );
 
-      expect(tree.getAllChildren().length).toEqual(1);
+      expect(tree.getAllChildren().length).toBe(1);
       expect(tree.getChildByName('LayerWithMissingId')).toBeUndefined();
       expect(tree.getChildByName(layerName1)).toBeDefined();
       expect(tree.getWarnings()).toEqual([new MissingLayerIds()]);
@@ -280,7 +280,7 @@ describe('EntryHierarchyTreeFactory', () => {
       const tree = makeEntryHierarchyTree(
         createMapWithoutLayerRects(defaultSnapshotId),
       );
-      expect(tree.getAllChildren().length).toEqual(2);
+      expect(tree.getAllChildren().length).toBe(2);
       expect(tree.getChildByName(layerName1)).toBeDefined();
       expect(tree.getChildByName(layerName1 + ' duplicate(1)')).toBeDefined();
       expect(tree.getWarnings()).toEqual([new DuplicateLayerIds([1])]);

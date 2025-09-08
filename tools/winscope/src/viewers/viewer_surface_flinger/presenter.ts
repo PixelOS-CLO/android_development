@@ -20,7 +20,7 @@ import {
   assertNumberOrUndefined,
   assertString,
 } from 'common/assert_utils';
-import {PersistentStoreProxy} from 'common/store/persistent_store_proxy';
+import {createPersistentStoreProxy} from 'common/store/persistent_store_proxy';
 import {Store} from 'common/store/store';
 import {
   TabbedViewSwitchRequest,
@@ -65,6 +65,7 @@ import {
 } from 'viewers/components/rects/rect_spec';
 import {UiRect} from 'viewers/components/rects/ui_rect';
 import {UiData} from './ui_data';
+import {PlaybackPresenter} from 'viewers/common/playback/playback_presenter';
 
 export class Presenter extends AbstractHierarchyViewerPresenter<UiData> {
   static readonly DENYLIST_PROPERTY_NAMES = [
@@ -75,7 +76,7 @@ export class Presenter extends AbstractHierarchyViewerPresenter<UiData> {
   ];
 
   protected override hierarchyPresenter = new HierarchyPresenter(
-    PersistentStoreProxy.new<UserOptions>(
+    createPersistentStoreProxy<UserOptions>(
       'SfHierarchyOptions',
       {
         showDiff: {
@@ -106,7 +107,7 @@ export class Presenter extends AbstractHierarchyViewerPresenter<UiData> {
     this.getEntryFormattedTimestamp,
   );
   protected override rectsPresenter = new RectsPresenter(
-    PersistentStoreProxy.new<UserOptions>(
+    createPersistentStoreProxy<UserOptions>(
       'SfRectsOptions',
       {
         ignoreRectShowState: {
@@ -133,7 +134,7 @@ export class Presenter extends AbstractHierarchyViewerPresenter<UiData> {
     convertRectIdToLayerorDisplayName,
   );
   protected override propertiesPresenter = new PropertiesPresenter(
-    PersistentStoreProxy.new<UserOptions>(
+    createPersistentStoreProxy<UserOptions>(
       'SfPropertyOptions',
       {
         showDiff: {
@@ -156,6 +157,10 @@ the default for its data type.`,
     undefined,
     ['a', 'type'],
   );
+  protected override playbackPresenter = new PlaybackPresenter((event) => {
+    this.hierarchyPresenter.setShowDiffAvailability(true);
+    return this.emitWinscopeEvent(event);
+  });
   protected override multiTraceType = undefined;
 
   private viewCapturePackageNames: string[] | undefined;
@@ -253,8 +258,26 @@ the default for its data type.`,
     await this.setInitialWmActiveDisplay(event);
   }
 
+  protected override async playPlayback(
+    trace: Trace<HierarchyTreeNode>,
+    currentPosition: number,
+    isReverse: boolean,
+  ) {
+    this.hierarchyPresenter.setShowDiffAvailability(false);
+    this.playbackPresenter.play(trace, currentPosition, isReverse);
+  }
+
+  protected override async pausePlayback(): Promise<void> {
+    this.hierarchyPresenter.setShowDiffAvailability(true);
+    this.playbackPresenter.pause();
+  }
+
   protected override async processDataAfterPositionUpdate(): Promise<void> {
-    this.updateCuratedProperties();
+    if (this.playbackPresenter.isPlaying()) {
+      this.hierarchyPresenter.setShowDiffAvailability(false);
+    } else {
+      this.updateCuratedProperties();
+    }
   }
 
   protected override refreshUIData() {

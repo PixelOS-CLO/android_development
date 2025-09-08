@@ -13,12 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// TODO(b/311642700): Not google3 compatible
-import {
-  decode as protobufBase64Decode,
-  encode as protobufBase64Encode,
-  length as protobufBase64Length,
-} from '@protobufjs/base64';
 import {assertTrue} from './assert_utils';
 
 /**
@@ -36,32 +30,6 @@ export function parseBigIntStrippingUnit(s: string): bigint {
     throw new Error(`Cannot parse '${s}' as bigint`);
   }
   return BigInt(match[1]);
-}
-
-/**
- * Converts a camelCase string to snake_case.
- *
- * @param s The string to convert.
- * @return The converted string.
- */
-export function convertCamelToSnakeCase(s: string): string {
-  const result: string[] = [];
-
-  let prevChar: string | undefined;
-  for (const currChar of s) {
-    const prevCharCouldBeWordEnd =
-      prevChar && (isDigit(prevChar) || isLowerCase(prevChar));
-    const currCharCouldBeWordStart = isUpperCase(currChar);
-    if (prevCharCouldBeWordEnd && currCharCouldBeWordStart) {
-      result.push('_');
-      result.push(currChar.toLowerCase());
-    } else {
-      result.push(currChar);
-    }
-    prevChar = currChar;
-  }
-
-  return result.join('');
 }
 
 /**
@@ -112,28 +80,6 @@ export function isDigit(char: string): boolean {
 }
 
 /**
- * Checks if a character is a lowercase letter.
- *
- * @param char The character to check.
- * @return True if the character is a lowercase letter, false otherwise.
- */
-export function isLowerCase(char: string): boolean {
-  assertTrue(char.length === 1, () => 'Input must be a single character');
-  return isAlpha(char) && char === char.toLowerCase();
-}
-
-/**
- * Checks if a character is an uppercase letter.
- *
- * @param char The character to check.
- * @return True if the character is an uppercase letter, false otherwise.
- */
-export function isUpperCase(char: string): boolean {
-  assertTrue(char.length === 1, () => 'Input must be a single character');
-  return isAlpha(char) && char === char.toUpperCase();
-}
-
-/**
  * Checks if a string is blank.
  *
  * @param str The string to check.
@@ -160,11 +106,7 @@ export function isNumeric(str: string): boolean {
  * @return The encoded string.
  */
 export function binaryEncode(str: string): Uint8Array {
-  const data = new Uint8Array(str.length);
-  for (let i = 0; i < str.length; ++i) {
-    data[i] = str.charCodeAt(i);
-  }
-  return data;
+  return Uint8Array.from(str, (c) => c.charCodeAt(0));
 }
 
 /**
@@ -174,11 +116,7 @@ export function binaryEncode(str: string): Uint8Array {
  * @return The decoded string.
  */
 export function binaryDecode(buf: Uint8Array): string {
-  let str = '';
-  for (let i = 0; i < buf.length; i++) {
-    str += String.fromCharCode(buf[i]);
-  }
-  return str;
+  return String.fromCharCode(...buf);
 }
 
 /**
@@ -208,10 +146,9 @@ export function utf8Decode(data: Uint8Array): string {
  * @return The encoded string.
  */
 export function hexEncode(bytes: Uint8Array): string {
-  return bytes.reduce(
-    (prev, curr) => prev + ('0' + curr.toString(16)).slice(-2),
-    '',
-  );
+  return Array.from(bytes)
+    .map((byte) => ('0' + byte.toString(16)).slice(-2))
+    .join('');
 }
 
 /**
@@ -222,11 +159,13 @@ export function hexEncode(bytes: Uint8Array): string {
  */
 export function base64Decode(str: string): Uint8Array {
   // if the string is in base64url format, convert to base64
-  const b64 = str.replace('-', '+').replace('_', '/');
-  const arr = new Uint8Array(protobufBase64Length(b64));
-  const written = protobufBase64Decode(b64, arr, 0);
-  assertTrue(written === arr.length);
-  return arr;
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const binaryStr = atob(b64);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
+  return bytes;
 }
 
 /**
@@ -236,7 +175,10 @@ export function base64Decode(str: string): Uint8Array {
  * @return The encoded string.
  */
 export function base64Encode(buffer: Uint8Array): string {
-  return protobufBase64Encode(buffer, 0, buffer.length);
+  const binaryStr = Array.from(buffer)
+    .map((c) => String.fromCharCode(c))
+    .join('');
+  return btoa(binaryStr);
 }
 
 function capitalizeFirstCharIfAlpha(word: string): string {

@@ -21,8 +21,8 @@ import {TracePositionUpdate} from 'messaging/winscope_event';
 import {getImeTraceEntries} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {makeEmptyTrace} from 'test/unit/trace_utils';
-import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {UiTreeNodeUtils} from 'test/unit/ui_tree_node_utils';
+import {makePropertyNode} from 'test/unit/tree_node_utils';
+import {treeNodeEqualityTester} from 'test/unit/ui_tree_node_utils';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
 import {ImeTraceType, TraceType} from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
@@ -166,14 +166,14 @@ the default for its data type.`,
 
   override executePropertiesChecksAfterPositionUpdate(uiData: UiDataHierarchy) {
     const trees = assertDefined(uiData.hierarchyTrees);
-    expect(trees.length).toEqual(this.numberOfNestedChildren);
+    expect(trees.length).toBe(this.numberOfNestedChildren);
   }
 
   override executePropertiesChecksAfterSecondPositionUpdate(
     uiData: UiDataHierarchy,
   ) {
     const trees = assertDefined(uiData.hierarchyTrees);
-    expect(trees.length).toEqual(1);
+    expect(trees.length).toBe(1);
   }
 
   override executeSpecializedTests() {
@@ -190,7 +190,7 @@ the default for its data type.`,
       let userNotifierChecker: UserNotifierChecker;
 
       beforeAll(async () => {
-        jasmine.addCustomEqualityTester(UiTreeNodeUtils.treeNodeEqualityTester);
+        jasmine.addCustomEqualityTester(treeNodeEqualityTester);
         userNotifierChecker = new UserNotifierChecker();
         Presenter = this.PresenterInputMethod;
         imeTraceType = this.imeTraceType;
@@ -215,7 +215,7 @@ the default for its data type.`,
         );
         const selectedItem = {
           name: '',
-          treeNode: TreeNodeUtils.makePropertyNode('', '', null),
+          treeNode: makePropertyNode('', '', null),
         };
         element.dispatchEvent(
           new CustomEvent(ViewerEvents.AdditionalPropertySelected, {
@@ -276,7 +276,7 @@ the default for its data type.`,
 
         await presenter.onHighlightedIdChange(selectedTree.id);
         expect(uiData.propertiesTree).toEqual(propertiesTree);
-        expect(uiData.highlightedItem).toEqual('');
+        expect(uiData.highlightedItem).toBe('');
       });
 
       if (this.getPropertiesTree) {

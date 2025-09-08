@@ -39,7 +39,7 @@ import {RectShowState} from 'viewers/common/rect_show_state';
 import {TableProperties} from 'viewers/common/table_properties';
 import {TextFilter} from 'viewers/common/text_filter';
 import {UiHierarchyTreeNode} from 'viewers/common/ui_hierarchy_tree_node';
-import {UiTreeUtils} from 'viewers/common/ui_tree_utils';
+import {isHighlighted} from 'viewers/common/ui_tree_utils';
 import {UserOptions} from 'viewers/common/user_options';
 import {ViewerEvents} from 'viewers/common/viewer_events';
 import {CollapsibleSectionTitleComponent} from 'viewers/components/collapsible_section_title_component';
@@ -86,58 +86,67 @@ import {viewerCardInnerStyle} from './styles/viewer_card.styles';
         [traceType]="dependencies[0]"
         [logCallback]="Analytics.Navigation.logHierarchySettingsChanged">
       </user-options>
-      <ng-container *ngIf="getWarnings().length > 0">
-        <span
-          *ngFor="let warning of getWarnings()"
-          class="mat-body-1 warning"
-          [matTooltip]="warning.getMessage()"
-          [matTooltipDisabled]="disableTooltip(warningEl)">
-          <mat-icon class="warning-icon"> warning </mat-icon>
-          <span class="warning-message text-no-overflow" #warningEl>{{warning.getMessage()}}</span>
-        </span>
-      </ng-container>
-      <properties-table
-        *ngIf="tableProperties"
-        class="properties-table"
-        [properties]="tableProperties"></properties-table>
-      <div
-        *ngIf="pinnedItems.length > 0"
-        class="pinned-items"
-        [style.padding]="getPinnedItemsPadding()">
-        <tree-node
-          *ngFor="let pinnedItem of pinnedItems"
-          class="node full-opacity"
-          [class]="pinnedItem.getDiff()"
-          [class.selected]="isHighlighted(pinnedItem, highlightedItem)"
-          [class.clickable]="true"
-          [node]="pinnedItem"
-          [isPinned]="true"
-          [isInPinnedSection]="true"
-          [isSelected]="isHighlighted(pinnedItem, highlightedItem)"
-          (pinNodeChange)="onPinnedItemChange($event)"
-          (click)="onPinnedNodeClick($event, pinnedItem)"></tree-node>
-      </div>
+      @if (getWarnings().length > 0) {
+        <div>
+          @for (warning of getWarnings(); track warning) {
+            <span
+              class="mat-body-1 warning"
+              [matTooltip]="warning.getMessage()"
+              [matTooltipDisabled]="disableTooltip(warningEl)">
+              <mat-icon class="warning-icon"> warning </mat-icon>
+              <span class="warning-message text-no-overflow" #warningEl>{{warning.getMessage()}}</span>
+            </span>
+          }
+        </div>
+      }
+      @if (tableProperties) {
+        <properties-table
+          class="properties-table"
+          [properties]="tableProperties"></properties-table>
+      }
+      @if (pinnedItems.length > 0) {
+        <div
+          class="pinned-items"
+          [style.padding]="getPinnedItemsPadding()">
+          @for (pinnedItem of pinnedItems; track pinnedItem) {
+            <tree-node
+              class="node full-opacity"
+              [class]="pinnedItem.getDiff()"
+              [class.selected]="isHighlighted(pinnedItem, highlightedItem)"
+              [class.clickable]="true"
+              [node]="pinnedItem"
+              [isPinned]="true"
+              [isInPinnedSection]="true"
+              [isSelected]="isHighlighted(pinnedItem, highlightedItem)"
+              (pinNodeChange)="onPinnedItemChange($event)"
+              (click)="onPinnedNodeClick($event, pinnedItem)"></tree-node>
+          }
+        </div>
+      }
     </div>
     <mat-divider></mat-divider>
-    <span
-      class="mat-body-1 placeholder-text"
-      *ngIf="showPlaceholderText()">{{ getPlaceholderText() }}</span>
+    @if (showPlaceholderText()) {
+      <span
+        class="mat-body-1 placeholder-text"
+        >{{ getPlaceholderText() }}</span>
+    }
     <div class="hierarchy-content tree-wrapper">
       <div class="trees">
-        <tree-view
-          *ngFor="let tree of trees; trackBy: trackById"
-          class="tree"
-          [node]="tree"
-          [isFlattened]="isFlattened()"
-          [useStoredExpandedState]="true"
-          [highlightedItem]="highlightedItem"
-          [pinnedItems]="pinnedItems"
-          [itemsClickable]="true"
-          [rectIdToShowState]="rectIdToShowState"
-          [store]="treeStorage"
-          (highlightedChange)="onHighlightedItemChange($event)"
-          (pinnedItemChange)="onPinnedItemChange($event)"
-          (selectedTreeChange)="onSelectedTreeChange($event)"></tree-view>
+        @for (tree of trees; track trackById($index, tree)) {
+          <tree-view
+            class="tree"
+            [node]="tree"
+            [isFlattened]="isFlattened()"
+            [useStoredExpandedState]="true"
+            [highlightedItem]="highlightedItem"
+            [pinnedItems]="pinnedItems"
+            [itemsClickable]="true"
+            [rectIdToShowState]="rectIdToShowState"
+            [store]="treeStorage"
+            (highlightedChange)="onHighlightedItemChange($event)"
+            (pinnedItemChange)="onPinnedItemChange($event)"
+            (selectedTreeChange)="onSelectedTreeChange($event)"></tree-view>
+        }
       </div>
     </div>
   `,
@@ -177,7 +186,7 @@ import {viewerCardInnerStyle} from './styles/viewer_card.styles';
   ],
 })
 export class HierarchyComponent {
-  isHighlighted = UiTreeUtils.isHighlighted;
+  isHighlighted = isHighlighted;
   ViewerEvents = ViewerEvents;
   Analytics = Analytics;
   treeStorage = new InMemoryStorage();

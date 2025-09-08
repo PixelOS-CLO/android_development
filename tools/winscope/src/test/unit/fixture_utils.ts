@@ -15,7 +15,6 @@
  */
 
 import {assertDefined, assertTrue} from 'common/assert_utils';
-import {getTimestampConverter} from 'common/time/test_utils';
 import {TimestampConverter} from 'common/time/timestamp_converter';
 import {FileAndParser} from 'parsers/file_and_parser';
 import {ParserFactory as LegacyParserFactory} from 'parsers/legacy/parser_factory';
@@ -27,6 +26,7 @@ import {
 import {ParserFactory as PerfettoParserFactory} from 'parsers/perfetto/parser_factory';
 import {TracesParserFactory} from 'parsers/traces/traces_parser_factory';
 import {getFixtureFile} from 'test/unit/fixture_file_utils';
+import {getTimestampConverter} from 'test/unit/time_test_helpers';
 import {TraceFile} from 'trace/trace_file';
 import {Parser} from 'trace_api/parser';
 import {Trace} from 'trace_api/trace';
@@ -175,7 +175,7 @@ export async function getTrace<T extends TraceType>(
   }
 
   const perfettoParsers = await getPerfettoParsers(filename);
-  expect(perfettoParsers.length).toEqual(1);
+  expect(perfettoParsers.length).toBe(1);
   expect(perfettoParsers[0].getTraceType()).toEqual(type);
   return new TraceBuilder<T>()
     .setType(type)

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
+import {LegacyParserProvider} from 'test/unit/fixture_utils';
 import {
   getTimestampConverter,
-  TimestampConverterUtils,
+  makeElapsedTimestamp,
   timestampEqualityTester,
-} from 'common/time/test_utils';
-import {LegacyParserProvider} from 'test/unit/fixture_utils';
+} from 'test/unit/time_test_helpers';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {CoarseVersion} from 'trace_api/coarse_version';
 import {CustomQueryType} from 'trace_api/custom_query';
@@ -52,7 +52,7 @@ describe('ParserWindowManagerDump', () => {
   });
 
   it('provides timestamp (always zero)', () => {
-    const expected = [TimestampConverterUtils.makeElapsedTimestamp(0n)];
+    const expected = [makeElapsedTimestamp(0n)];
     expect(parser.getTimestamps()).toEqual(expected);
   });
 
@@ -65,15 +65,13 @@ describe('ParserWindowManagerDump', () => {
       TraceType.WINDOW_MANAGER,
     );
 
-    expect(parser.getTimestamps()).toEqual([
-      TimestampConverterUtils.makeElapsedTimestamp(0n),
-    ]);
+    expect(parser.getTimestamps()).toEqual([makeElapsedTimestamp(0n)]);
   });
 
   it('retrieves trace entry', async () => {
     const entry = await parser.getEntry(0);
     expect(entry).toBeInstanceOf(HierarchyTreeNode);
-    expect(entry.getEagerPropertyByName('focusedApp')?.getValue()).toEqual(
+    expect(entry.getEagerPropertyByName('focusedApp')?.getValue()).toBe(
       'com.google.android.apps.nexuslauncher/.NexusLauncherActivity',
     );
   });
@@ -82,7 +80,7 @@ describe('ParserWindowManagerDump', () => {
     const tokenAndTitles = await trace.customQuery(
       CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE,
     );
-    expect(tokenAndTitles.length).toEqual(73);
+    expect(tokenAndTitles.length).toBe(73);
     expect(tokenAndTitles).toContain({token: 'cab97a6', title: 'Leaf:36:36'});
   });
 });

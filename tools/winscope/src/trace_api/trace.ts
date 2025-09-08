@@ -17,10 +17,11 @@
 import {
   binarySearchFirstGreater,
   binarySearchFirstGreaterOrEqual,
-} from 'common/array_utils';
+} from 'common/typed_array';
 import {assertDefined} from 'common/assert_utils';
+import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
 import {INVALID_TIME_NS, Timestamp} from 'common/time/time';
-import {TimestampUtils} from 'common/time/timestamp_utils';
+import {UserTimestamp} from 'common/time/user_timestamp';
 import {
   CustomQueryParamTypeMap,
   CustomQueryParserResultTypeMap,
@@ -39,7 +40,6 @@ import {
 import {Parser} from './parser';
 import {TRACE_INFO} from './trace_info';
 import {TraceType} from './trace_type';
-import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
 
 export abstract class TraceEntry<T> {
   constructor(
@@ -218,13 +218,32 @@ export class Trace<T> {
 
   async getRangeEntryValues(
     entriesRange: EntriesRange,
-  ): Promise<Array<T | undefined>> {
+  ): Promise<Array<TraceEntryEager<T, T | undefined>>> {
     try {
-      return await this.parser.getRangeOfEntries(entriesRange);
+      const entries = await this.parser.getRangeOfEntries(entriesRange);
+
+      const eagerEntries = entries.map((entryValue, i) => {
+        const absoluteIndex = entriesRange.start + i;
+        return this.createEagerEntry<T | undefined>(absoluteIndex, entryValue);
+      });
+
+      return eagerEntries;
     } catch (e) {
-      const result: Array<Promise<T | undefined>> = [];
-      for (let index = entriesRange.start; index < entriesRange.end; index++) {
-        result.push(this.getEntry(index - this.entriesRange.start).getValue());
+      const result: Array<Promise<TraceEntryEager<T, T | undefined>>> = [];
+      for (
+        let absoluteIndex = entriesRange.start;
+        absoluteIndex < entriesRange.end;
+        absoluteIndex++
+      ) {
+        const entryPromise = this.parser
+          .getEntry(absoluteIndex)
+          .then((entryValue) => {
+            return this.createEagerEntry<T | undefined>(
+              absoluteIndex,
+              entryValue,
+            );
+          });
+        result.push(entryPromise);
       }
       return await Promise.all(result);
     }
@@ -238,16 +257,7 @@ export class Trace<T> {
       index: RelativeEntryIndex,
       value: U,
     ): TraceEntryEager<T, U> => {
-      return this.getEntryInternal(index, (index, timestamp, frames) => {
-        return new TraceEntryEager<T, U>(
-          this.fullTrace,
-          this.parser,
-          index,
-          timestamp,
-          frames,
-          value,
-        );
-      });
+      return this.createEagerEntry(index, value);
     };
 
     const processParserResult = ProcessCustomQueryParserResult[type] as (
@@ -519,13 +529,13 @@ export class Trace<T> {
       if (!firstTs) {
         return false;
       }
-      const firstDate = TimestampUtils.extractDateFromHumanTimestamp(firstTs);
+      const firstDate = new UserTimestamp(firstTs).extractDate();
       if (firstDate) {
-        const lastDate = TimestampUtils.extractDateFromHumanTimestamp(
+        const lastDate = new UserTimestamp(
           this.getEntry(this.lengthEntries - 1)
             .getTimestamp()
             .format(),
-        );
+        ).extractDate();
         return firstDate !== lastDate;
       }
     }
@@ -565,6 +575,19 @@ export class Trace<T> {
       }),
     );
     return makeEntry(absoluteIndex, timestamp, frames);
+  }
+
+  private createEagerEntry<U>(index: number, value: U): TraceEntryEager<T, U> {
+    return this.getEntryInternal(index, (index, timestamp, frames) => {
+      return new TraceEntryEager<T, U>(
+        this.fullTrace,
+        this.parser,
+        index,
+        timestamp,
+        frames,
+        value,
+      );
+    });
   }
 
   private getFullTraceTimestamps(): Timestamp[] {

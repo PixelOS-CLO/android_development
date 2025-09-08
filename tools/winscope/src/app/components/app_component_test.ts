@@ -47,9 +47,8 @@ import {
   NoopAnimationsModule,
 } from '@angular/platform-browser/animations';
 import {assertDefined} from 'common/assert_utils';
-import {Download} from 'common/download';
-import {FileUtils} from 'common/file_utils';
-import {TimestampConverterUtils} from 'common/time/test_utils';
+import {DownloadRequest} from 'common/download';
+import {DOWNLOAD_FILENAME_REGEX} from 'common/file_utils';
 import {
   FailedToInitializeTimelineData,
   NoValidFiles,
@@ -63,6 +62,7 @@ import {
 } from 'messaging/winscope_event';
 import {UserNotifier} from 'services/user_notifier';
 import {DOMTestHelper} from 'test/unit/dom_test_utils';
+import {UTC_CONVERTER} from 'test/unit/time_test_helpers';
 import {waitToBeCalled} from 'test/unit/spy_utils';
 import {TracesBuilder} from 'test/unit/traces_builder';
 import {ViewerSurfaceFlingerComponent} from 'viewers/viewer_surface_flinger/viewer_surface_flinger_component';
@@ -150,10 +150,11 @@ describe('AppComponent', () => {
       'winscope',
       Validators.compose([
         Validators.required,
-        Validators.pattern(FileUtils.DOWNLOAD_FILENAME_REGEX),
+        Validators.pattern(DOWNLOAD_FILENAME_REGEX),
       ]),
     );
-    downloadTracesSpy = spyOn(Download, 'fromUrl');
+    downloadTracesSpy = jasmine.createSpy('fromUrl');
+    component.downloadRequest = (url: string, fileName: string) => { downloadTracesSpy(url, fileName) }; ;
     dom.detectChanges();
   });
 
@@ -162,7 +163,7 @@ describe('AppComponent', () => {
   });
 
   it('has the expected title', () => {
-    expect(component.title).toEqual('winscope');
+    expect(component.title).toBe('winscope');
   });
 
   it('shows permanent header items on homepage', () => {
@@ -263,7 +264,7 @@ describe('AppComponent', () => {
     component.timelineData.initialize(
       new TracesBuilder().build(),
       undefined,
-      TimestampConverterUtils.TIMESTAMP_CONVERTER,
+      UTC_CONVERTER,
     );
 
     await component.onWinscopeEvent(new ViewersUnloaded());
@@ -454,7 +455,7 @@ describe('AppComponent', () => {
 
     const mediatorSpy = spyOn(component.mediator, 'onWinscopeEvent');
     const actions = dialog.findAll('.warning-action-buttons button');
-    expect(actions.length).toEqual(1);
+    expect(actions.length).toBe(1);
     actions[0].click();
     await dom.whenStable();
     expect(eventHandled).toBeTrue();
@@ -464,13 +465,62 @@ describe('AppComponent', () => {
     expect(dom.findInDocument('warning-dialog')).toBeUndefined();
   });
 
+  describe('settings button', () => {
+    let isInsideWinscopeProxyFrameSpy: jasmine.Spy;
+    let getReportedParentOriginSpy: jasmine.Spy;
+    let isSupportedParentOriginSpy: jasmine.Spy;
+
+    beforeEach(() => {
+      isInsideWinscopeProxyFrameSpy = spyOn(
+        component,
+        'isInsideWinscopeProxyFrame',
+      ).and.returnValue(false);
+      getReportedParentOriginSpy = spyOn(
+        component,
+        'getReportedParentOrigin',
+      ).and.returnValue(null);
+      isSupportedParentOriginSpy = spyOn(
+        component,
+        'isSupportedReportedParentOrigin',
+      ).and.returnValue(false);
+    });
+
+    it('is not shown if not in winscope proxy iframe', () => {
+      isInsideWinscopeProxyFrameSpy.and.returnValue(false);
+      dom.detectChanges();
+      expect(dom.find('.iframe-settings')).toBeUndefined();
+    });
+
+    it('is shown if in winscope proxy iframe', () => {
+      isInsideWinscopeProxyFrameSpy.and.returnValue(true);
+      dom.detectChanges();
+      expect(dom.find('.iframe-settings')).toBeTruthy();
+    });
+
+    it('sends message to parent on click', () => {
+      const parentOrigin = 'https://allowed.origin';
+      isInsideWinscopeProxyFrameSpy.and.returnValue(true);
+      getReportedParentOriginSpy.and.returnValue(parentOrigin);
+      isSupportedParentOriginSpy.and.returnValue(true);
+      dom.detectChanges();
+      const postMessageSpy: jasmine.Spy<
+        (message: any, targetOrigin: string, transfer?: Transferable[]) => void
+      > = spyOn(window.parent, 'postMessage');
+      dom.findAndClick('.iframe-settings');
+      expect(postMessageSpy).toHaveBeenCalledOnceWith(
+        {winscopeAction: 'openSettings'},
+        parentOrigin,
+      );
+    });
+  });
+
   function goToTraceView() {
     component.dataLoaded = true;
     component.showDataLoadedElements = true;
     component.timelineData.initialize(
       new TracesBuilder().build(),
       undefined,
-      TimestampConverterUtils.TIMESTAMP_CONVERTER,
+      UTC_CONVERTER,
     );
     dom.detectChanges();
   }

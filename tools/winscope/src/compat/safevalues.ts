@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-import {CommonModule} from '@angular/common';
-import {NgModule} from '@angular/core';
-import {BrowserModule} from '@angular/platform-browser';
-import {AppComponent} from './app_component';
+/**
+ *
+ * @param url Function to sanitize a URL, does nothing in AOSP.
+ *
+ * Used for compatibility only.
+ *
+ * @return the url
+ */
+export function trySanitizeUrl(url: string): string | undefined {
+  if (!url) {
+    return undefined;
+  }
 
-@NgModule({
-  declarations: [AppComponent],
-  imports: [BrowserModule, CommonModule],
-  bootstrap: [AppComponent],
-})
-class AppModule {}
-
-export {AppModule};
+  return url;
+}

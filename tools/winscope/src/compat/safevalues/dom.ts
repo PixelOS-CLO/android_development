@@ -15,6 +15,33 @@
  */
 
 /**
- * The maximum value of a 32-bit unsigned integer.
+ * windowOpen calls {@link Window.open} on the given {@link Window}, given a
+ * target {@link Url}.
+ *
+ * Used for compatibility only.
  */
-export const UINT32_MAX = 4294967295;
+export function windowOpen(
+  win: Window,
+  url: string | undefined,
+  target?: string,
+  features?: string,
+): Window | null {
+  if (!url) {
+    return null;
+  }
+  return win.open(url, target, features);
+}
+
+/**
+ * Sets the Href attribute from the given Url.
+ *
+ * Used for compatibility only.
+ */
+export function setAnchorHref(
+  anchor: HTMLAnchorElement,
+  url: string | undefined,
+): void {
+  if (url !== undefined) {
+    anchor.href = url;
+  }
+}

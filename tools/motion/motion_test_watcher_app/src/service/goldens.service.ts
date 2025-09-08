@@ -19,7 +19,7 @@ import { Inject, Injectable, InjectionToken } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, filter, map, tap } from 'rxjs/operators';
 
-import { MotionGolden, MotionGoldenData, PresubmitTest } from '../model/golden';
+import { GerritLinkPair, MotionGolden, MotionGoldenData, PresubmitTest } from '../model/golden';
 import { RecordedMotion } from '../model/recorded-motion';
 import { Timeline } from '../model/timeline';
 import { VideoSource } from '../model/video-source';
@@ -63,7 +63,7 @@ export class GoldensService {
     );
   }
 
-  getPresubmitTestArtifacts(invocation_id: String): Observable<PresubmitTest[]> {
+  getPresubmitTestArtifacts(invocation_id: string): Observable<PresubmitTest[]> {
     return this.http
       .post<PresubmitTest[]>(
         `${this.serverRoot}/service/presubmit_artifact/list`,
@@ -81,7 +81,7 @@ export class GoldensService {
       );
   }
 
-  getPresubmitTestArtifactsForTestName(resource_id: String): Observable<MotionGolden> {
+  getPresubmitTestArtifactsForTestName(resource_id: string): Observable<MotionGolden> {
     return this.http
       .post<MotionGolden>(
         `${this.serverRoot}/service/fetch_artifact`,
@@ -139,7 +139,7 @@ export class GoldensService {
       );
   }
 
-  switchMode(mode: String): Observable<MotionGolden[] | PresubmitTest[]> {
+  switchMode(mode: string): Observable<MotionGolden[] | PresubmitTest[]> {
     return this.http
       .post<MotionGolden[] | PresubmitTest[]>(
         `${this.serverRoot}/service/mode`,
@@ -205,6 +205,21 @@ export class GoldensService {
         tap((x) => console.log(`Got response as ${x.toString()}`)),
         catchError(this.handleError<string[]>('e'))
       );
+  }
+
+  getMultipleJsonsFromGerritLinks(linkPairs : GerritLinkPair[]) : Observable<MotionGolden[]> {
+    return this.http.post<MotionGolden[]>(`${this.serverRoot}/getMultipleGoldensFromGerrit`,
+      { linkPairs },
+      {
+      headers: {
+            ...this.defaultHeaders,
+            'Content-Type': 'application/json',
+          },
+      }
+    ).pipe(
+      tap((x) => console.log(`Got response as ${x}`)),
+      catchError(this.handleError<MotionGolden[]>('e'))
+    )
   }
 
   getGerritData(leftLink: string, rightLink: string) {
