@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import {FunctionUtils} from 'common/function_utils';
 import {
   ActiveTraceChanged,
   WinscopeEvent,
@@ -33,7 +32,7 @@ export class Presenter {
   private readonly uiData: UiData;
   private readonly traces: Array<Trace<MediaBasedTraceEntry>>;
   private readonly notifyViewCallback: NotifyHierarchyViewCallbackType<UiData>;
-  private emitWinscopeEvent: EmitEvent = FunctionUtils.DO_NOTHING_ASYNC;
+  private emitWinscopeEvent: EmitEvent = () => Promise.resolve();
 
   constructor(
     traces: Array<Trace<MediaBasedTraceEntry>>,

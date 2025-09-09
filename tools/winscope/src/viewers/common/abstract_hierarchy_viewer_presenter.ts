@@ -15,7 +15,6 @@
  */
 
 import {assertDefined} from 'common/assert_utils';
-import {FunctionUtils} from 'common/function_utils';
 import {InMemoryStorage} from 'common/store/in_memory_storage';
 import {parseMap, stringifyMap} from 'common/store/persistent_store_proxy';
 import {Store} from 'common/store/store';
@@ -43,15 +42,17 @@ import {PresetHierarchy, TextFilterValues} from './preset_hierarchy';
 import {RectShowState} from './rect_show_state';
 import {UiDataHierarchy} from './ui_data_hierarchy';
 import {ViewerEvents} from './viewer_events';
+import {PlaybackPresenter} from './playback/playback_presenter';
 
 export type NotifyHierarchyViewCallbackType<UiData> = (uiData: UiData) => void;
 
 export abstract class AbstractHierarchyViewerPresenter<
   UiData extends UiDataHierarchy,
 > {
-  protected emitWinscopeEvent: EmitEvent = FunctionUtils.DO_NOTHING_ASYNC;
+  protected emitWinscopeEvent: EmitEvent = () => Promise.resolve();
   protected overridePropertiesTree: PropertyTreeNode | undefined;
   protected overridePropertiesTreeName: string | undefined;
+  protected playbackPresenter?: PlaybackPresenter;
   protected rectsPresenter?: RectsPresenter;
   protected abstract hierarchyPresenter: HierarchyPresenter;
   protected abstract propertiesPresenter: PropertiesPresenter;
@@ -258,6 +259,28 @@ export abstract class AbstractHierarchyViewerPresenter<
         this.refreshUIData();
       },
     );
+    await event.visit(WinscopeEventType.PLAYBACK_PLAY, async (event) => {
+      if (this.playPlayback && this.trace) {
+        await this.playPlayback(
+          this.trace,
+          event.currentTraceIndex,
+          event.isReverse,
+        );
+      }
+    });
+    await event.visit(WinscopeEventType.PLAYBACK_PAUSE, async () => {
+      if (this.pausePlayback && this.trace) {
+        await this.pausePlayback();
+      }
+    });
+    await event.visit(
+      WinscopeEventType.PLAYBACK_SPEED_CHANGE,
+      async (event) => {
+        if (this.playbackPresenter && this.trace) {
+          this.playbackPresenter.changeSpeed(event.speedValue);
+        }
+      },
+    );
     await this.onViewerSpecificWinscopeEvent(event);
   }
 
@@ -374,7 +397,9 @@ export abstract class AbstractHierarchyViewerPresenter<
     this.rectsPresenter?.applyHierarchyTreesChange(currentHierarchyTrees ?? []);
     this.logFetchComponentData(rectStartTime, 'rects');
 
-    await this.updatePropertiesTree();
+    if (!this.playbackPresenter || !this.playbackPresenter.isPlaying()) {
+      await this.updatePropertiesTree();
+    }
   }
 
   protected async applyHighlightedNodeChange(node: UiHierarchyTreeNode) {
@@ -506,6 +531,12 @@ export abstract class AbstractHierarchyViewerPresenter<
   ): string | undefined;
   protected abstract refreshUIData(): void;
   protected initializeIfNeeded?(event: TracePositionUpdate): Promise<void>;
+  protected playPlayback?(
+    trace: Trace<HierarchyTreeNode>,
+    currentPosition: number,
+    isReverse: boolean,
+  ): Promise<void>;
+  protected pausePlayback?(): Promise<void>;
   protected processDataAfterPositionUpdate?(
     event: TracePositionUpdate,
   ): Promise<void>;

@@ -24,7 +24,7 @@ import {
   TimezoneInfo,
 } from './time';
 import {TIME_UNIT_TO_NANO, TIME_UNITS} from './time_units';
-import {TimestampUtils} from './timestamp_utils';
+import {UserTimestamp} from './user_timestamp';
 import {UTCOffset} from './utc_offset';
 
 // Pre-T traces do not provide real-to-boottime or real-to-monotonic offsets,so
@@ -51,9 +51,7 @@ class RealTimestampFormatter implements TimestampFormatter {
       .replace('Z', '')
       .replace('T', ', ');
     if (type === TimestampFormatType.DROP_DATE) {
-      return assertDefined(
-        TimestampUtils.extractTimeFromHumanTimestamp(formattedTimestamp),
-      );
+      return assertDefined(new UserTimestamp(formattedTimestamp).extractTime());
     }
     return formattedTimestamp;
   }
@@ -89,7 +87,7 @@ const ELAPSED_TIMESTAMP_FORMATTER = new ElapsedTimestampFormatter();
 /**
  * An interface for converting timestamps for parsers.
  */
-export interface ParserTimestampConverter {
+export declare interface ParserTimestampConverter {
   makeTimestampFromRealNs(valueNs: bigint): Timestamp;
   makeTimestampFromMonotonicNs(valueNs: bigint): Timestamp;
   makeTimestampFromBootTimeNs(valueNs: bigint): Timestamp;
@@ -99,8 +97,8 @@ export interface ParserTimestampConverter {
 /**
  * An interface for converting timestamps for UI components.
  */
-export interface ComponentTimestampConverter {
-  makeTimestampFromHuman(timestampHuman: string): Timestamp;
+export declare interface ComponentTimestampConverter {
+  makeTimestampFromHuman(timestampHuman: string | UserTimestamp): Timestamp;
   getUTCOffset(): string;
   makeTimestampFromNs(valueNs: bigint): Timestamp;
   validateHumanInput(timestampHuman: string): boolean;
@@ -109,7 +107,7 @@ export interface ComponentTimestampConverter {
 /**
  * An interface for converting timestamps for remote tools.
  */
-export interface RemoteToolTimestampConverter {
+export declare interface RemoteToolTimestampConverter {
   makeTimestampFromBootTimeNs(valueNs: bigint): Timestamp;
   makeTimestampFromRealNs(valueNs: bigint): Timestamp;
   tryGetBootTimeNs(timestamp: Timestamp): bigint | undefined;
@@ -131,11 +129,23 @@ export class TimestampConverter
   );
   private createdTimestampType: TimestampType | undefined;
 
+  /**
+   * @param timezoneInfo The timezone information to use.
+   * @param realToMonotonicTimeOffsetNs The offset between real and monotonic time.
+   * @param realToBootTimeOffsetNs The offset between real and boottime.
+   * @param utcOffset The UTC offset to use. If set at construction use `initializeUTCOffset`.
+   */
   constructor(
-    private timezoneInfo: TimezoneInfo,
+    private readonly timezoneInfo: TimezoneInfo,
     private realToMonotonicTimeOffsetNs?: bigint,
     private realToBootTimeOffsetNs?: bigint,
-  ) {}
+    utcOffset?: Timestamp,
+  ) {
+    if (utcOffset !== undefined) {
+      this.createdTimestampType = TimestampType.REAL;
+      this.initializeUTCOffset(utcOffset);
+    }
+  }
 
   /**
    * Initializes the UTC offset.
@@ -233,16 +243,19 @@ export class TimestampConverter
    * @param timestampHuman The human-readable string.
    * @return The timestamp.
    */
-  makeTimestampFromHuman(timestampHuman: string): Timestamp {
-    if (TimestampUtils.isHumanElapsedTimeFormat(timestampHuman)) {
-      return this.makeTimestampfromHumanElapsed(timestampHuman);
+  makeTimestampFromHuman(timestampHuman: string | UserTimestamp): Timestamp {
+    let ts: UserTimestamp;
+    if (timestampHuman instanceof UserTimestamp) {
+      ts = timestampHuman;
+    } else {
+      ts = new UserTimestamp(timestampHuman);
+    }
+    if (ts.isHumanElapsedTimeFormat()) {
+      return this.makeTimestampfromHumanElapsed(ts.timestampHuman);
     }
 
-    if (
-      TimestampUtils.isISOFormat(timestampHuman) ||
-      TimestampUtils.isRealDateTimeFormat(timestampHuman)
-    ) {
-      return this.makeTimestampFromHumanReal(timestampHuman);
+    if (ts.isISOFormat() || ts.isRealDateTimeFormat()) {
+      return this.makeTimestampFromHumanReal(ts.timestampHuman);
     }
 
     throw new Error('Invalid timestamp format');
@@ -313,10 +326,11 @@ export class TimestampConverter
    * @return True if the string is valid, false otherwise.
    */
   validateHumanInput(timestampHuman: string, context = this): boolean {
+    const ts = new UserTimestamp(timestampHuman);
     if (context.canMakeRealTimestamps()) {
-      return TimestampUtils.isHumanRealTimestampFormat(timestampHuman);
+      return ts.isHumanRealTimestampFormat();
     }
-    return TimestampUtils.isHumanElapsedTimeFormat(timestampHuman);
+    return ts.isHumanElapsedTimeFormat();
   }
 
   /**
@@ -354,9 +368,10 @@ export class TimestampConverter
   private makeTimestampFromHumanReal(timestampHuman: string): Timestamp {
     // Remove trailing Z if present
     timestampHuman = timestampHuman.replace('Z', '');
+    const ts = new UserTimestamp(timestampHuman);
 
     // Convert to ISO format if required
-    if (TimestampUtils.isRealDateTimeFormat(timestampHuman)) {
+    if (ts.isRealDateTimeFormat()) {
       timestampHuman = timestampHuman.replace(', ', 'T');
     }
 

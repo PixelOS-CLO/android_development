@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 import {assertDefined} from 'common/assert_utils';
-import {
-  TimestampConverterUtils,
-  timestampEqualityTester,
-} from 'common/time/test_utils';
 import {getPerfettoParser} from 'test/unit/fixture_utils';
+import {
+  makeRealTimestamp,
+  timestampEqualityTester,
+} from 'test/unit/time_test_helpers';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {CoarseVersion} from 'trace_api/coarse_version';
 import {CustomQueryType} from 'trace_api/custom_query';
@@ -53,9 +53,9 @@ describe('PerfettoParserWindowManager', () => {
 
   it('provides timestamps', () => {
     const expected = [
-      TimestampConverterUtils.makeRealTimestamp(1719409456335086006n),
-      TimestampConverterUtils.makeRealTimestamp(1719409456922787137n),
-      TimestampConverterUtils.makeRealTimestamp(1719409456929933622n),
+      makeRealTimestamp(1719409456335086006n),
+      makeRealTimestamp(1719409456922787137n),
+      makeRealTimestamp(1719409456929933622n),
     ];
     expect(assertDefined(parser.getTimestamps()).slice(0, 3)).toEqual(expected);
   });
@@ -63,14 +63,14 @@ describe('PerfettoParserWindowManager', () => {
   it('retrieves trace entry', async () => {
     const entry = await parser.getEntry(1);
     expect(entry).toBeInstanceOf(HierarchyTreeNode);
-    expect(entry.id).toEqual('WindowManagerState root');
+    expect(entry.id).toBe('WindowManagerState root');
   });
 
   it('supports WM_WINDOWS_TOKEN_AND_TITLE custom query', async () => {
     const tokenAndTitles = await trace
       .sliceEntries(0, 1)
       .customQuery(CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE);
-    expect(tokenAndTitles.length).toEqual(69);
+    expect(tokenAndTitles.length).toBe(69);
     expect(tokenAndTitles).toContain({token: '86f4c23', title: 'Leaf:36:36'});
   });
 });

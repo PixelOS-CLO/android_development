@@ -15,8 +15,7 @@
  */
 
 import {assertDefined} from 'common/assert_utils';
-import {FunctionUtils} from 'common/function_utils';
-import {PersistentStoreProxy} from 'common/store/persistent_store_proxy';
+import {createPersistentStoreProxy} from 'common/store/persistent_store_proxy';
 import {Store} from 'common/store/store';
 import {TimestampConverter} from 'common/time/timestamp_converter';
 import {
@@ -50,7 +49,7 @@ interface ActiveSearch {
 }
 
 export class Presenter {
-  private emitWinscopeEvent: EmitEvent = FunctionUtils.DO_NOTHING_ASYNC;
+  private emitWinscopeEvent: EmitEvent = () => Promise.resolve();
   private uiData = UiData.createEmpty();
   private activeSearchUid = 0;
   private activeSearches: ActiveSearch[] = [];
@@ -64,7 +63,7 @@ export class Presenter {
     private readonly notifyViewCallback: (uiData: UiData) => void,
     private readonly timestampConverter: TimestampConverter,
   ) {
-    this.savedSearches = PersistentStoreProxy.new<{searches: ListedSearch[]}>(
+    this.savedSearches = createPersistentStoreProxy<{searches: ListedSearch[]}>(
       'savedSearches',
       {searches: []},
       this.storage,

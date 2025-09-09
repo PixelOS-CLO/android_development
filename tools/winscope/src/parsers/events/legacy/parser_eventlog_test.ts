@@ -15,12 +15,12 @@
  */
 
 import {assertDefined} from 'common/assert_utils';
-import {
-  TimestampConverterUtils,
-  timestampEqualityTester,
-} from 'common/time/test_utils';
 import {LegacyParserProvider} from 'test/unit/fixture_utils';
 import {PropertyTreeBuilder} from 'test/unit/property_tree_builder';
+import {
+  makeRealTimestamp,
+  timestampEqualityTester,
+} from 'test/unit/time_test_helpers';
 import {CoarseVersion} from 'trace_api/coarse_version';
 import {Parser} from 'trace_api/parser';
 import {TraceType} from 'trace_api/trace_type';
@@ -49,12 +49,12 @@ describe('ParserEventLog', () => {
     it('has expected timestamps', () => {
       const timestamps = assertDefined(parser.getTimestamps());
 
-      expect(timestamps.length).toEqual(184);
+      expect(timestamps.length).toBe(184);
 
       const expected = [
-        TimestampConverterUtils.makeRealTimestamp(1681207047981157174n),
-        TimestampConverterUtils.makeRealTimestamp(1681207047991161039n),
-        TimestampConverterUtils.makeRealTimestamp(1681207047991310494n),
+        makeRealTimestamp(1681207047981157174n),
+        makeRealTimestamp(1681207047991161039n),
+        makeRealTimestamp(1681207047991310494n),
       ];
       expect(timestamps.slice(0, 3)).toEqual(expected);
     });
@@ -98,12 +98,12 @@ describe('ParserEventLog', () => {
     it('sorts entries to make timestamps monotonically increasing', () => {
       const timestamps = assertDefined(parser.getTimestamps());
 
-      expect(timestamps.length).toEqual(3);
+      expect(timestamps.length).toBe(3);
 
       const expected = [
-        TimestampConverterUtils.makeRealTimestamp(1681207047981157174n),
-        TimestampConverterUtils.makeRealTimestamp(1681207047991161039n),
-        TimestampConverterUtils.makeRealTimestamp(1681207047991310494n),
+        makeRealTimestamp(1681207047981157174n),
+        makeRealTimestamp(1681207047991161039n),
+        makeRealTimestamp(1681207047991310494n),
       ];
       expect(timestamps).toEqual(expected);
     });
