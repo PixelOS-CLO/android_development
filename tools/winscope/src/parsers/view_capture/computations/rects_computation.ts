@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {TraceRect} from 'tree_node/trace_rect';
 import {TraceRectBuilder} from 'tree_node/trace_rect_builder';
@@ -84,8 +84,14 @@ class RectVcFactory {
     return rect;
   }
 }
+/**
+ * A factory for creating rects from a view capture hierarchy tree.
+ */
 export const rectsFactory = new RectVcFactory();
 
+/**
+ * A computation that adds rects to a view capture hierarchy tree.
+ */
 export class RectsComputation {
   private readonly rectsFactory = new RectVcFactory();
   private root: HierarchyTreeNode | undefined;

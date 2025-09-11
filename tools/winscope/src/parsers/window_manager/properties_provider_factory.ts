@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {com} from 'protos/windowmanager/udc/static';
@@ -64,6 +64,9 @@ type WindowContainerChildProto =
   | com.android.server.wm.IWindowContainerChildProto
   | perfetto.protos.IWindowContainerChildProto;
 
+/**
+ * Creates PropertyProvider objects for each container type in a WM trace.
+ */
 export class PropertiesProviderFactory {
   private readonly operationLists: WmOperationLists;
 

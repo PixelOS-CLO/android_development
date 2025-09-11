@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {Timestamp} from 'common/time/time';
 import {AbstractParser} from 'parsers/legacy/abstract_parser';
 import root from 'protos/transitions/udc/json';
@@ -24,6 +24,9 @@ import {TraceType} from 'trace_api/trace_type';
 type TransitionProto = com.android.wm.shell.ITransition;
 type HandlerProto = com.android.wm.shell.IHandlerMapping;
 
+/**
+ * Parser for Shell Transition trace files.
+ */
 export class ParserTransitionsShell extends AbstractParser<
   TransitionProto,
   TransitionProto

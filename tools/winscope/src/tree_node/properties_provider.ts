@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
-import {SetFormatters} from 'viewers/operations/set_formatters';
+import {assertDefined} from 'common/assert';
 import {OperationChain} from './operation_chain';
 import {PropertySource, PropertyTreeNode} from './property_tree_node';
 import {DEFAULT_PROPERTY_TREE_NODE_FACTORY} from './property_tree_node_factory';
 
 export type LazyPropertiesStrategyType = () => Promise<PropertyTreeNode>;
 
+/**
+ * A provider for properties of a tree node.
+ */
 export class PropertiesProvider {
-  private eagerPropertiesRoot: PropertyTreeNode;
   private lazyPropertiesRoot: PropertyTreeNode | undefined;
   private allPropertiesRoot: PropertyTreeNode | undefined;
 
   constructor(
-    eagerPropertiesRoot: PropertyTreeNode,
+    private readonly eagerPropertiesRoot: PropertyTreeNode,
     private readonly lazyPropertiesStrategy:
       | LazyPropertiesStrategyType
       | undefined,
@@ -46,7 +47,6 @@ export class PropertiesProvider {
   }
 
   addEagerProperty(property: PropertyTreeNode) {
-    new SetFormatters().apply(property);
     this.eagerPropertiesRoot.addOrReplaceChild(property);
   }
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined, assertNumber} from 'common/assert_utils';
+import {assertDefined, assertNumber} from 'common/assert';
 import {HierarchyTreeBuilder} from 'parsers/hierarchy_tree_builder';
 import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
@@ -42,13 +42,15 @@ export class HierarchyTreeBuilderSf extends HierarchyTreeBuilder {
       const curr = map.get(layerId);
       if (curr) {
         curr.push(layerNode);
-        layer.addEagerProperty(
+        const formatter = new SetFormatters();
+        const property =
           DEFAULT_PROPERTY_TREE_NODE_FACTORY.makeCalculatedProperty(
             layerProperties.id,
             'isDuplicate',
             true,
-          ),
-        );
+          );
+        formatter.apply(property);
+        layer.addEagerProperty(property);
       } else {
         map.set(layerId, [layerNode]);
       }

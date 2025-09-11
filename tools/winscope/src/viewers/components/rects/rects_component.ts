@@ -41,7 +41,7 @@ import {MatSelectChange, MatSelectModule} from '@angular/material/select';
 import {MatSliderModule} from '@angular/material/slider';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {DomSanitizer} from '@angular/platform-browser';
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {Distance} from 'common/geometry/distance';
 import {PersistentStore} from 'common/store/persistent_store';
 import {getRootUrl} from 'common/window';
@@ -210,7 +210,7 @@ interface CanColor {
               appearance="legacy"
               class="rect-type-toggle"
               [hideSingleSelectionIndicator]="true">
-              @for (spec of allRectSpecs; track spec) {
+              @for (spec of allRectSpecs; track $index) {
                 <mat-button-toggle [value]="spec">
                   <mat-icon
                     [color]="spec === rectSpec ? 'primary' : 'accent'"
@@ -238,7 +238,7 @@ interface CanColor {
                   {{ getSelectTriggerValue() }}
                 </span>
               </mat-select-trigger>
-              @for (display of internalDisplays; track display) {
+              @for (display of internalDisplays; track display.displayId) {
                 <mat-option
                   [value]="display"
                   [matTooltip]="'Display Id: ' + display.displayId"

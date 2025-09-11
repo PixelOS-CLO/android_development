@@ -46,9 +46,8 @@ import {
   BrowserAnimationsModule,
   NoopAnimationsModule,
 } from '@angular/platform-browser/animations';
-import {assertDefined} from 'common/assert_utils';
-import {DownloadRequest} from 'common/download';
-import {DOWNLOAD_FILENAME_REGEX} from 'common/file_utils';
+import {assertDefined} from 'common/assert';
+import {DOWNLOAD_FILENAME_REGEX} from 'common/io';
 import {
   FailedToInitializeTimelineData,
   NoValidFiles,
@@ -61,7 +60,7 @@ import {
   ViewersUnloaded,
 } from 'messaging/winscope_event';
 import {UserNotifier} from 'services/user_notifier';
-import {DOMTestHelper} from 'test/unit/dom_test_utils';
+import {DOMTestHelper} from 'test/unit/dom_test_helpers';
 import {UTC_CONVERTER} from 'test/unit/time_test_helpers';
 import {waitToBeCalled} from 'test/unit/spy_utils';
 import {TracesBuilder} from 'test/unit/traces_builder';
@@ -154,7 +153,9 @@ describe('AppComponent', () => {
       ]),
     );
     downloadTracesSpy = jasmine.createSpy('fromUrl');
-    component.downloadRequest = (url: string, fileName: string) => { downloadTracesSpy(url, fileName) }; ;
+    component.downloadRequest = (url: string, fileName: string) => {
+      downloadTracesSpy(url, fileName);
+    };
     dom.detectChanges();
   });
 

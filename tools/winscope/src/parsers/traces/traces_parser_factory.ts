@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertTrue} from 'common/assert_utils';
+import {assertTrue} from 'common/assert';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {FailedToCreateTracesParser} from 'messaging/user_warnings';
 import {TracesParserCujs} from 'parsers/events/legacy/traces_parser_cujs';
@@ -24,6 +24,9 @@ import {UserNotifier} from 'services/user_notifier';
 import {Parser} from 'trace_api/parser';
 import {Traces} from 'trace_api/traces';
 
+/**
+ * A factory for creating traces parsers.
+ */
 export class TracesParserFactory {
   static readonly PARSERS = [
     TracesParserCujs,

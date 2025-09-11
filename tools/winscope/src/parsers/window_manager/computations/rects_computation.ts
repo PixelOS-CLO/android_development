@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {Computation} from 'tree_node/computation';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {TraceRect} from 'tree_node/trace_rect';
@@ -102,6 +102,9 @@ class RectWmFactory {
   }
 }
 
+/**
+ * A computation that adds rects to a window manager hierarchy tree.
+ */
 export class RectsComputation implements Computation {
   private root: HierarchyTreeNode | undefined;
   private readonly rectsFactory = new RectWmFactory();

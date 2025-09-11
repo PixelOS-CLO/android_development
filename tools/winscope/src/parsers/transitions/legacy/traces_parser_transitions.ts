@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined, assertTrue} from 'common/assert_utils';
+import {assertDefined, assertTrue} from 'common/assert';
 import {getMax} from 'common/bigint_math';
 import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
@@ -29,6 +29,9 @@ import {Traces} from 'trace_api/traces';
 import {PropertyTreeNode} from 'tree_node/property_tree_node';
 import {ParserTransitionsShell} from './parser_transitions_shell';
 
+/**
+ * A parser that processes and merges WM and Shell transition traces.
+ */
 export class TracesParserTransitions extends AbstractTracesParser<PropertyTreeNode> {
   private readonly wmTransitionTrace: Trace<WmTransition> | undefined;
   private readonly shellTransitionTrace: Trace<ShellTransition> | undefined;

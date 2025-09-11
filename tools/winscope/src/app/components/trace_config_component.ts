@@ -39,8 +39,8 @@ import {
 } from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {overlayPanelStyles} from 'app/styles/overlay_panel.styles';
-import {assertDefined} from 'common/assert_utils';
-import {isElementOverflowing} from 'common/dom_utils';
+import {assertDefined} from 'common/assert';
+import {isElementOverflowing} from 'common/dom';
 import {globalConfig} from 'common/global_config';
 import {Store} from 'common/store/store';
 import {
@@ -109,7 +109,7 @@ import {userOptionStyle} from 'viewers/components/styles/user_option.styles';
                     @if (traceConfig[advancedSettingsKey].config.checkboxConfigs.length > 0) {
 <div
                       class="enable-config-opt overlay-panel-section mat-body-1">
-                      @for (checkboxConfig of getSortedConfigs(traceConfig[advancedSettingsKey].config.checkboxConfigs); track checkboxConfig) {
+                      @for (checkboxConfig of getSortedConfigs(traceConfig[advancedSettingsKey].config.checkboxConfigs); track checkboxConfig.key) {
 <mat-checkbox
                         color="primary"
                         class="enable-config"
@@ -123,7 +123,7 @@ import {userOptionStyle} from 'viewers/components/styles/user_option.styles';
                     @if (traceConfig[advancedSettingsKey].config.selectionConfigs.length > 0) {
 <div
                       class="selection-config-opt overlay-panel-section mat-body-1">
-                      @for (selectionConfig of getSortedConfigs(traceConfig[advancedSettingsKey].config.selectionConfigs); track selectionConfig) {
+                      @for (selectionConfig of getSortedConfigs(traceConfig[advancedSettingsKey].config.selectionConfigs); track selectionConfig.key) {
                         <mat-form-field
                           class="config-selection"
                           subscriptSizing="dynamic"

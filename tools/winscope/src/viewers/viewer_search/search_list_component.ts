@@ -21,7 +21,7 @@ import {FormControl} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {isElementOverflowing} from 'common/dom_utils';
+import {isElementOverflowing} from 'common/dom';
 import {ListedSearch} from './ui_data';
 
 @Component({
@@ -40,7 +40,7 @@ import {ListedSearch} from './ui_data';
         {{placeholderText}}
       </span>
     }
-    @for (search of searches; track search) {
+    @for (search of searches; track $index) {
       <div class="listed-search">
         <span
           #searchName
@@ -49,7 +49,7 @@ import {ListedSearch} from './ui_data';
           matTooltipPosition="right"
           [matTooltip]="getTooltip(search)"> {{search.name}} </span>
         <div class="listed-search-date-options">
-          @for (opt of listItemOptions; track opt) {
+          @for (opt of listItemOptions; track opt.name) {
             @if (opt.onClickCallback) {
               <button
                 mat-icon-button

@@ -46,10 +46,10 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {TimelineData} from 'app/timeline_data';
-import {assertDefined} from 'common/assert_utils';
-import {isInputTextField, KeyboardEventKey} from 'common/dom_utils';
+import {assertDefined} from 'common/assert';
+import {isInputTextField, KeyboardEventKey} from 'common/dom';
 import {PersistentStore} from 'common/store/persistent_store';
-import {parseBigIntStrippingUnit} from 'common/string_utils';
+import {parseBigIntStrippingUnit} from 'common/string_helpers';
 import {TimeRange, Timestamp, TimestampFormatType} from 'common/time/time';
 import {Analytics} from 'logging/analytics';
 import {

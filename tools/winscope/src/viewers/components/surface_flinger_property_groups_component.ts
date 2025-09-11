@@ -25,7 +25,7 @@ import {
 import {MatButtonModule} from '@angular/material/button';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {SfCuratedProperties} from 'viewers/common/curated_properties';
 import {UiPropertyTreeNode} from 'viewers/common/ui_property_tree_node';
 import {ViewerEvents} from 'viewers/common/viewer_events';
@@ -64,7 +64,7 @@ import {TransformMatrixComponent} from './transform_matrix_component';
               &ngsp;
               {{ properties.flags }}
             </p>
-            @for (summaryProperty of properties.summary; track summaryProperty) {
+            @for (summaryProperty of properties.summary; track summaryProperty.key) {
               <span class="mat-body-2 summary inline">
                 <span class="mat-body-1" [matTooltip]="summaryProperty.desc" [matTooltipShowDelay]="400">{{ summaryProperty.key }}:</span>
                 @if (summaryProperty.simpleValue) {
@@ -72,7 +72,7 @@ import {TransformMatrixComponent} from './transform_matrix_component';
                 }
                 @if (summaryProperty.layerValues) {
                   &ngsp;
-                  @for (layer of summaryProperty.layerValues; track layer; let i = $index) {
+                  @for (layer of summaryProperty.layerValues; track layer.nodeId; let i = $index) {
                     <button
                       mat-button
                       color="primary"
@@ -224,7 +224,7 @@ import {TransformMatrixComponent} from './transform_matrix_component';
               @if (properties.relativeChildren.length === 0) {
                 none
               } @else {
-                @for (layer of properties.relativeChildren; track layer; let i = $index) {
+                @for (layer of properties.relativeChildren; track layer.nodeId; let i = $index) {
                   <button
                     mat-button
                     color="primary"

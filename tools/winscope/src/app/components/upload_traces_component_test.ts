@@ -25,15 +25,15 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {FilesSource} from 'app/files_source';
 import {TracePipeline} from 'app/trace_pipeline';
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {InMemoryStorage} from 'common/store/in_memory_storage';
 import {
   AppTraceViewRequest,
   AppTraceViewRequestHandled,
   ShowTraceUploadWarning,
 } from 'messaging/winscope_event';
-import {DOMTestHelper} from 'test/unit/dom_test_utils';
-import {getFixtureFile} from 'test/unit/fixture_file_utils';
+import {DOMTestHelper} from 'test/unit/dom_test_helpers';
+import {getFixtureFile} from 'test/unit/io_helpers';
 import {makeZeroTimestamp} from 'test/unit/time_test_helpers';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {Traces} from 'trace_api/traces';

@@ -15,7 +15,7 @@
  */
 
 import {ArrayBufferBuilder} from 'common/buffer';
-import {binaryEncode} from 'common/string_utils';
+import {binaryEncode} from 'common/string_helpers';
 import {
   ProxyTracingErrors,
   ProxyTracingWarnings,
@@ -97,7 +97,9 @@ describe('WdpDeviceConnection', () => {
     });
 
     it('closes active trace stream onDestroy', async () => {
-      spyOn(AdbWebSocketStream.prototype, 'write').and.callFake(() => Promise.resolve());
+      spyOn(AdbWebSocketStream.prototype, 'write').and.callFake(() =>
+        Promise.resolve(),
+      );
       await connection.startTrace(new TraceTarget('', [], '', '', [], true));
       const closeSpy = spyOn(AdbWebSocketStream.prototype, 'close');
       connection.onDestroy();
