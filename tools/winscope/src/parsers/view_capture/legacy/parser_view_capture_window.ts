@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
-import {utf8Encode} from 'common/string_utils';
+import {utf8Encode} from 'common/string_helpers';
 import {Timestamp} from 'common/time/time';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import Long from 'long';
@@ -32,6 +32,9 @@ import {Parser} from 'trace_api/parser';
 import {TraceType} from 'trace_api/trace_type';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 
+/**
+ * A parser for a single window in a legacy ViewCapture trace.
+ */
 export class ParserViewCaptureWindow implements Parser<HierarchyTreeNode> {
   private static readonly PACKAGE_OR_WINDOW_IID = 1;
 

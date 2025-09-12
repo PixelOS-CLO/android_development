@@ -20,23 +20,23 @@ import {
   assertDefined,
   assertString,
   assertStringOrUndefined,
-} from 'common/assert_utils';
+} from 'common/assert';
 import {Rect} from 'common/geometry/rect';
 import {TraceGeometryData} from 'parsers/trace_geometry_data';
 import {TraceRectBuilderFromQueryRow} from 'parsers/trace_rect_builder_from_query_row';
 import {QueryResult, RowIterator} from 'trace_processor/query_result';
 import {TraceRect} from 'tree_node/trace_rect';
 
+/**
+ * Extracts rects from a trace processor query result.
+ */
 export class RectExtractor {
   static extractAllVisibleAndDisplayRects(
     snapshotResult: QueryResult,
     rectsResult: QueryResult,
     traceGeometryData: TraceGeometryData,
-  ) {
-    const allRectsMap = new Map<
-      bigint,
-      {displayRects: TraceRect[]; layerRects: Map<bigint, LayerRects>}
-    >();
+  ): Map<bigint, SnapshotRects> {
+    const allRectsMap = new Map<bigint, SnapshotRects>();
     const currRect = rectsResult.iter({});
     const currSnapshot = snapshotResult.iter({});
     while (currSnapshot.valid()) {
@@ -47,8 +47,8 @@ export class RectExtractor {
         currentId,
         traceGeometryData,
       );
-      // currRect is iterated in extractLayerInputRectsForSnapshot
-      const {rects} = RectExtractor.extractLayerInputRectsForSnapshot(
+      // currRect is iterated in extractLayerRectsForSnapshot
+      const {rects} = RectExtractor.extractLayerRectsForSnapshot(
         currRect,
         currentId,
         traceGeometryData,
@@ -62,7 +62,7 @@ export class RectExtractor {
     return allRectsMap;
   }
 
-  static extractLayerInputRectsForSnapshot(
+  static extractLayerRectsForSnapshot(
     rectIter: RowIterator,
     currSnapshotId: bigint,
     traceGeometryData: TraceGeometryData,
@@ -310,7 +310,18 @@ export class RectExtractor {
   }
 }
 
-export interface LayerRects {
+/**
+ * Rects associated with a layer.
+ */
+export declare interface LayerRects {
   bounds?: TraceRect;
   input?: TraceRect;
+}
+
+/**
+ * Rects associated with a snapshot.
+ */
+export declare interface SnapshotRects {
+  displayRects: TraceRect[];
+  layerRects: Map<bigint, LayerRects>;
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {throwIfMagicNumberDoesNotMatch} from 'parsers/legacy/parsing_utils';
 import root from 'protos/viewcapture/udc/json';
@@ -25,6 +25,9 @@ import {TraceType} from 'trace_api/trace_type';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {ParserViewCaptureWindow} from './parser_view_capture_window';
 
+/**
+ * A parser for legacy ViewCapture traces.
+ */
 export class ParserViewCapture {
   private static readonly ExportedDataProto = root.lookupType(
     'com.android.app.viewcapture.data.ExportedData',

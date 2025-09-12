@@ -14,12 +14,8 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
-import {
-  isElementVisible,
-  isInputTextField,
-  KeyboardEventKey,
-} from 'common/dom_utils';
+import {assertDefined} from 'common/assert';
+import {isElementVisible, isInputTextField, KeyboardEventKey} from 'common/dom';
 import {Timestamp} from 'common/time/time';
 import {Analytics} from 'logging/analytics';
 import {

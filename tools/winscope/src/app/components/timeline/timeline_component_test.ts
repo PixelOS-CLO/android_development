@@ -33,7 +33,7 @@ import {
   MatDrawerContent,
 } from 'app/components/bottomnav/bottom_drawer_component';
 import {TimelineData} from 'app/timeline_data';
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {PersistentStore} from 'common/store/persistent_store';
 import {TimeRange} from 'common/time/time';
 import {
@@ -48,7 +48,7 @@ import {
   TraceSearchRequest,
   WinscopeEvent,
 } from 'messaging/winscope_event';
-import {checkTooltips, DOMTestHelper} from 'test/unit/dom_test_utils';
+import {checkTooltips, DOMTestHelper} from 'test/unit/dom_test_helpers';
 import {makeRealTimestamp, UTC_CONVERTER} from 'test/unit/time_test_helpers';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {makeEmptyTrace} from 'test/unit/trace_utils';

@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+import {makeRect} from './geometry_factory';
 import {TreeNode} from './tree_node';
 
+/**
+ * A node in a property tree.
+ */
 export class PropertyTreeNode extends TreeNode {
   protected formatter: PropertyFormatter | undefined = undefined;
   protected internalIsRoot = false;
@@ -53,8 +57,95 @@ export class PropertyTreeNode extends TreeNode {
 
     return '';
   }
+
+  isEmptyObj(): boolean {
+    if (this.isColor()) {
+      return this.isEmptyColor();
+    }
+
+    if (this.isRect()) {
+      return makeRect(this).isEmpty();
+    }
+
+    return false;
+  }
+
+  isColor(): boolean {
+    return (
+      (this.getChildByName('r') !== undefined &&
+        this.getChildByName('g') !== undefined &&
+        this.getChildByName('b') !== undefined) ||
+      this.getChildByName('a') !== undefined
+    );
+  }
+
+  isRect(): boolean {
+    return (
+      (this.getChildByName('right') !== undefined &&
+        this.getChildByName('bottom') !== undefined) ||
+      (this.getChildByName('left') !== undefined &&
+        this.getChildByName('top') !== undefined)
+    );
+  }
+
+  isBuffer(): boolean {
+    return (
+      this.getChildByName('stride') !== undefined &&
+      this.getChildByName('format') !== undefined
+    );
+  }
+
+  isSize(): boolean {
+    return (
+      this.getAllChildren().length <= 2 &&
+      (this.getChildByName('w') !== undefined ||
+        this.getChildByName('h') !== undefined)
+    );
+  }
+
+  isPosition(): boolean {
+    return (
+      this.getAllChildren().length <= 2 &&
+      (this.getChildByName('x') !== undefined ||
+        this.getChildByName('y') !== undefined)
+    );
+  }
+
+  isRegion(): boolean {
+    const rect = this.getChildByName('rect');
+    return (
+      rect !== undefined &&
+      rect
+        .getAllChildren()
+        .every((innerRect: PropertyTreeNode) => innerRect.isRect())
+    );
+  }
+
+  isMatrix(): boolean {
+    return (
+      !this.getChildByName('type') &&
+      (this.getChildByName('dsdx') !== undefined ||
+        this.getChildByName('dtdx') !== undefined ||
+        this.getChildByName('dsdy') !== undefined ||
+        this.getChildByName('dtdy') !== undefined)
+    );
+  }
+
+  private isEmptyColor(): boolean {
+    const [r, g, b, a] = [
+      this.getChildByName('r')?.getValue() ?? 0,
+      this.getChildByName('g')?.getValue() ?? 0,
+      this.getChildByName('b')?.getValue() ?? 0,
+      this.getChildByName('a')?.getValue() ?? 0,
+    ];
+    if (a === 0) return true;
+    return r < 0 || g < 0 || b < 0;
+  }
 }
 
+/**
+ * The source of a property.
+ */
 export enum PropertySource {
   PROTO,
   DEFAULT,
@@ -62,6 +153,9 @@ export enum PropertySource {
   TP,
 }
 
-export interface PropertyFormatter {
+/**
+ * A formatter for a property tree node.
+ */
+export declare interface PropertyFormatter {
   format(node: PropertyTreeNode): string;
 }

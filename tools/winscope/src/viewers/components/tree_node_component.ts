@@ -26,7 +26,7 @@ import {
 } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {DiffType} from 'viewers/common/diff_type';
 import {UiHierarchyTreeNode} from 'viewers/common/ui_hierarchy_tree_node';
 import {UiPropertyTreeNode} from 'viewers/common/ui_property_tree_node';
@@ -71,7 +71,7 @@ import {PropertyTreeNodeDataViewComponent} from './property_tree_node_data_view_
       </div>
     }
 
-    @if (!showChevron()) {
+    @if (!showChevron() && !isInPinnedSection) {
       <div class="icon-wrapper leaf-node-icon-wrapper">
         <mat-icon class="leaf-node-icon"></mat-icon>
       </div>

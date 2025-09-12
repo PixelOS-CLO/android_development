@@ -18,7 +18,7 @@ import {
   assertBigIntOrUndefined,
   assertDefined,
   assertString,
-} from 'common/assert_utils';
+} from 'common/assert';
 import {MakeTimestampStrategyType} from 'common/time/time';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {HierarchyTreeBuilderLog} from 'parsers/hierarchy_tree_builder_log';
@@ -50,6 +50,9 @@ import {
 } from 'tree_node/property_tree_node';
 import {SetFormatters} from 'viewers/operations/set_formatters';
 
+/**
+ * Parser for Transitions Perfetto traces.
+ */
 export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
   private static readonly TRANSITION_FIELD =
     TAMPERED_TRACE_PACKET.fields['shellTransition'];

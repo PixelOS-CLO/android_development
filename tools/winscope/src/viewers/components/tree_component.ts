@@ -25,7 +25,7 @@ import {
   Output,
   SimpleChanges,
 } from '@angular/core';
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {InMemoryStorage} from 'common/store/in_memory_storage';
 import {RectShowState} from 'viewers/common/rect_show_state';
 import {UiHierarchyTreeNode} from 'viewers/common/ui_hierarchy_tree_node';
@@ -78,7 +78,7 @@ import {TreeNodeComponent} from './tree_node_component';
         [class.flattened]="isFlattened"
         [class.with-gutter]="addGutter()"
         [hidden]="!isExpanded()">
-        @for (child of node.children.values(); track childTrackById(child.id, child)) {
+        @for (child of node.children.values(); track child.id) {
           <tree-view
             class="subtree"
             [node]="child"
@@ -133,13 +133,6 @@ export class TreeComponent {
 
   private localExpandedState = true;
   private storeKeyCollapsedState = '';
-
-  childTrackById(
-    index: number,
-    child: UiPropertyTreeNode | UiHierarchyTreeNode,
-  ): string {
-    return child.id;
-  }
 
   constructor(
     @Inject(ElementRef) public elementRef: ElementRef,
