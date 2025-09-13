@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import {com} from 'protos/transitions/udc/static';
 import {QueryResult} from 'trace_processor/query_result';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {PropertyTreeNode} from 'tree_node/property_tree_node';
@@ -66,8 +65,8 @@ export interface TraceEntryTypeMap {
   [TraceType.INPUT_METHOD_MANAGER_SERVICE]: HierarchyTreeNode;
   [TraceType.INPUT_METHOD_SERVICE]: HierarchyTreeNode;
   [TraceType.EVENT_LOG]: PropertyTreeNode;
-  [TraceType.WM_TRANSITION]: com.android.server.wm.shell.ITransition;
-  [TraceType.SHELL_TRANSITION]: com.android.wm.shell.ITransition;
+  [TraceType.WM_TRANSITION]: object;
+  [TraceType.SHELL_TRANSITION]: object;
   [TraceType.TRANSITION]: HierarchyTreeNode;
   [TraceType.CUJS]: HierarchyTreeNode;
   [TraceType.TEST_TRACE_STRING]: string;
@@ -108,6 +107,13 @@ export class TraceTypeUtils {
     TraceType.TRANSITION,
     TraceType.CUJS,
   ];
+
+  // TODO(b/322805621) add other traces once support is provided
+  private static TRACES_SUPPORTING_PLAYBACK = [TraceType.SURFACE_FLINGER];
+
+  static supportsPlayback(t: TraceType): boolean {
+    return TraceTypeUtils.TRACES_SUPPORTING_PLAYBACK.includes(t);
+  }
 
   static isTraceTypeWithViewer(t: TraceType): boolean {
     return TraceTypeUtils.TRACES_WITH_VIEWERS_DISPLAY_ORDER.includes(t);
