@@ -131,19 +131,23 @@ import {
   providers: [Title, {provide: ErrorHandler, useClass: GlobalErrorHandler}],
   template: `
     <mat-toolbar class="toolbar">
-      <div class="horizontal-align vertical-align fixed">
+      <div class="horizontal-align vertical-align fixed logo">
         <img class="app-title" [src]="getLogoUrl()"/>
         @if (isBeta) {
           <span class="beta-tag">BETA</span>
         }
       </div>
 
-      <div class="horizontal-align vertical-align icon-actions">
+      <div class="horizontal-align vertical-align icon-actions small-icon-container">
         @if (showDataLoadedElements) {
+          @let packetLoss = packetLossWarning();
+          @let showFileWarningStyle = downloadProgress === undefined
+            && !isEditingFilename
+            && packetLoss !== undefined;
           <div class="download-files-section">
             <div
               class="file-descriptor vertical-align"
-              [class.file-warning]="packetLossWarning() !== undefined">
+              [class.file-warning]="showFileWarningStyle">
               @if (showCrossToolSyncButton()) {
                 <button
                   mat-icon-button
@@ -154,9 +158,9 @@ import {
                   <mat-icon class="material-symbols-outlined">cloud_sync</mat-icon>
                 </button>
               }
-              @if (packetLossWarning()) {
+              @if (packetLoss !== undefined) {
                 <mat-icon
-                  [matTooltip]="packetLossWarning()"
+                  [matTooltip]="packetLoss"
                   class="warning-icon fixed">warning</mat-icon>
               }
               @if (!isEditingFilename) {
@@ -184,7 +188,7 @@ import {
               @if (isEditingFilename) {
                 <button
                   mat-icon-button
-                  class="check-button no-touch-target-button"
+                  class="check-button"
                   matTooltip="Submit file name"
                   (click)="trySubmitFilename()">
                   <mat-icon>check</mat-icon>
@@ -193,7 +197,7 @@ import {
               @if (!isEditingFilename) {
                 <button
                   mat-icon-button
-                  class="edit-button no-touch-target-button"
+                  class="edit-button"
                   matTooltip="Edit file name"
                   (click)="onPencilIconClick()">
                   <mat-icon>edit</mat-icon>
@@ -203,7 +207,7 @@ import {
                 mat-icon-button
                 [disabled]="isEditingFilename"
                 matTooltip="Download all traces"
-                class="save-button no-touch-target-button"
+                class="save-button"
                 (click)="onDownloadTracesButtonClick()">
                 <mat-icon class="material-symbols-outlined">download</mat-icon>
               </button>
@@ -288,7 +292,11 @@ import {
 
     <mat-divider></mat-divider>
 
-    <mat-drawer-container autosize disableClose autoFocus>
+    <mat-drawer-container
+      autosize
+      disableClose
+      autoFocus
+      style.background="var(--background-color)">
       <mat-drawer-content>
         @if (dataLoaded) {
           <trace-view class="viewers" [viewers]="viewers" [store]="persistentStore"></trace-view>
@@ -327,6 +335,7 @@ import {
             [allTraces]="tracePipeline.getTraces()"
             [timelineData]="timelineData"
             [store]="persistentStore"
+            [initialTabTraceType]="mediator.initialTimelineTabTraceType"
             (collapsedTimelineSizeChanged)="onCollapsedTimelineSizeChanged($event)"></timeline>
         }
       </mat-drawer>
@@ -337,19 +346,20 @@ import {
       .toolbar {
         gap: 10px;
         justify-content: space-between;
-        min-height: 64px;
+      }
+      .logo {
+        height: 50%;
       }
       .app-title {
         height: 100%;
       }
       .beta-tag {
-        vertical-align: super;
-        text-size-adjust: 10%;
-        font-size: 0.8rem;
-        margin-top: -0.8rem;
-        margin-left: 0.2rem;
+        font-size: 0.5rem;
+        margin-left: 0.1rem;
         color: var(--logo-blue);
         font-weight: 800;
+        line-height: normal;
+        height: 100%;
       }
       .welcome-info {
         margin: 16px 0 6px 0;
@@ -377,6 +387,7 @@ import {
       .icon-actions {
         height: 100%;
       }
+
       .download-files-section {
         overflow-x: hidden;
       }
@@ -792,7 +803,6 @@ export class AppComponent implements WinscopeEventListener {
       this.isSupportedReportedParentOrigin(parentOrigin)
     ) {
       // Send message to the parent window
-      console.log('Sending message to parent window...', window.parent.origin);
       window.parent.postMessage({winscopeAction: 'openSettings'}, parentOrigin);
     } else {
       console.warn(
