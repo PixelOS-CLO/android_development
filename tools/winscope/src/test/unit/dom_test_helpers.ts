@@ -212,8 +212,17 @@ export class DOMTestHelper<T> {
   keydownSpace() {
     const event = new KeyboardEvent('keydown', {
       keyCode: KeyboardEventKeyCode.SPACE,
+      bubbles: true,
     });
     this.dispatchEvent(event);
+  }
+
+  keydownMediaTrackNext(toDocument = false) {
+    this.keydownByKey(KeyboardEventKey.MEDIA_TRACK_NEXT, toDocument);
+  }
+
+  keydownMediaTrackPrevious(toDocument = false) {
+    this.keydownByKey(KeyboardEventKey.MEDIA_TRACK_PREVIOUS, toDocument);
   }
 
   keydownArrowLeft(toDocument = false) {
