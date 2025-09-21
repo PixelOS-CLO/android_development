@@ -1123,6 +1123,97 @@ describe('TimelineComponent', () => {
       loadSfWmTraces();
     });
 
+    it('starts playback on space click', async () => {
+      const timelineComponent = assertDefined(component.timeline);
+      timelineComponent.playbackState = PlaybackState.PAUSED;
+      const spyPlaybackStateChange = spyOn(
+        timelineComponent,
+        'onPlaybackStateChange',
+      );
+
+      dom.keydownSpace();
+      expect(spyPlaybackStateChange).toHaveBeenCalledTimes(1);
+      expect(spyPlaybackStateChange).toHaveBeenCalledWith(
+        PlaybackState.FORWARDS,
+      );
+    });
+
+    it('stops playback on space click if already playing', async () => {
+      const timelineComponent = assertDefined(component.timeline);
+      timelineComponent.playbackState = PlaybackState.FORWARDS;
+      const spyPlaybackStateChange = spyOn(
+        timelineComponent,
+        'onPlaybackStateChange',
+      );
+
+      dom.keydownSpace();
+      expect(spyPlaybackStateChange).toHaveBeenCalledTimes(1);
+      expect(spyPlaybackStateChange).toHaveBeenCalledWith(PlaybackState.PAUSED);
+    });
+
+    it('changes playback direction to backwards on media track previous click', async () => {
+      const timelineComponent = assertDefined(component.timeline);
+      timelineComponent.playbackState = PlaybackState.FORWARDS;
+      const spyPlaybackStateChange = spyOn(
+        timelineComponent,
+        'onPlaybackStateChange',
+      );
+
+      await dom.keydownMediaTrackPrevious(true);
+      expect(spyPlaybackStateChange).toHaveBeenCalledTimes(1);
+      expect(spyPlaybackStateChange).toHaveBeenCalledWith(
+        PlaybackState.BACKWARDS,
+      );
+    });
+
+    it('changes playback direction to forwards on media track next click', async () => {
+      const timelineComponent = assertDefined(component.timeline);
+      timelineComponent.playbackState = PlaybackState.BACKWARDS;
+      const spyPlaybackStateChange = spyOn(
+        timelineComponent,
+        'onPlaybackStateChange',
+      );
+
+      await dom.keydownMediaTrackNext(true);
+      expect(spyPlaybackStateChange).toHaveBeenCalledTimes(1);
+      expect(spyPlaybackStateChange).toHaveBeenCalledWith(
+        PlaybackState.FORWARDS,
+      );
+    });
+
+    it('does not handle arrow key presses if playback is playing', () => {
+      const timelineComponent = assertDefined(component.timeline);
+      timelineComponent.playbackState = PlaybackState.FORWARDS;
+      dom.detectChanges();
+
+      const spyNextEntry = spyOn(timelineComponent, 'moveToNextEntry');
+      const spyPrevEntry = spyOn(timelineComponent, 'moveToPreviousEntry');
+
+      dom.keydownArrowRight(true);
+      expect(spyNextEntry).not.toHaveBeenCalled();
+
+      dom.keydownArrowLeft(true);
+      expect(spyPrevEntry).not.toHaveBeenCalled();
+    });
+
+    it('prev and next button disabled on playback active', () => {
+      const timelineComponent = assertDefined(component.timeline);
+      timelineComponent.playbackState = PlaybackState.FORWARDS;
+      dom.detectChanges();
+
+      const prevEntryButton = dom.get(prevEntrySelector);
+      const nextEntryButton = dom.get(nextEntrySelector);
+
+      prevEntryButton.checkDisabled(true);
+      nextEntryButton.checkDisabled(true);
+
+      timelineComponent.playbackState = PlaybackState.PAUSED;
+      dom.detectChanges();
+
+      prevEntryButton.checkDisabled(false);
+      nextEntryButton.checkDisabled(false);
+    });
+
     it('emits PlaybackSpeedChange event', async () => {
       const timelineComponent = assertDefined(component.timeline);
       const emitEventSpy = jasmine.createSpy('emitEvent');

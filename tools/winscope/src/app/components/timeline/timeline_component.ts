@@ -47,7 +47,11 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {TimelineData} from 'app/timeline_data';
 import {assertDefined} from 'common/assert';
-import {isInputTextField, KeyboardEventKey} from 'common/dom';
+import {
+  isInputTextField,
+  KeyboardEventKey,
+  KeyboardEventKeyCode,
+} from 'common/dom';
 import {PersistentStore} from 'common/store/persistent_store';
 import {parseBigIntStrippingUnit} from 'common/string_helpers';
 import {TimeRange, Timestamp} from 'common/time/time';
@@ -221,8 +225,8 @@ import {globalConfig} from 'common/global_config';
                   id="prev_entry_button"
                   matTooltip="Go to previous entry"
                   (click)="moveToPreviousEntry()"
-                  [class.disabled]="!hasPrevEntry()"
-                  [disabled]="!hasPrevEntry()">
+                  [class.disabled]="isPrevButtonDisabled()"
+                  [disabled]="isPrevButtonDisabled()">
                   <mat-icon>chevron_left</mat-icon>
                 </button>
                 @if (traceSupportsPlayback()) {
@@ -237,8 +241,8 @@ import {globalConfig} from 'common/global_config';
                   id="next_entry_button"
                   matTooltip="Go to next entry"
                   (click)="moveToNextEntry()"
-                  [class.disabled]="!hasNextEntry()"
-                  [disabled]="!hasNextEntry()">
+                  [class.disabled]="isNextButtonDisabled()"
+                  [disabled]="isNextButtonDisabled()">
                   <mat-icon>chevron_right</mat-icon>
                 </button>
               </div>
@@ -794,6 +798,14 @@ export class TimelineComponent
     );
   }
 
+  isPrevButtonDisabled() {
+    return !this.hasPrevEntry() || this.playbackState !== PlaybackState.PAUSED;
+  }
+
+  isNextButtonDisabled() {
+    return !this.hasNextEntry() || this.playbackState !== PlaybackState.PAUSED;
+  }
+
   applyNewTraceSelection(clickedTrace: Trace<object>) {
     this.selectedTraces =
       this.selectedTracesFormControl.value ??
@@ -837,15 +849,41 @@ export class TimelineComponent
     ) {
       return;
     }
-    if (event.key === KeyboardEventKey.ARROW_LEFT) {
+    if (event.key === KeyboardEventKey.MEDIA_TRACK_PREVIOUS) {
+      event.preventDefault();
+      if (this.playbackState === PlaybackState.FORWARDS) {
+        await this.onPlaybackStateChange(PlaybackState.BACKWARDS);
+      }
+      this.isProcessingKeyPress = false;
+    } else if (event.key === KeyboardEventKey.ARROW_LEFT) {
       event.preventDefault();
       this.isProcessingKeyPress = true;
-      await this.moveToPreviousEntry();
+      if (this.playbackState === PlaybackState.PAUSED) {
+        await this.moveToPreviousEntry();
+      }
+      this.isProcessingKeyPress = false;
+    } else if (event.key === KeyboardEventKey.MEDIA_TRACK_NEXT) {
+      event.preventDefault();
+      this.isProcessingKeyPress = true;
+      if (this.playbackState === PlaybackState.BACKWARDS) {
+        await this.onPlaybackStateChange(PlaybackState.FORWARDS);
+      }
       this.isProcessingKeyPress = false;
     } else if (event.key === KeyboardEventKey.ARROW_RIGHT) {
       event.preventDefault();
       this.isProcessingKeyPress = true;
-      await this.moveToNextEntry();
+      if (this.playbackState === PlaybackState.PAUSED) {
+        await this.moveToNextEntry();
+      }
+      this.isProcessingKeyPress = false;
+    } else if (event.keyCode === KeyboardEventKeyCode.SPACE) {
+      event.preventDefault();
+      this.isProcessingKeyPress = true;
+      if (this.playbackState === PlaybackState.PAUSED) {
+        await this.onPlaybackStateChange(PlaybackState.FORWARDS);
+      } else {
+        await this.onPlaybackStateChange(PlaybackState.PAUSED);
+      }
       this.isProcessingKeyPress = false;
     }
   }
@@ -904,6 +942,9 @@ export class TimelineComponent
   }
 
   async onPlaybackStateChange(state: PlaybackState) {
+    if(this.currentTabTraceType === undefined){
+      return;
+    }
     switch (state) {
       case PlaybackState.FORWARDS:
       case PlaybackState.BACKWARDS:
@@ -1126,13 +1167,14 @@ export class TimelineComponent
   }
   private getPlaybackStartingPosition() {
     const timelineData = assertDefined(this.timelineData);
+
     if (!this.currentTabTraceType) {
       return;
     }
 
-    const playableTrace = timelineData
-      .getTraces()
-      .getTrace(this.currentTabTraceType);
+    const playableTrace =
+      timelineData.getTraces().getTrace(TraceType.SCREEN_RECORDING) ??
+      timelineData.getTraces().getTrace(this.currentTabTraceType);
 
     if (playableTrace === undefined) {
       return;

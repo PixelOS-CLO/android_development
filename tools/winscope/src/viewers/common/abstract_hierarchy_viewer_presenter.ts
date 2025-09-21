@@ -44,6 +44,7 @@ import {UiDataHierarchy} from './ui_data_hierarchy';
 import {ViewerEvents} from './viewer_events';
 import {PlaybackPresenter} from './playback/playback_presenter';
 import {PlaybackState} from './playback/playback_state';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
 
 export type NotifyHierarchyViewCallbackType<UiData> = (uiData: UiData) => void;
 
@@ -59,6 +60,7 @@ export abstract class AbstractHierarchyViewerPresenter<
   protected abstract propertiesPresenter: PropertiesPresenter;
   protected abstract readonly multiTraceType?: TraceType;
   private highlightedItem = '';
+  private screenRecordingTrace?: Trace<MediaBasedTraceEntry>;
 
   constructor(
     private readonly trace: Trace<HierarchyTreeNode> | undefined,
@@ -266,6 +268,12 @@ export abstract class AbstractHierarchyViewerPresenter<
         if (!this.trace) {
           return;
         }
+        if (!this.screenRecordingTrace) {
+          this.screenRecordingTrace = this.traces.getTrace(
+            TraceType.SCREEN_RECORDING,
+          );
+        }
+
         switch (event.state) {
           case PlaybackState.FORWARDS:
           case PlaybackState.BACKWARDS:
@@ -274,6 +282,7 @@ export abstract class AbstractHierarchyViewerPresenter<
                 this.trace,
                 assertDefined(event.currentTraceIndex),
                 event.state,
+                this.screenRecordingTrace,
               );
             }
             return;
@@ -289,11 +298,28 @@ export abstract class AbstractHierarchyViewerPresenter<
       },
     );
     await event.visit(
+      WinscopeEventType.PLAYBACK_STATE_CHANGE_HANDLED,
+      async (event) => {
+        if (event.stateToReflect === PlaybackState.PAUSED) {
+          this.uiData.isPlaybackPlaying = false;
+        } else {
+          this.uiData.isPlaybackPlaying = true;
+        }
+        this.refreshHierarchyViewerUiData();
+      },
+    );
+    await event.visit(
       WinscopeEventType.PLAYBACK_SPEED_CHANGE,
       async (event) => {
         if (this.playbackPresenter && this.trace) {
           this.playbackPresenter.changeSpeed(event.speedValue);
         }
+      },
+    );
+    await event.visit(
+      WinscopeEventType.SCREEN_RECORDING_CHANGE,
+      async (event) => {
+        this.screenRecordingTrace = event.trace;
       },
     );
     await this.onViewerSpecificWinscopeEvent(event);
@@ -550,6 +576,7 @@ export abstract class AbstractHierarchyViewerPresenter<
     trace: Trace<HierarchyTreeNode>,
     currentPosition: number,
     requestedState: PlaybackState,
+    screenRecordingTrace: Trace<MediaBasedTraceEntry> | undefined,
   ): Promise<void>;
   protected pausePlayback?(): Promise<void>;
   protected processDataAfterPositionUpdate?(
