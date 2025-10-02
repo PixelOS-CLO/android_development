@@ -24,15 +24,29 @@ import {
 } from './custom_query';
 import {AbsoluteEntryIndex, EntriesRange} from './index_types';
 import {TraceType} from './trace_type';
+import {QueryResults} from 'trace_processor/query_result';
 
+/**
+ * Interface for a trace parser.
+ *
+ * This interface defines the methods required to parse and interact with a specific trace format.
+ * It provides access to trace entries, timestamps, version information, and allows for custom queries
+ * and conversion to Perfetto format.
+ *
+ * @template T The type of the individual trace entries parsed by this interface.
+ */
 export interface Parser<T> {
   getCoarseVersion(): CoarseVersion;
   getTraceType(): TraceType;
   getLengthEntries(): number;
   getTimestamps(): Timestamp[] | undefined;
   getEntry(index: AbsoluteEntryIndex): Promise<T>;
-  getRangeOfEntries(entriesRange: EntriesRange): Promise<Array<T | undefined>>;
+  getRangeOfEntries(
+    entriesRange: EntriesRange,
+    precomputedQuery?: QueryResults,
+  ): Promise<Array<T | undefined>>;
   getAllEntries(): Promise<Array<T | undefined>>;
+  getQueryResults(entriesRange: EntriesRange): Promise<QueryResults>;
   customQuery<Q extends CustomQueryType>(
     type: Q,
     entriesRange: EntriesRange,
