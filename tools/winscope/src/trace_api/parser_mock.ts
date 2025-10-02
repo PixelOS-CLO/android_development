@@ -26,7 +26,18 @@ import {
 import {AbsoluteEntryIndex, EntriesRange} from './index_types';
 import {Parser} from './parser';
 import {TraceType} from './trace_type';
+import {QueryResults} from 'trace_processor/query_result';
 
+/**
+ * A mock implementation of the Parser interface.
+ *
+ * This class is used in tests to simulate the behavior of a real trace parser
+ * without needing to load and parse actual trace files. It allows tests to
+ * inject predefined data (timestamps, entries, custom query results) and
+ * control certain behaviors, such as simulating corrupted traces or traces
+ * without time offsets. This makes unit testing components that depend on
+ * a `Parser` more predictable and efficient.
+ */
 export class ParserMock<T> implements Parser<T> {
   constructor(
     private readonly type: TraceType,
@@ -83,6 +94,10 @@ export class ParserMock<T> implements Parser<T> {
   }
 
   getRangeOfEntries(entriesRange: EntriesRange): Promise<Array<T | undefined>> {
+    throw NOT_IMPLEMENTED_ERROR;
+  }
+
+  getQueryResults(entriesRange: EntriesRange): Promise<QueryResults> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
