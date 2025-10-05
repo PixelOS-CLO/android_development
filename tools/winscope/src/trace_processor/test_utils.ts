@@ -21,7 +21,7 @@ import {TraceProcessorFactory} from './trace_processor_factory';
 
 export function makeSearchTraceSpies(
   ts?: Timestamp,
-  value?: ColumnType,
+  value?: ColumnType | null,
 ): [jasmine.SpyObj<QueryResult>, jasmine.SpyObj<RowIterator>] {
   const spyQueryResult = jasmine.createSpyObj<QueryResult>('result', [
     'numRows',
@@ -90,7 +90,7 @@ export function makeSpyRowIterator(): jasmine.SpyObj<RowIterator> {
 
 export function setupMockIteratorWithRows(
   iter: jasmine.SpyObj<RowIterator>,
-  rows: Array<{[key: string]: ColumnType}>,
+  rows: Array<{[key: string]: ColumnType | null}>,
 ) {
   let currentRow = 0;
   iter.valid.and.callFake(() => currentRow < rows.length);
@@ -99,8 +99,11 @@ export function setupMockIteratorWithRows(
   });
   iter.get.and.callFake((key: string) => {
     if (currentRow >= rows.length) {
-      return null;
+      throw new Error(
+        `Attempted to 'get' on an invalid row index: ${currentRow}`,
+      );
     }
-    return rows[currentRow][key];
+    const rowData = rows[currentRow];
+    return rowData ? rowData[key] : null;
   });
 }

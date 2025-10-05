@@ -25,10 +25,25 @@ import {
  * Enum representing the different types of custom queries available.
  */
 export enum CustomQueryType {
+  /**
+   * Custom query for SF layer id and name
+   */
   SF_LAYERS_ID_AND_NAME,
+  /**
+   * Custom query for view capture metadata
+   */
   VIEW_CAPTURE_METADATA,
+  /**
+   * Custom query for vsyncid
+   */
   VSYNCID,
+  /**
+   * Custom query for WM windows token and title
+   */
   WM_WINDOWS_TOKEN_AND_TITLE,
+  /**
+   * Custom query for log table filter values
+   */
   LOG_TABLE_FILTER_VALUES,
 }
 
@@ -44,26 +59,31 @@ interface CustomQueryTraceEntry<U> {
 }
 
 /**
- * A utility class for processing the raw results from custom query parsers
+ * A utility for processing the raw results from custom query parsers
  * into their final result types.
  */
-export class ProcessCustomQueryParserResult {
+export const ProcessCustomQueryParserResult = {
   /**
    * Processes the parser result for SF_LAYERS_ID_AND_NAME.
    * @param parserResult The raw result from the parser.
    * @return The processed result.
    */
-  static [CustomQueryType.SF_LAYERS_ID_AND_NAME]<T>(
+  [CustomQueryType.SF_LAYERS_ID_AND_NAME]<T>(
     parserResult: CustomQueryParserResultTypeMap[CustomQueryType.SF_LAYERS_ID_AND_NAME],
   ): CustomQueryResultTypeMap<T>[CustomQueryType.SF_LAYERS_ID_AND_NAME] {
     return parserResult;
-  }
+  },
 
-  static [CustomQueryType.VIEW_CAPTURE_METADATA]<T>(
+  /**
+   * Processes the parser result for VIEW_CAPTURE_METADATA.
+   * @param parserResult The raw result from the parser.
+   * @return The processed result.
+   */
+  [CustomQueryType.VIEW_CAPTURE_METADATA]<T>(
     parserResult: CustomQueryParserResultTypeMap[CustomQueryType.VIEW_CAPTURE_METADATA],
   ): CustomQueryResultTypeMap<T>[CustomQueryType.VIEW_CAPTURE_METADATA] {
     return parserResult;
-  }
+  },
 
   /**
    * Processes the parser result for VSYNCID, wrapping each vsyncId in a
@@ -72,7 +92,7 @@ export class ProcessCustomQueryParserResult {
    * @param makeTraceEntry A function to create a `CustomQueryTraceEntry` from a vsyncId and index.
    * @return An array of `CustomQueryTraceEntry<bigint>`.
    */
-  static [CustomQueryType.VSYNCID]<T>(
+  [CustomQueryType.VSYNCID]<T>(
     parserResult: CustomQueryParserResultTypeMap[CustomQueryType.VSYNCID],
     makeTraceEntry: (
       index: RelativeEntryIndex,
@@ -82,40 +102,55 @@ export class ProcessCustomQueryParserResult {
     return parserResult.map((vsyncId, index) => {
       return makeTraceEntry(index, vsyncId);
     });
-  }
+  },
 
   /**
    * Processes the parser result for WM_WINDOWS_TOKEN_AND_TITLE.
    * @param parserResult The raw result from the parser.
    * @return The processed result.
    */
-  static [CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE]<T>(
+  [CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE]<T>(
     parserResult: CustomQueryParserResultTypeMap[CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE],
   ): CustomQueryResultTypeMap<T>[CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE] {
     return parserResult;
-  }
+  },
 
   /**
    * Processes the parser result for LOG_TABLE_FILTER_VALUES.
    * @param parserResult The raw result from the parser.
    * @return The processed result.
    */
-  static [CustomQueryType.LOG_TABLE_FILTER_VALUES]<T>(
+  [CustomQueryType.LOG_TABLE_FILTER_VALUES]<T>(
     parserResult: CustomQueryParserResultTypeMap[CustomQueryType.LOG_TABLE_FILTER_VALUES],
   ): CustomQueryResultTypeMap<T>[CustomQueryType.LOG_TABLE_FILTER_VALUES] {
     return parserResult;
-  }
-}
+  },
+};
 
 /**
  * Maps each `CustomQueryType` to the type of parameters it requires.
  * `never` indicates no parameters are needed.
  */
 export declare interface CustomQueryParamTypeMap {
+  /**
+   * No parameters required for this query
+   */
   [CustomQueryType.SF_LAYERS_ID_AND_NAME]: never;
+  /**
+   * No parameters required for this query
+   */
   [CustomQueryType.VIEW_CAPTURE_METADATA]: never;
+  /**
+   * No parameters required for this query
+   */
   [CustomQueryType.VSYNCID]: never;
+  /**
+   * No parameters required for this query
+   */
   [CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE]: never;
+  /**
+   * Parameter for this query is a number
+   */
   [CustomQueryType.LOG_TABLE_FILTER_VALUES]: number;
 }
 
@@ -123,16 +158,31 @@ export declare interface CustomQueryParamTypeMap {
  * Maps each `CustomQueryType` to the raw result type returned by the parser.
  */
 export declare interface CustomQueryParserResultTypeMap {
+  /**
+   * Result type for this query is an array of objects with id and name
+   */
   [CustomQueryType.SF_LAYERS_ID_AND_NAME]: Array<{id: number; name: string}>;
+  /**
+   * Result type for this query is an object with package name and window name
+   */
   [CustomQueryType.VIEW_CAPTURE_METADATA]: {
     packageName: string;
     windowName: string;
   };
+  /**
+   * Result type for this query is an array of bigints
+   */
   [CustomQueryType.VSYNCID]: Array<bigint>;
+  /**
+   * Result type for this query is an array of objects with token and title
+   */
   [CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE]: Array<{
-    token: string;
+    token: number;
     title: string;
   }>;
+  /**
+   * Result type for this query is an array of strings
+   */
   [CustomQueryType.LOG_TABLE_FILTER_VALUES]: string[];
 }
 
@@ -142,16 +192,31 @@ export declare interface CustomQueryParserResultTypeMap {
  * @template T A generic type parameter, often used for context.
  */
 export declare interface CustomQueryResultTypeMap<T> {
+  /**
+   * Result type for this query is an array of objects with id and name
+   */
   [CustomQueryType.SF_LAYERS_ID_AND_NAME]: Array<{id: number; name: string}>;
+  /**
+   * Result type for this query is an object with package name and window name
+   */
   [CustomQueryType.VIEW_CAPTURE_METADATA]: {
     packageName: string;
     windowName: string;
   };
+  /**
+   * Result type for this query is an array of custom query trace entries
+   */
   [CustomQueryType.VSYNCID]: Array<CustomQueryTraceEntry<bigint>>;
+  /**
+   * Result type for this query is an array of objects with token and title
+   */
   [CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE]: Array<{
-    token: string;
+    token: number;
     title: string;
   }>;
+  /**
+   * Result type for this query is an array of strings
+   */
   [CustomQueryType.LOG_TABLE_FILTER_VALUES]: string[];
 }
 

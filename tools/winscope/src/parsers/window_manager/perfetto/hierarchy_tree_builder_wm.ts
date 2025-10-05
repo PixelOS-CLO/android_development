@@ -19,16 +19,17 @@ import {HierarchyTreeBuilder} from 'parsers/hierarchy_tree_builder';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {PropertiesProvider} from 'tree_node/properties_provider';
 import {PropertyTreeNode} from 'tree_node/property_tree_node';
+import {ContainerType} from './container_type';
 
 /**
  * Builder for a WM hierarchy tree.
  *
  * The builder is not reusable, it should only be used to build one tree.
  */
-export class HierarchyTreeBuilderWm extends HierarchyTreeBuilder {
+export class HierarchyTreeBuilderWm extends HierarchyTreeBuilder<number> {
   protected override buildIdentifierToChildrenMap(
     containers: PropertiesProvider[],
-  ): Map<string, readonly HierarchyTreeNode[]> {
+  ): Map<number, readonly HierarchyTreeNode[]> {
     const map = containers.reduce((map, container) => {
       const containerProperties = container.getEagerProperties();
       const containerNode = this.makeNode(
@@ -37,44 +38,57 @@ export class HierarchyTreeBuilderWm extends HierarchyTreeBuilder {
         container,
       );
       const token = assertDefined(
-        containerProperties.getChildByName('token')?.getValue<string>(),
+        this.getIdentifierValue(
+          assertDefined(containerProperties.getChildByName('token')),
+        ),
       );
       map.set(token, [containerNode]);
       return map;
-    }, new Map<string, HierarchyTreeNode[]>());
+    }, new Map<number, HierarchyTreeNode[]>());
     return map;
   }
 
   protected override assignParentChildRelationships(
-    node: HierarchyTreeNode,
-    identifierToChildren: Map<string | number, HierarchyTreeNode[]>,
+    root: HierarchyTreeNode,
+    identifierToChildren: Map<number, HierarchyTreeNode[]>,
     isRoot?: boolean,
   ): void {
-    let childrenTokens: readonly PropertyTreeNode[] | undefined;
-    if (isRoot) {
-      const rootWindowContainerProps = assertDefined(this.children)
-        .at(0)
-        ?.getEagerProperties();
-      childrenTokens =
-        rootWindowContainerProps
-          ?.getChildByName('children')
-          ?.getAllChildren() ?? [];
-    } else {
-      childrenTokens =
-        node.getEagerPropertyByName('children')?.getAllChildren() ?? [];
-    }
-    for (const childToken of childrenTokens) {
-      const tokenValue = assertDefined(childToken.getValue<string | number>());
-      const child = identifierToChildren.get(tokenValue)?.at(0);
-      if (child) {
-        this.setParentChildRelationship(node, child);
-        this.assignParentChildRelationships(child, identifierToChildren);
-      }
+    let rootWindowContainerToken: number | undefined;
+    for (const [identifier, children] of identifierToChildren) {
+      children.forEach((child) => {
+        if (
+          child.getEagerPropertyByName('containerType')?.getValue<string>() ===
+          ContainerType.RootWindowContainer
+        ) {
+          rootWindowContainerToken = identifier;
+          return;
+        }
+
+        const parentToken = child.getEagerPropertyByName('parentToken');
+
+        let parent: HierarchyTreeNode | undefined;
+        if (parentToken) {
+          const parentId = this.getIdentifierValue(parentToken);
+          if (parentId !== undefined && parentId !== rootWindowContainerToken) {
+            parent = identifierToChildren.get(parentId)?.at(0);
+          }
+        }
+
+        if (parent) {
+          this.setParentChildRelationship(parent, child);
+        } else {
+          this.setParentChildRelationship(root, child);
+        }
+      });
     }
   }
 
   private getSubtreeName(tokenAndName: string): string {
     const splitId = tokenAndName.split(' ');
     return splitId.slice(1, splitId.length).join(' ');
+  }
+
+  private getIdentifierValue(identifier: PropertyTreeNode): number | undefined {
+    return identifier.getValue<number>();
   }
 }

@@ -110,18 +110,21 @@ describe('ParserWindowManager', () => {
       it('provides entry', async () => {
         const entry = await perfettoParser.getEntry(1);
         expect(entry).toBeInstanceOf(HierarchyTreeNode);
-        expect(entry.getEagerPropertyByName('focusedApp')?.getValue()).toBe(
-          'com.google.android.apps.nexuslauncher/.NexusLauncherActivity',
-        );
+        expect(
+          (await entry.getAllProperties())
+            .getChildByName('windowManagerService')
+            ?.getChildByName('focusedApp')
+            ?.getValue(),
+        ).toBe('com.google.android.apps.nexuslauncher/.NexusLauncherActivity');
       });
 
       it('supports WM_WINDOWS_TOKEN_AND_TITLE custom query', async () => {
         const tokenAndTitles = await perfettoTrace
           .sliceEntries(0, 1)
           .customQuery(CustomQueryType.WM_WINDOWS_TOKEN_AND_TITLE);
-        expect(tokenAndTitles.length).toBe(69);
+        expect(tokenAndTitles.length).toBe(72);
         expect(tokenAndTitles).toContain({
-          token: 'c06766f',
+          token: 201750127,
           title: 'Leaf:36:36',
         });
       });
