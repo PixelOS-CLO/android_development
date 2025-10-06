@@ -483,8 +483,10 @@ describe('SurfaceFlinger RectExtractor', () => {
       ]);
     });
 
-    function layerInputRow(overrides: {[key: string]: ColumnType} = {}): {
-      [key: string]: ColumnType;
+    function layerInputRow(
+      overrides: {[key: string]: ColumnType | null} = {},
+    ): {
+      [key: string]: ColumnType | null;
     } {
       const defaults = {
         'snapshot_id': currSnapshotId,
@@ -504,8 +506,10 @@ describe('SurfaceFlinger RectExtractor', () => {
       return {...defaults, ...overrides};
     }
 
-    function layerBoundsRow(overrides: {[key: string]: ColumnType} = {}): {
-      [key: string]: ColumnType;
+    function layerBoundsRow(
+      overrides: {[key: string]: ColumnType | null} = {},
+    ): {
+      [key: string]: ColumnType | null;
     } {
       const defaults = {
         'snapshot_id': currSnapshotId,
@@ -527,8 +531,10 @@ describe('SurfaceFlinger RectExtractor', () => {
       return {...defaults, ...overrides};
     }
 
-    function layerCombinedRow(overrides: {[key: string]: ColumnType} = {}): {
-      [key: string]: ColumnType;
+    function layerCombinedRow(
+      overrides: {[key: string]: ColumnType | null} = {},
+    ): {
+      [key: string]: ColumnType | null;
     } {
       const defaults = {
         'snapshot_id': currSnapshotId,
@@ -761,24 +767,28 @@ describe('SurfaceFlinger RectExtractor', () => {
     });
 
     it('skips display with null id', () => {
-      snapshotIteratorMock([{'display_id': null, 'id': 1n}]);
+      setupMockIteratorWithRows(snapshotIter, [{'display_id': null, 'id': 1n}]);
       checkDisplaysExtracted([]);
     });
 
     it('extracts display rect with isActiveDisplay not set', () => {
-      snapshotIteratorMock([defaultDisplayRow()]);
+      setupMockIteratorWithRows(snapshotIter, [defaultDisplayRow()]);
       const expectedRect = makeExpectedDisplayRect();
       checkDisplaysExtracted([expectedRect]);
     });
 
     it('extracts display rect with isActiveDisplay set', () => {
-      snapshotIteratorMock([defaultDisplayRow({'is_on': 1})]);
+      setupMockIteratorWithRows(snapshotIter, [
+        defaultDisplayRow({'is_on': 1}),
+      ]);
       const expectedRect = makeExpectedDisplayRect(undefined, true);
       checkDisplaysExtracted([expectedRect]);
     });
 
     it('extracts display rect with unknown name', () => {
-      snapshotIteratorMock([defaultDisplayRow({'display_name': null})]);
+      setupMockIteratorWithRows(snapshotIter, [
+        defaultDisplayRow({'display_name': null}),
+      ]);
       const expectedRect = makeExpectedDisplayRect('Unknown Display');
       checkDisplaysExtracted([expectedRect]);
     });
@@ -800,7 +810,7 @@ describe('SurfaceFlinger RectExtractor', () => {
         'depth': 2n,
         'id': 1n,
       };
-      snapshotIteratorMock([display1Values, display2Values]);
+      setupMockIteratorWithRows(snapshotIter, [display1Values, display2Values]);
 
       const expectedRect1 = makeExpectedDisplayRect('Display 123', false);
       const expectedRect2 = new TraceRectBuilder()
@@ -823,7 +833,7 @@ describe('SurfaceFlinger RectExtractor', () => {
     });
 
     it('stops processing when snapshotId changes', () => {
-      snapshotIteratorMock([
+      setupMockIteratorWithRows(snapshotIter, [
         defaultDisplayRow({
           'id': 1n,
           'display_id': 111n,
@@ -846,29 +856,17 @@ describe('SurfaceFlinger RectExtractor', () => {
     });
 
     it('handles no rows matching targetSnapshotId', () => {
-      snapshotIteratorMock([
+      setupMockIteratorWithRows(snapshotIter, [
         defaultDisplayRow({'id': 2n}),
         defaultDisplayRow({'id': 3n}),
       ]);
       checkDisplaysExtracted([]);
     });
 
-    function snapshotIteratorMock(rows: Array<{[key: string]: ColumnType}>) {
-      let currentRow = 0;
-      snapshotIter.valid.and.callFake(() => currentRow < rows.length);
-      snapshotIter.next.and.callFake(() => {
-        currentRow++;
-      });
-      snapshotIter.get.and.callFake((key: string) => {
-        if (currentRow >= rows.length) {
-          return null;
-        }
-        return rows[currentRow][key];
-      });
-    }
-
-    function defaultDisplayRow(overrides: {[key: string]: ColumnType} = {}): {
-      [key: string]: ColumnType;
+    function defaultDisplayRow(
+      overrides: {[key: string]: ColumnType | null} = {},
+    ): {
+      [key: string]: ColumnType | null;
     } {
       const defaults = {
         'display_id': 123n,

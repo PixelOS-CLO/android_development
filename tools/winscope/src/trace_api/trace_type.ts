@@ -26,29 +26,121 @@ import {MediaBasedTraceEntry} from './media_based_trace_entry';
  * screenshot, etc.).
  */
 export enum TraceType {
+  /**
+   * Represents a Window Manager trace, which provides information about
+   * window management activities, such as window creation, destruction,
+   * and state changes.
+   */
   WINDOW_MANAGER,
+  /**
+   * Represents a Surface Flinger trace, which captures information about
+   * surface composition, layer management, and display updates.
+   */
   SURFACE_FLINGER,
+  /**
+   * Represents a screen recording trace, typically in MP4 format, which
+   * provides a visual record of the device's screen activity.
+   */
   SCREEN_RECORDING,
+  /**
+   * Represents a screenshot trace, which is a single image capture of the
+   * device's screen at a specific moment.
+   */
   SCREENSHOT,
+  /**
+   * Represents a transactions trace, which contains information about
+   * Surface Flinger transactions, including buffer updates and display
+   * state changes.
+   */
   TRANSACTIONS,
+  /**
+   * Represents a Wayland trace, which captures events and states from the
+   * Wayland display server, used in some Android environments.
+   */
   WAYLAND,
+  /**
+   * Represents a Wayland dump, which is a snapshot of the Wayland server's
+   * state at a particular time.
+   */
   WAYLAND_DUMP,
+  /**
+   * Represents a ProtoLog trace, which contains log messages from the
+   * ProtoLog logging system used in various Android components.
+   */
   PROTO_LOG,
+  /**
+   * Represents a System UI trace, which provides information about the
+   * state and events of the Android System UI.
+   */
   SYSTEM_UI,
+  /**
+   * Represents a trace from Input Method Editor (IME) clients, which
+   * captures interactions between applications and the input method.
+   */
   INPUT_METHOD_CLIENTS,
+  /**
+   * Represents a trace from the Input Method Manager Service, which
+   * provides information about the overall state and management of IMEs.
+   */
   INPUT_METHOD_MANAGER_SERVICE,
+  /**
+   * Represents a trace from the Input Method Service, which captures
+   * events and states within a specific IME.
+   */
   INPUT_METHOD_SERVICE,
+  /**
+   * Represents an event log trace, which contains a log of system events.
+   */
   EVENT_LOG,
+  /**
+   * Represents a Window Manager transition trace, which provides
+   * information about window transitions and animations.
+   */
   WM_TRANSITION,
+  /**
+   * Represents a Shell transition trace, which captures information about
+   * transitions and animations within the shell.
+   */
   SHELL_TRANSITION,
+  /**
+   * Represents a combined transition trace, which merges information from
+   * both Window Manager and Shell transition traces.
+   */
   TRANSITION,
+  /**
+   * Represents a Critical User Journey (CUJ) trace, which provides
+   * information about the performance and state of important user
+   * interactions.
+   */
   CUJS,
+  /**
+   * A test trace type used for development and testing, containing string data.
+   */
   TEST_TRACE_STRING,
+  /**
+   * A test trace type used for development and testing, containing numeric data.
+   */
   TEST_TRACE_NUMBER,
+  /**
+   * Represents a View Capture trace, which provides a hierarchical dump of
+   * the views in a window.
+   */
   VIEW_CAPTURE,
+  /**
+   * Represents a trace of input motion events, such as touch gestures.
+   */
   INPUT_MOTION_EVENT,
+  /**
+   * Represents a trace of input key events, such as key presses.
+   */
   INPUT_KEY_EVENT,
+  /**
+   * Represents a merged trace of input events, combining motion and key events.
+   */
   INPUT_EVENT_MERGED,
+  /**
+   * Represents a search trace, used for searching within other traces.
+   */
   SEARCH,
 }
 
@@ -98,90 +190,73 @@ export declare interface TraceEntryTypeMap {
   [TraceType.SEARCH]: QueryResult;
 }
 
-export class TraceTypeUtils {
-  private static UI_PIPELINE_ORDER = [
-    TraceType.INPUT_EVENT_MERGED,
-    TraceType.INPUT_METHOD_CLIENTS,
-    TraceType.INPUT_METHOD_SERVICE,
-    TraceType.INPUT_METHOD_MANAGER_SERVICE,
-    TraceType.PROTO_LOG,
-    TraceType.WINDOW_MANAGER,
-    TraceType.TRANSACTIONS,
-    TraceType.SURFACE_FLINGER,
-    TraceType.SCREEN_RECORDING,
-  ];
+const UI_PIPELINE_ORDER = [
+  TraceType.INPUT_EVENT_MERGED,
+  TraceType.INPUT_METHOD_CLIENTS,
+  TraceType.INPUT_METHOD_SERVICE,
+  TraceType.INPUT_METHOD_MANAGER_SERVICE,
+  TraceType.PROTO_LOG,
+  TraceType.WINDOW_MANAGER,
+  TraceType.TRANSACTIONS,
+  TraceType.SURFACE_FLINGER,
+  TraceType.SCREEN_RECORDING,
+];
 
-  private static TRACES_WITH_VIEWERS_DISPLAY_ORDER = [
-    TraceType.SEARCH,
-    TraceType.SCREEN_RECORDING,
-    TraceType.SCREENSHOT,
-    TraceType.SURFACE_FLINGER,
-    TraceType.WINDOW_MANAGER,
-    TraceType.INPUT_EVENT_MERGED,
-    TraceType.INPUT_METHOD_CLIENTS,
-    TraceType.INPUT_METHOD_MANAGER_SERVICE,
-    TraceType.INPUT_METHOD_SERVICE,
-    TraceType.TRANSACTIONS,
-    TraceType.PROTO_LOG,
-    TraceType.VIEW_CAPTURE,
-    TraceType.TRANSITION,
-    TraceType.CUJS,
-  ];
+const TRACES_WITH_VIEWERS_DISPLAY_ORDER = [
+  TraceType.SEARCH,
+  TraceType.SCREEN_RECORDING,
+  TraceType.SCREENSHOT,
+  TraceType.SURFACE_FLINGER,
+  TraceType.WINDOW_MANAGER,
+  TraceType.INPUT_EVENT_MERGED,
+  TraceType.INPUT_METHOD_CLIENTS,
+  TraceType.INPUT_METHOD_MANAGER_SERVICE,
+  TraceType.INPUT_METHOD_SERVICE,
+  TraceType.TRANSACTIONS,
+  TraceType.PROTO_LOG,
+  TraceType.VIEW_CAPTURE,
+  TraceType.TRANSITION,
+  TraceType.CUJS,
+];
 
-  // TODO(b/322805621) add other traces once support is provided
-  private static TRACES_SUPPORTING_PLAYBACK = [TraceType.SURFACE_FLINGER];
+// TODO(b/322805621) add other traces once support is provided
+const TRACES_SUPPORTING_PLAYBACK = [TraceType.SURFACE_FLINGER];
 
-  static supportsPlayback(t: TraceType): boolean {
-    return TraceTypeUtils.TRACES_SUPPORTING_PLAYBACK.includes(t);
+export function supportsPlayback(t: TraceType): boolean {
+  return TRACES_SUPPORTING_PLAYBACK.includes(t);
+}
+
+export function isTraceTypeWithViewer(t: TraceType): boolean {
+  return TRACES_WITH_VIEWERS_DISPLAY_ORDER.includes(t);
+}
+
+export function compareByUiPipelineOrder(t: TraceType, u: TraceType): boolean {
+  const tIndex = findIndexInOrder(t, UI_PIPELINE_ORDER);
+  const uIndex = findIndexInOrder(u, UI_PIPELINE_ORDER);
+  return tIndex >= 0 && uIndex >= 0 && tIndex < uIndex;
+}
+
+export function compareByDisplayOrder(t: TraceType, u: TraceType): number {
+  const tIndex = findIndexInOrder(t, TRACES_WITH_VIEWERS_DISPLAY_ORDER);
+  const uIndex = findIndexInOrder(u, TRACES_WITH_VIEWERS_DISPLAY_ORDER);
+  return tIndex - uIndex;
+}
+
+export function getReasonForNoTraceVisualization(t: TraceType): string {
+  switch (t) {
+    case TraceType.WM_TRANSITION:
+      return 'Must also upload a shell transitions trace to visualize transitions.';
+    case TraceType.SHELL_TRANSITION:
+      return 'Must also upload a wm transitions trace to visualize transitions.';
+    case TraceType.EVENT_LOG:
+      return 'Uploaded file does not contain CUJs. Only CUJ visualization is supported in Winscope.';
+    default:
+      return 'Visualization for this trace is not supported in Winscope.';
   }
+}
 
-  static isTraceTypeWithViewer(t: TraceType): boolean {
-    return TraceTypeUtils.TRACES_WITH_VIEWERS_DISPLAY_ORDER.includes(t);
-  }
-
-  static compareByUiPipelineOrder(t: TraceType, u: TraceType): boolean {
-    const tIndex = TraceTypeUtils.findIndexInOrder(
-      t,
-      TraceTypeUtils.UI_PIPELINE_ORDER,
-    );
-    const uIndex = TraceTypeUtils.findIndexInOrder(
-      u,
-      TraceTypeUtils.UI_PIPELINE_ORDER,
-    );
-    return tIndex >= 0 && uIndex >= 0 && tIndex < uIndex;
-  }
-
-  static compareByDisplayOrder(t: TraceType, u: TraceType): number {
-    const tIndex = TraceTypeUtils.findIndexInOrder(
-      t,
-      TraceTypeUtils.TRACES_WITH_VIEWERS_DISPLAY_ORDER,
-    );
-    const uIndex = TraceTypeUtils.findIndexInOrder(
-      u,
-      TraceTypeUtils.TRACES_WITH_VIEWERS_DISPLAY_ORDER,
-    );
-    return tIndex - uIndex;
-  }
-
-  static getReasonForNoTraceVisualization(t: TraceType): string {
-    switch (t) {
-      case TraceType.WM_TRANSITION:
-        return 'Must also upload a shell transitions trace to visualize transitions.';
-      case TraceType.SHELL_TRANSITION:
-        return 'Must also upload a wm transitions trace to visualize transitions.';
-      case TraceType.EVENT_LOG:
-        return 'Uploaded file does not contain CUJs. Only CUJ visualization is supported in Winscope.';
-      default:
-        return 'Visualization for this trace is not supported in Winscope.';
-    }
-  }
-
-  private static findIndexInOrder(
-    traceType: TraceType,
-    order: TraceType[],
-  ): number {
-    return order.findIndex((type) => {
-      return type === traceType;
-    });
-  }
+function findIndexInOrder(traceType: TraceType, order: TraceType[]): number {
+  return order.findIndex((type) => {
+    return type === traceType;
+  });
 }

@@ -21,9 +21,13 @@ import {CannotParseAllTransitions} from 'messaging/user_warnings';
 import {UserNotifier} from 'services/user_notifier';
 import {timestampToVideoTimeSeconds} from 'trace/screen_recording_utils';
 import {Trace, TraceEntry} from 'trace_api/trace';
-import {TraceEntryFinder} from 'trace_api/trace_entry_finder';
+import {findCorrespondingEntry} from 'trace_api/trace_entry_finder';
 import {TracePosition} from 'trace_api/trace_position';
-import {TraceType, TraceTypeUtils} from 'trace_api/trace_type';
+import {
+  TraceType,
+  compareByDisplayOrder,
+  isTraceTypeWithViewer,
+} from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 
@@ -85,12 +89,12 @@ export class TimelineData {
 
     const tracesSortedByDisplayOrder = traces
       .mapTrace((trace) => trace)
-      .filter((trace) => TraceTypeUtils.isTraceTypeWithViewer(trace.type))
+      .filter((trace) => isTraceTypeWithViewer(trace.type))
       .sort((a, b) => {
         // do not set screen recording as active unless it is the only trace
         if (a.type === TraceType.SCREEN_RECORDING) return 1;
         if (b.type === TraceType.SCREEN_RECORDING) return -1;
-        return TraceTypeUtils.compareByDisplayOrder(a.type, b.type);
+        return compareByDisplayOrder(a.type, b.type);
       });
     if (tracesSortedByDisplayOrder.length > 0) {
       this.trySetActiveTrace(tracesSortedByDisplayOrder[0]);
@@ -262,7 +266,7 @@ export class TimelineData {
     const firstTimestamp = trace.getEntry(0).getTimestamp();
     let entry;
     try {
-      entry = TraceEntryFinder.findCorrespondingEntry(trace, position);
+      entry = findCorrespondingEntry(trace, position);
     } catch (e) {
       console.warn(
         `Could not find corresponding entry: ${(e as Error).message}`,
@@ -337,7 +341,7 @@ export class TimelineData {
 
     let entry;
     try {
-      entry = TraceEntryFinder.findCorrespondingEntry(trace, position);
+      entry = findCorrespondingEntry(trace, position);
     } catch (e) {
       console.warn(
         `Could not find corresponding entry: ${(e as Error).message}`,
