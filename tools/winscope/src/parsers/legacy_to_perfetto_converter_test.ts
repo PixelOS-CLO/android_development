@@ -21,8 +21,8 @@ import {FailedToConvertLegacyTraces} from 'messaging/user_warnings';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {ParserBuilder} from 'test/unit/parser_builder';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {Parser} from 'trace/parser';
 import {TraceFile} from 'trace/trace_file';
+import {Parser} from 'trace_api/parser';
 import {
   ClockSnapshot,
   LegacyToPerfettoConverter,
@@ -305,7 +305,7 @@ describe('LegacyToPerfettoConverter', () => {
             return TimestampConverterUtils.makeRealTimestamp(ns);
           });
     const parser = new ParserBuilder<string>()
-      .setEntries(ts.length === 0 ? [''] : ts.map((t) => ''))
+      .setEntries(ts.length === 0 ? [''] : ts.map(() => ''))
       .setTimestamps(ts)
       .build();
 

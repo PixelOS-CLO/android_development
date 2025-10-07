@@ -66,18 +66,18 @@ import {
   WinscopeEvent,
   WinscopeEventType,
 } from 'messaging/winscope_event';
-import {getFixtureFile} from 'test/unit/fixture_utils';
 
 import {WinscopeEventEmitter} from 'messaging/winscope_event_emitter';
 import {WinscopeEventEmitterStub} from 'messaging/winscope_event_emitter_stub';
 import {WinscopeEventListener} from 'messaging/winscope_event_listener';
 import {WinscopeEventListenerStub} from 'messaging/winscope_event_listener_stub';
+import {getFixtureFile} from 'test/unit/fixture_file_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {Trace} from 'trace/trace';
-import {TracePosition} from 'trace/trace_position';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {Trace} from 'trace_api/trace';
+import {TracePosition} from 'trace_api/trace_position';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {ViewType} from 'viewers/viewer';
 import {ViewerFactory} from 'viewers/viewer_factory';
 import {ViewerStub} from 'viewers/viewer_stub';
@@ -822,9 +822,9 @@ describe('Mediator', () => {
   it('handles trace removal requests', async () => {
     await loadPerfettoFilesAndReturnSearchViewer();
     await requestSearch('select ts from surfaceflinger_layers_snapshot');
-    removeSearchTraceAndCheckPropagation(true);
+    await removeSearchTraceAndCheckPropagation(true);
     await requestSearch('select id from surfaceflinger_layers_snapshot');
-    removeSearchTraceAndCheckPropagation(false);
+    await removeSearchTraceAndCheckPropagation(false);
   });
 
   it('handles BR file selection requests', async () => {

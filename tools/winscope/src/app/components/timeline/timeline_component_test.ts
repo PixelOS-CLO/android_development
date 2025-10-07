@@ -50,14 +50,14 @@ import {
   WinscopeEvent,
 } from 'messaging/winscope_event';
 import {checkTooltips, DOMTestHelper} from 'test/unit/dom_test_utils';
-import {TracesBuilder} from 'test/unit/traces_builder';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {makeEmptyTrace} from 'test/unit/trace_utils';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TracePosition} from 'trace/trace_position';
-import {TraceType} from 'trace/trace_type';
+import {TracesBuilder} from 'test/unit/traces_builder';
+import {Trace} from 'trace_api/trace';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TracePosition} from 'trace_api/trace_position';
+import {TraceType} from 'trace_api/trace_type';
+import {Traces} from 'trace_api/traces';
 import {QueryResult} from 'trace_processor/query_result';
 import {makeSearchTraceSpies} from 'trace_processor/test_utils';
 import {CanvasDrawer} from './expanded-timeline/canvas_drawer';
@@ -110,9 +110,6 @@ describe('TimelineComponent', () => {
         DragDropModule,
         ClipboardModule,
         CdkMenuModule,
-      ],
-      declarations: [
-        TestHostComponent,
         ExpandedTimelineComponent,
         DefaultTimelineRowComponent,
         MatDrawer,
@@ -121,6 +118,7 @@ describe('TimelineComponent', () => {
         MiniTimelineComponent,
         TimelineComponent,
         SliderComponent,
+        TestHostComponent,
         TransitionTimelineComponent,
       ],
     })
@@ -388,7 +386,7 @@ describe('TimelineComponent', () => {
     loadAllTraces(component, dom, false);
     await dom.openMatSelect();
 
-    const matOptions = dom.getMatSelectPanel().findAll('mat-option'); // [WM, SF, SR, ProtoLog, VC]
+    const matOptions = dom.getMatSelectPanel().findAll('.mat-mdc-option'); // [WM, SF, SR, ProtoLog, VC]
 
     for (const i of [0, 2, 4]) {
       expect(matOptions[i].getHTMLElement().ariaDisabled).toEqual('false');
@@ -1025,6 +1023,11 @@ describe('TimelineComponent', () => {
     loadSfWmTraces();
     const timelineComponent = assertDefined(component.timeline);
     const initialTraces = timelineComponent.sortedTraces.slice();
+
+    await dom.openMatSelect();
+    dom.getMatSelectPanel().findAndClickByIndex('mat-option', 1);
+    expectSelectedTraceTypes([TraceType.SURFACE_FLINGER]);
+
     const spy = spyOn(
       assertDefined(timelineComponent.miniTimeline?.drawer),
       'draw',
@@ -1035,10 +1038,12 @@ describe('TimelineComponent', () => {
     expect(spy).toHaveBeenCalledTimes(1);
     expect(timelineComponent.sortedTraces).not.toEqual(initialTraces);
     expect(timelineComponent.sortedTraces[0]).toEqual(trace);
+    expectSelectedTraceTypes([TraceType.SEARCH, TraceType.SURFACE_FLINGER]);
 
     await timelineComponent.onWinscopeEvent(new TraceRemoveRequest(trace));
     expect(spy).toHaveBeenCalledTimes(2);
     expect(timelineComponent.sortedTraces).toEqual(initialTraces);
+    expectSelectedTraceTypes([TraceType.SURFACE_FLINGER]);
   });
 
   it('disables or enables timeline on winscope events', async () => {
@@ -1388,6 +1393,7 @@ describe('TimelineComponent', () => {
   }
 
   @Component({
+    imports: [TimelineComponent],
     selector: 'host-component',
     template: `
       <timeline

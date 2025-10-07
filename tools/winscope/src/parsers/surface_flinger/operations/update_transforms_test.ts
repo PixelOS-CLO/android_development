@@ -15,10 +15,10 @@
  */
 
 import {assertDefined} from 'common/assert_utils';
+import {TransformTypeFlags} from 'common/geometry/transform_utils';
 import {PropertyTreeBuilder} from 'test/unit/property_tree_builder';
 import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {TransformTypeFlags} from 'trace/surface_flinger/transform_utils';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
 import {UpdateTransforms} from './update_transforms';
 
 describe('UpdateTransforms', () => {
@@ -46,6 +46,7 @@ describe('UpdateTransforms', () => {
       y: 0,
     };
   });
+
   it('adds matrix to transform', () => {
     propertyRoot.addOrReplaceChild(
       TreeNodeUtils.makePropertyNode(

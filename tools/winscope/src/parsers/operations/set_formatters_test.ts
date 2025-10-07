@@ -15,18 +15,18 @@
  */
 
 import {assertDefined} from 'common/assert_utils';
+import {TransformTypeFlags} from 'common/geometry/transform_utils';
 import {TimestampConverterUtils} from 'common/time/test_utils';
-import {
-  TamperedMessageType,
-  TamperedProtoField,
-} from 'parsers/tampered_message_type';
 import root from 'protos/test/fake_proto/json';
 import {PropertyTreeBuilder} from 'test/unit/property_tree_builder';
 import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {TransformTypeFlags} from 'trace/surface_flinger/transform_utils';
-import {EMPTY_OBJ_STRING, LAYER_ID_FORMATTER} from 'trace/tree_node/formatters';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
-import {SetFormatters} from './set_formatters';
+import {EMPTY_OBJ_STRING, LAYER_ID_FORMATTER} from 'trace/formatters';
+import {
+  TamperedMessageType,
+  TamperedProtoField,
+} from 'trace/proto_utils/tampered_message_type';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
+import {SetFormatters} from 'viewers/operations/set_formatters';
 
 describe('SetFormatters', () => {
   let propertyRoot: PropertyTreeNode;
@@ -37,6 +37,7 @@ describe('SetFormatters', () => {
     field = TamperedMessageType.tamper(root.lookupType('RootMessage')).fields[
       'entry'
     ];
+    operation = new SetFormatters();
   });
 
   it('adds correct formatter for enum node', () => {
@@ -62,7 +63,6 @@ describe('SetFormatters', () => {
       .setName('node')
       .build();
     propertyRoot.addOrReplaceChild(TreeNodeUtils.makeColorNode(-1, -1, -1, 1));
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -80,7 +80,6 @@ describe('SetFormatters', () => {
     propertyRoot.addOrReplaceChild(
       TreeNodeUtils.makeColorNode(0, 0, 0, undefined),
     );
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -96,7 +95,6 @@ describe('SetFormatters', () => {
       .setName('node')
       .build();
     propertyRoot.addOrReplaceChild(TreeNodeUtils.makeRectNode(0, 0, 1, 1));
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -112,7 +110,6 @@ describe('SetFormatters', () => {
       .setName('node')
       .build();
     propertyRoot.addOrReplaceChild(TreeNodeUtils.makeBufferNode());
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -128,7 +125,6 @@ describe('SetFormatters', () => {
       .setName('node')
       .build();
     propertyRoot.addOrReplaceChild(TreeNodeUtils.makeSizeNode(1, 2));
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -167,7 +163,6 @@ describe('SetFormatters', () => {
         },
       ])
       .build();
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -183,7 +178,6 @@ describe('SetFormatters', () => {
       .setName('node')
       .build();
     propertyRoot.addOrReplaceChild(TreeNodeUtils.makePositionNode(1, 2));
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -201,7 +195,6 @@ describe('SetFormatters', () => {
     propertyRoot.addOrReplaceChild(
       TreeNodeUtils.makeTransformNode(TransformTypeFlags.EMPTY),
     );
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -220,7 +213,6 @@ describe('SetFormatters', () => {
       ])
       .build();
 
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');
@@ -243,7 +235,6 @@ describe('SetFormatters', () => {
       .setChildren([{name: 'val', value: 1}])
       .build();
 
-    operation = new SetFormatters();
     operation.apply(propertyRoot);
 
     expect(propertyRoot.formattedValue()).toEqual('');

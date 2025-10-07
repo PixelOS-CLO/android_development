@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 
-import {
-  PropertySource,
-  PropertyTreeNode,
-} from 'trace/tree_node/property_tree_node';
-import {TreeNode} from 'trace/tree_node/tree_node';
+import {PropertySource, PropertyTreeNode} from 'tree_node/property_tree_node';
+import {TreeNode} from 'tree_node/tree_node';
 import {StringFilterPredicate} from 'viewers/common/string_filter_predicate';
 import {DiffType} from './diff_type';
 import {UiHierarchyTreeNode} from './ui_hierarchy_tree_node';
@@ -32,10 +29,16 @@ export class UiTreeUtils {
   }
 
   static isVisible: TreeNodeFilter = (node: TreeNode) => {
-    return (
-      node instanceof UiHierarchyTreeNode &&
-      node.getEagerPropertyByName('isComputedVisible')?.getValue()
-    );
+    if (!(node instanceof UiHierarchyTreeNode)) {
+      return;
+    }
+    const isComputedVisible = node
+      .getEagerPropertyByName('isComputedVisible')
+      ?.getValue();
+    if (isComputedVisible !== undefined) {
+      return isComputedVisible;
+    }
+    return node.getEagerPropertyByName('isVisible')?.getValue() ?? false;
   };
 
   static makeIsNotDefaultFilter(allowList: string[]): TreeNodeFilter {

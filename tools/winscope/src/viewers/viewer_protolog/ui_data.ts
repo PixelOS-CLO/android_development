@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import {TraceEntry} from 'trace/trace';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {TraceEntry} from 'trace_api/trace';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {
   LogEntry,
   LogField,

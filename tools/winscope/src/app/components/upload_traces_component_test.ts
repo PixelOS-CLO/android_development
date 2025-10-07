@@ -22,6 +22,7 @@ import {MatListModule} from '@angular/material/list';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
 import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
 import {MatTooltipModule} from '@angular/material/tooltip';
+import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {FilesSource} from 'app/files_source';
 import {TracePipeline} from 'app/trace_pipeline';
 import {assertDefined} from 'common/assert_utils';
@@ -33,9 +34,9 @@ import {
   ShowTraceUploadWarning,
 } from 'messaging/winscope_event';
 import {DOMTestHelper} from 'test/unit/dom_test_utils';
-import {getFixtureFile} from 'test/unit/fixture_utils';
+import {getFixtureFile} from 'test/unit/fixture_file_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {Traces} from 'trace/traces';
+import {Traces} from 'trace_api/traces';
 import {LoadProgressComponent} from './load_progress_component';
 import {UploadTracesComponent} from './upload_traces_component';
 
@@ -57,6 +58,7 @@ describe('UploadTracesComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
+        NoopAnimationsModule,
         MatCardModule,
         MatSnackBarModule,
         MatListModule,
@@ -65,9 +67,10 @@ describe('UploadTracesComponent', () => {
         MatTooltipModule,
         MatCheckboxModule,
         ClipboardModule,
+        UploadTracesComponent,
+        LoadProgressComponent,
       ],
       providers: [MatSnackBar],
-      declarations: [UploadTracesComponent, LoadProgressComponent],
     }).compileComponents();
     const fixture = TestBed.createComponent(UploadTracesComponent);
     component = fixture.componentInstance;
@@ -386,7 +389,7 @@ describe('UploadTracesComponent', () => {
     const firstBannerCloseButton = warningBanners[0].find(
       warningCloseButtonSelector,
     );
-    firstBannerCloseButton!!.click();
+    firstBannerCloseButton!.click();
     dom.detectChanges();
 
     // Assert only the first banner is removed

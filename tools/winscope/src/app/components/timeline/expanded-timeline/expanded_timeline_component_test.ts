@@ -24,15 +24,18 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {
+  BrowserAnimationsModule,
+  NoopAnimationsModule,
+} from '@angular/platform-browser/animations';
 import {TimelineData} from 'app/timeline_data';
 import {assertDefined} from 'common/assert_utils';
 import {TimestampConverterUtils} from 'common/time/test_utils';
 import {DOMTestHelper} from 'test/unit/dom_test_utils';
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
 import {TracesBuilder} from 'test/unit/traces_builder';
-import {TracePosition} from 'trace/trace_position';
-import {TraceType} from 'trace/trace_type';
+import {TracePosition} from 'trace_api/trace_position';
+import {TraceType} from 'trace_api/trace_type';
 import {DefaultTimelineRowComponent} from './default_timeline_row_component';
 import {ExpandedTimelineComponent} from './expanded_timeline_component';
 import {TransitionTimelineComponent} from './transition_timeline_component';
@@ -51,6 +54,7 @@ describe('ExpandedTimelineComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
+        NoopAnimationsModule,
         FormsModule,
         MatButtonModule,
         MatFormFieldModule,
@@ -61,8 +65,6 @@ describe('ExpandedTimelineComponent', () => {
         ReactiveFormsModule,
         BrowserAnimationsModule,
         DragDropModule,
-      ],
-      declarations: [
         ExpandedTimelineComponent,
         TransitionTimelineComponent,
         DefaultTimelineRowComponent,
@@ -77,12 +79,12 @@ describe('ExpandedTimelineComponent', () => {
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
     timelineData = new TimelineData();
     const traces = new TracesBuilder()
-      .setEntries(TraceType.SURFACE_FLINGER, [{}])
-      .setTimestamps(TraceType.SURFACE_FLINGER, [time10])
-      .setEntries(TraceType.WINDOW_MANAGER, [{}])
-      .setTimestamps(TraceType.WINDOW_MANAGER, [time11])
-      .setEntries(TraceType.TRANSACTIONS, [{}])
-      .setTimestamps(TraceType.TRANSACTIONS, [time12])
+      .setEntries(TraceType.SURFACE_FLINGER, [{}, {}])
+      .setTimestamps(TraceType.SURFACE_FLINGER, [time10, time10])
+      .setEntries(TraceType.WINDOW_MANAGER, [{}, {}])
+      .setTimestamps(TraceType.WINDOW_MANAGER, [time11, time11])
+      .setEntries(TraceType.TRANSACTIONS, [{}, {}])
+      .setTimestamps(TraceType.TRANSACTIONS, [time12, time12])
       .setEntries(TraceType.TRANSITION, [
         new HierarchyTreeBuilder()
           .setId('TransitionsTraceEntry')
@@ -102,7 +104,7 @@ describe('ExpandedTimelineComponent', () => {
           .build(),
       ])
       .setTimestamps(TraceType.TRANSITION, [time10, time60])
-      .setTimestamps(TraceType.PROTO_LOG, [time12])
+      .setTimestamps(TraceType.PROTO_LOG, [time12, time12])
       .build();
     await timelineData.initialize(
       traces,
@@ -130,13 +132,13 @@ describe('ExpandedTimelineComponent', () => {
     dom.detectChanges();
 
     const singleTimelines = assertDefined(component.singleTimelines);
-    expect(singleTimelines.length).toBe(4);
+    expect(singleTimelines.length).toEqual(4);
 
     // initially only first entry of SF is set
     singleTimelines.forEach((timeline) => {
       if (assertDefined(timeline.trace).type === TraceType.SURFACE_FLINGER) {
         const entry = assertDefined(timeline.selectedEntry);
-        expect(entry.getFullTrace().type).toBe(TraceType.SURFACE_FLINGER);
+        expect(entry.getFullTrace().type).toEqual(TraceType.SURFACE_FLINGER);
       } else {
         expect(timeline.selectedEntry).toBeUndefined();
       }
@@ -156,7 +158,7 @@ describe('ExpandedTimelineComponent', () => {
     dom.detectChanges();
 
     const singleTimelines = assertDefined(component.singleTimelines);
-    expect(singleTimelines.length).toBe(4);
+    expect(singleTimelines.length).toEqual(4);
 
     singleTimelines.forEach((timeline) => {
       // protolog and transactions traces have no timestamps before current position

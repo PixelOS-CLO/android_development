@@ -18,8 +18,8 @@ import {isBlank, utf8Decode, utf8Encode} from 'common/string_utils';
 import {Timestamp} from 'common/time/time';
 import {AbstractParser} from 'parsers/legacy/abstract_parser';
 import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
-import {TraceType} from 'trace/trace_type';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+import {TraceType} from 'trace_api/trace_type';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
 
 class ParserEventLog extends AbstractParser<PropertyTreeNode, Event> {
   private static readonly MAGIC_NUMBER_STRING = 'EventLog';
@@ -92,7 +92,7 @@ class ParserEventLog extends AbstractParser<PropertyTreeNode, Event> {
       const [metaData, eventData] = log
         .split(':', 2)
         .map((string) => string.trim());
-      const [rawTimestamp, uid, pid, tid, priority, tag] = metaData
+      const [rawTimestamp, uid, pid, tid, , tag] = metaData
         .split(' ')
         .filter((substring) => substring.length > 0);
       const timestampNs = BigInt(rawTimestamp.replace('.', ''));

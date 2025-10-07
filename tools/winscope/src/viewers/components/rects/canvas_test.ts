@@ -17,15 +17,16 @@
 import {equal} from 'common/array_utils';
 import {assertDefined} from 'common/assert_utils';
 import {Box3D} from 'common/geometry/box3d';
+import {CornerRadii} from 'common/geometry/corner_radii';
 import {Distance} from 'common/geometry/distance';
 import {Point3D} from 'common/geometry/point3d';
 import {IDENTITY_MATRIX} from 'common/geometry/transform_matrix';
-import * as THREE from 'three';
-import {CSS2DObject} from 'three/examples/jsm/renderers/CSS2DRenderer';
 import {
   TransformType,
   TransformTypeFlags,
-} from 'trace/surface_flinger/transform_utils';
+} from 'common/geometry/transform_utils';
+import * as THREE from 'three';
+import {CSS2DObject} from 'three/examples/jsm/renderers/CSS2DRenderer';
 import {ViewerEvents} from 'viewers/common/viewer_events';
 import {Camera} from './camera';
 import {Canvas} from './canvas';
@@ -274,11 +275,7 @@ describe('Canvas', () => {
       const rect = makeUiRect3D(rectId);
       canvas.updateRects([rect]);
       const rectMesh = getRectMesh(rectId);
-      const defaultVisibleRectColor = new THREE.Color(
-        200 / 255,
-        232 / 255,
-        183 / 255,
-      );
+      const defaultVisibleRectColor = new THREE.Color(0xc8e8b7);
       checkMaterialColorAndOpacity(
         rectMesh,
         defaultVisibleRectColor,
@@ -297,7 +294,7 @@ describe('Canvas', () => {
       canvas.updateRects([nonVisible]);
       checkMaterialColorAndOpacity(
         rectMesh,
-        new THREE.Color(220 / 255, 220 / 255, 220 / 255),
+        new THREE.Color(0xdcdcdc),
         Canvas.OPACITY_REGULAR,
       );
 
@@ -409,12 +406,17 @@ describe('Canvas', () => {
 
       // geometry object replaced
       const roundRect = makeUiRect3D(rectId);
-      roundRect.cornerRadius = 5;
+      roundRect.cornerRadii = new CornerRadii(0, 0.4, 0.3, 0.2);
       updateRectsAndCheckGeometryId(roundRect, rectMesh, rectGeometryId);
       rectGeometryId = rectMesh.geometry.id;
 
+      const diffRadii = makeUiRect3D(rectId);
+      diffRadii.cornerRadii = new CornerRadii(0.5, 0.4, 0.3, 0.2);
+      updateRectsAndCheckGeometryId(diffRadii, rectMesh, rectGeometryId);
+      rectGeometryId = rectMesh.geometry.id;
+
       const bottomRightChanged = makeUiRect3D(rectId);
-      bottomRightChanged.cornerRadius = 5;
+      bottomRightChanged.cornerRadii = new CornerRadii(0.5, 0.4, 0.3, 0.2);
       bottomRightChanged.bottomRight = new Point3D(5, 5, 5);
       updateRectsAndCheckGeometryId(
         bottomRightChanged,
@@ -424,14 +426,19 @@ describe('Canvas', () => {
       rectGeometryId = rectMesh.geometry.id;
 
       const topLeftChanged = makeUiRect3D(rectId);
-      topLeftChanged.cornerRadius = 5;
+      topLeftChanged.cornerRadii = new CornerRadii(0.5, 0.4, 0.3, 0.2);
       topLeftChanged.bottomRight = new Point3D(5, 5, 5);
       topLeftChanged.topLeft = new Point3D(0, 0, 5);
       updateRectsAndCheckGeometryId(topLeftChanged, rectMesh, rectGeometryId);
       rectGeometryId = rectMesh.geometry.id;
 
+      const noRadii = makeUiRect3D(rectId);
+      noRadii.bottomRight = new Point3D(5, 5, 5);
+      noRadii.topLeft = new Point3D(0, 0, 5);
+      updateRectsAndCheckGeometryId(noRadii, rectMesh, rectGeometryId);
+
+      const prevRectMeshId = rectMesh.id;
       const rotated = makeUiRect3D(rectId);
-      rotated.cornerRadius = 5;
       rotated.bottomRight = new Point3D(5, 5, 5);
       rotated.topLeft = new Point3D(0, 0, 5);
       rotated.transform = TransformType.getDefaultTransform(
@@ -439,10 +446,8 @@ describe('Canvas', () => {
         2,
         2,
       ).matrix;
-      const prevRotation = rectMesh.rotation.clone();
       canvas.updateRects([rotated]);
-      expect(rectMesh.geometry.id).toEqual(rectGeometryId);
-      expect(rectMesh.rotation.equals(prevRotation)).toBeFalse();
+      expect(getRectMesh(rectId).id).not.toEqual(prevRectMeshId);
     });
 
     it('handles changes in fill region', () => {
@@ -1026,7 +1031,7 @@ describe('Canvas', () => {
       canvas.updateRects([rect]);
       canvas.renderView();
 
-      const id = canvas.getClickedRectId(0.1, 0.1, 0);
+      const id = canvas.getClickedRectId(0.1, 0.1);
       expect(id).toEqual('rect1');
     });
 
@@ -1039,21 +1044,21 @@ describe('Canvas', () => {
       canvas.updateRects([rect]);
       canvas.renderView();
 
-      const id = canvas.getClickedRectId(0.1, 0.1, 0);
+      const id = canvas.getClickedRectId(0.1, 0.1);
       expect(id).toEqual('rect1');
     });
 
     it('does not identify rect if not clickable', () => {
       const rect = makeUiRect3D(rectId);
       canvas.updateRects([rect]);
-      expect(canvas.getClickedRectId(0.1, 0.1, 0)).toBeUndefined();
+      expect(canvas.getClickedRectId(0.1, 0.1)).toBeUndefined();
     });
 
     it('does not identify rect out of click area', () => {
       const rect = makeUiRect3D(rectId);
       rect.isClickable = true;
       canvas.updateRects([rect]);
-      expect(canvas.getClickedRectId(2, 2, 0)).toBeUndefined();
+      expect(canvas.getClickedRectId(2, 2)).toBeUndefined();
     });
   });
 
@@ -1081,7 +1086,7 @@ describe('Canvas', () => {
       id,
       topLeft: new Point3D(0, 0, 0),
       bottomRight: new Point3D(1, 1, 0),
-      cornerRadius: 0,
+      cornerRadii: undefined,
       darkFactor: 1,
       colorType: ColorType.VISIBLE,
       isClickable: false,

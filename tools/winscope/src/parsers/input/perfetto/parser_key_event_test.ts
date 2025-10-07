@@ -20,14 +20,14 @@ import {
 } from 'common/time/test_utils';
 import {getPerfettoParser} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {CoarseVersion} from 'trace/coarse_version';
-import {CustomQueryType} from 'trace/custom_query';
-import {Parser} from 'trace/parser';
-import {TraceType} from 'trace/trace_type';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+import {CoarseVersion} from 'trace_api/coarse_version';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {Parser} from 'trace_api/parser';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 
 describe('PerfettoParserKeyEvent', () => {
-  let parser: Parser<PropertyTreeNode>;
+  let parser: Parser<HierarchyTreeNode>;
 
   beforeAll(async () => {
     jasmine.addCustomEqualityTester(timestampEqualityTester);
@@ -57,38 +57,72 @@ describe('PerfettoParserKeyEvent', () => {
     expect(timestamps).toEqual(expected);
   });
 
+  it('retrieves all entries', async () => {
+    const entries = await parser.getAllEntries();
+    expect(entries.length).toEqual(2);
+    expect(entries.every((entry) => entry !== undefined)).toBeTrue();
+  });
+
   it('retrieves trace entry from timestamp', async () => {
     const entry = await parser.getEntry(1);
     expect(entry.id).toEqual('AndroidKeyEvent entry');
   });
 
-  it('transforms fake key event proto built from trace processor args', async () => {
+  it('retrieves and translates eager property values', async () => {
     const entry = await parser.getEntry(0);
-    const keyEvent = assertDefined(entry.getChildByName('keyEvent'));
 
-    expect(keyEvent?.getChildByName('eventId')?.getValue()).toEqual(759309047);
-    expect(keyEvent?.getChildByName('action')?.formattedValue()).toEqual(
+    expect(entry.getEagerPropertyByName('eventId')?.getValue()).toEqual(
+      759309047n,
+    );
+    expect(entry.getEagerPropertyByName('action')?.formattedValue()).toEqual(
       'ACTION_DOWN',
     );
-    expect(keyEvent?.getChildByName('source')?.formattedValue()).toEqual(
+    expect(entry.getEagerPropertyByName('source')?.formattedValue()).toEqual(
       'SOURCE_KEYBOARD',
     );
-    expect(keyEvent?.getChildByName('flags')?.formattedValue()).toEqual(
+    expect(entry.getEagerPropertyByName('deviceId')?.formattedValue()).toEqual(
+      '2',
+    );
+    expect(entry.getEagerPropertyByName('displayId')?.formattedValue()).toEqual(
+      '-1',
+    );
+    expect(entry.getEagerPropertyByName('keyCode')?.formattedValue()).toEqual(
+      'KEYCODE_VOLUME_UP',
+    );
+  });
+
+  it('transforms fake key event proto built from trace processor args', async () => {
+    const entry = await parser.getEntry(0);
+
+    const properties = await entry.getAllProperties();
+    const keyEvent = assertDefined(properties.getChildByName('event'));
+
+    expect(keyEvent.getChildByName('flags')?.formattedValue()).toEqual(
       'FLAG_FROM_SYSTEM',
     );
-    expect(keyEvent?.getChildByName('deviceId')?.getValue()).toEqual(2);
-    expect(keyEvent?.getChildByName('displayId')?.getValue()).toEqual(-1);
-    expect(keyEvent?.getChildByName('metaState')?.formattedValue()).toEqual(
+    expect(keyEvent.getChildByName('action')?.formattedValue()).toEqual(
+      'ACTION_DOWN',
+    );
+    expect(keyEvent.getChildByName('source')?.formattedValue()).toEqual(
+      'SOURCE_KEYBOARD',
+    );
+    expect(keyEvent.getChildByName('deviceId')?.getValue()).toEqual(2);
+    expect(keyEvent.getChildByName('displayId')?.getValue()).toEqual(-1);
+    expect(keyEvent.getChildByName('metaState')?.formattedValue()).toEqual(
       '0x0',
     );
-    expect(keyEvent?.getChildByName('keyCode')?.getValue()).toEqual(24);
-    expect(keyEvent?.getChildByName('scanCode')?.getValue()).toEqual(115);
+    expect(keyEvent.getChildByName('keyCode')?.formattedValue()).toEqual(
+      'KEYCODE_VOLUME_UP',
+    );
+    expect(keyEvent.getChildByName('scanCode')?.getValue()).toEqual(115);
   });
 
   it('merges key event with all associated dispatch events', async () => {
     const entry = await parser.getEntry(0);
+    const properties = await entry.getAllProperties();
+
     const windowDispatchEvents = assertDefined(
-      entry.getChildByName('windowDispatchEvents'),
+      properties.getChildByName('dispatchEvents'),
     );
 
     expect(windowDispatchEvents?.getAllChildren().length).toEqual(2);

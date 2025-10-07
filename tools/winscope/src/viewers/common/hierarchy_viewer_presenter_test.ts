@@ -28,11 +28,11 @@ import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
 import {MockPresenter} from 'test/unit/mock_hierarchy_viewer_presenter';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {makeEmptyTrace} from 'test/unit/trace_utils';
-import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {UiTreeNodeUtils} from 'test/unit/ui_tree_node_utils';
+import {Trace} from 'trace_api/trace';
+import {TraceType} from 'trace_api/trace_type';
+import {Traces} from 'trace_api/traces';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {TextFilter} from 'viewers/common/text_filter';
 import {UiRectBuilder} from 'viewers/components/rects/ui_rect_builder';
 import {DiffType} from './diff_type';
@@ -43,8 +43,8 @@ import {UserOptions} from './user_options';
 import {ViewerEvents} from './viewer_events';
 
 describe('AbstractHierarchyViewerPresenter', () => {
-  const timestamp1 = TimestampConverterUtils.makeElapsedTimestamp(1n);
   const timestamp2 = TimestampConverterUtils.makeElapsedTimestamp(2n);
+  const timestamp3 = TimestampConverterUtils.makeElapsedTimestamp(3n);
   let uiData: UiDataHierarchy;
   let presenter: MockPresenter;
   let trace: Trace<HierarchyTreeNode>;
@@ -55,7 +55,7 @@ describe('AbstractHierarchyViewerPresenter', () => {
   let storage: InMemoryStorage;
 
   beforeAll(async () => {
-    jasmine.addCustomEqualityTester(TreeNodeUtils.treeNodeEqualityTester);
+    jasmine.addCustomEqualityTester(UiTreeNodeUtils.treeNodeEqualityTester);
     trace = new TraceBuilder<HierarchyTreeNode>()
       .setType(TraceType.SURFACE_FLINGER)
       .setEntries([
@@ -87,7 +87,7 @@ describe('AbstractHierarchyViewerPresenter', () => {
           ])
           .build(),
       ])
-      .setTimestamps([timestamp1, timestamp2])
+      .setTimestamps([timestamp2, timestamp3])
       .build();
     selectedTree = UiHierarchyTreeNode.from(
       assertDefined((await trace.getEntry(0).getValue()).getChildByName('p1')),
@@ -120,7 +120,7 @@ describe('AbstractHierarchyViewerPresenter', () => {
     const trace = new TraceBuilder<HierarchyTreeNode>()
       .setType(TraceType.SURFACE_FLINGER)
       .setEntries([selectedTree])
-      .setTimestamps([timestamp1])
+      .setTimestamps([timestamp2])
       .setIsCorrupted(true)
       .build();
     const traces = new Traces();
@@ -175,6 +175,20 @@ describe('AbstractHierarchyViewerPresenter', () => {
     ).toBeGreaterThan(0);
     expect(uiData.rectsToDraw?.length).toBeGreaterThan(0);
     expect(uiData.displays?.length).toBeGreaterThan(0);
+
+    await presenter.onHighlightedNodeChange(selectedTree);
+    expect(uiData.propertiesTree).toBeDefined();
+
+    await presenter.onAppEvent(
+      TracePositionUpdate.fromTimestamp(
+        TimestampConverterUtils.makeElapsedTimestamp(1n),
+      ),
+    );
+    expect(uiData.hierarchyTrees).toBeUndefined();
+    expect(uiData.pinnedItems.length).toEqual(0);
+    expect(uiData.rectsToDraw).toEqual([]);
+    expect(uiData.displays).toEqual([]);
+    expect(uiData.propertiesTree).toBeUndefined();
   });
 
   it('adds event listeners', () => {
@@ -182,7 +196,7 @@ describe('AbstractHierarchyViewerPresenter', () => {
     presenter.addEventListeners(element);
 
     let spy: jasmine.Spy = spyOn(presenter, 'onPinnedItemChange');
-    const node = TreeNodeUtils.makeUiHierarchyNode({name: 'test'});
+    const node = UiTreeNodeUtils.makeUiHierarchyNode({name: 'test'});
     element.dispatchEvent(
       new CustomEvent(ViewerEvents.HierarchyPinnedChange, {
         detail: {pinnedItem: node},
@@ -369,7 +383,7 @@ describe('AbstractHierarchyViewerPresenter', () => {
 
   it('handles pinned item change', () => {
     expect(uiData.pinnedItems).toEqual([]);
-    const item = TreeNodeUtils.makeUiHierarchyNode({id: '', name: ''});
+    const item = UiTreeNodeUtils.makeUiHierarchyNode({id: '', name: ''});
     presenter.onPinnedItemChange(item);
     expect(uiData.pinnedItems).toEqual([item]);
     presenter.onPinnedItemChange(item);
@@ -534,7 +548,6 @@ describe('AbstractHierarchyViewerPresenter', () => {
         .setId('1 p1')
         .setGroupId(0)
         .setIsClickable(true)
-        .setCornerRadius(0)
         .setDepth(0)
         .build(),
       new UiRectBuilder()
@@ -550,7 +563,6 @@ describe('AbstractHierarchyViewerPresenter', () => {
         .setId('3 c3')
         .setGroupId(0)
         .setIsClickable(true)
-        .setCornerRadius(0)
         .setDepth(1)
         .build(),
       new UiRectBuilder()
@@ -566,7 +578,6 @@ describe('AbstractHierarchyViewerPresenter', () => {
         .setId('2 p2')
         .setGroupId(0)
         .setIsClickable(true)
-        .setCornerRadius(0)
         .setDepth(2)
         .build(),
     ];

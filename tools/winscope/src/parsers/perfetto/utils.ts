@@ -22,9 +22,9 @@ import {
   assertStringOrUndefined,
   assertTrue,
 } from 'common/assert_utils';
-import {UserNotifier} from 'common/user_notifier';
 import {MissingVsyncId} from 'messaging/user_warnings';
-import {AbsoluteEntryIndex, EntriesRange} from 'trace/trace';
+import {UserNotifier} from 'services/user_notifier';
+import {AbsoluteEntryIndex, EntriesRange} from 'trace_api/index_types';
 import {TraceProcessor} from 'trace_processor/trace_processor';
 import {FakeProto, FakeProtoBuilder} from './fake_proto_builder';
 
@@ -66,7 +66,7 @@ export async function queryEntry(
   return getAndConvertArgsToProto(traceProcessor, sql);
 }
 
-async function getAndConvertArgsToProto(
+export async function getAndConvertArgsToProto(
   traceProcessor: TraceProcessor,
   sql: string,
 ): Promise<FakeProto> {

@@ -18,12 +18,12 @@ import {assertDefined} from 'common/assert_utils';
 import {PersistentStoreProxy} from 'common/store/persistent_store_proxy';
 import {Store} from 'common/store/store';
 import {Timestamp} from 'common/time/time';
-import {Trace, TraceEntry} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {ImeTraceType, TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
-import {TreeNode} from 'trace/tree_node/tree_node';
+import {Trace, TraceEntry} from 'trace_api/trace';
+import {ImeTraceType, TraceType} from 'trace_api/trace_type';
+import {Traces} from 'trace_api/traces';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
+import {TreeNode} from 'tree_node/tree_node';
 import {ImeAdditionalProperties} from 'viewers/common/ime_additional_properties';
 import {ImeUiData} from 'viewers/common/ime_ui_data';
 import {
@@ -178,7 +178,7 @@ the default for its data type.`,
       );
 
       if (sfEntry) {
-        sfProperties = ImeUtils.getImeLayers(
+        sfProperties = await ImeUtils.getImeLayers(
           sfEntry,
           wmProperties,
           sfEntryTimestamp,

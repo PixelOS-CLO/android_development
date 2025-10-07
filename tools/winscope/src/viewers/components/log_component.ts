@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
-import {CdkVirtualScrollViewport} from '@angular/cdk/scrolling';
+import {ClipboardModule} from '@angular/cdk/clipboard';
+import {
+  CdkVirtualScrollViewport,
+  ScrollingModule,
+} from '@angular/cdk/scrolling';
+import {CommonModule} from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -25,22 +30,40 @@ import {
   Output,
   ViewChild,
 } from '@angular/core';
+import {MatButtonModule} from '@angular/material/button';
+import {MatIconModule} from '@angular/material/icon';
+import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {MatSelectChange} from '@angular/material/select';
+import {MatTooltipModule} from '@angular/material/tooltip';
 
-import {isElementVisible, KeyboardEventKey} from 'common/dom_utils';
+import {
+  isElementOverflowing,
+  isElementVisible,
+  KeyboardEventKey,
+} from 'common/dom_utils';
 import {Timestamp, TimestampFormatType} from 'common/time/time';
 import {TimeUtils} from 'common/time/time_utils';
-import {TraceType} from 'trace/trace_type';
+import {TraceType} from 'trace_api/trace_type';
 import {TextFilter} from 'viewers/common/text_filter';
-import {LogEntry, LogField, LogHeader} from 'viewers/common/ui_data_log';
+import {
+  LogEntry,
+  LogField,
+  LogFieldValue,
+  LogHeader,
+} from 'viewers/common/ui_data_log';
+import {VariableHeightScrollDirective} from 'viewers/common/variable_height_scroll_directive';
 import {
   LogFilterChangeDetail,
   LogTextFilterChangeDetail,
   TimestampClickDetail,
   ViewerEvents,
 } from 'viewers/common/viewer_events';
+import {CollapsibleSectionTitleComponent} from 'viewers/components/collapsible_section_title_component';
+import {SearchBoxComponent} from 'viewers/components/search_box_component';
+import {SelectWithFilterComponent} from 'viewers/components/select_with_filter_component';
 import {
   inlineButtonStyle,
+  targetWindowButtonStyle,
   timeButtonStyle,
 } from 'viewers/components/styles/clickable_property.styles';
 import {currentElementStyle} from 'viewers/components/styles/current_element.styles';
@@ -53,6 +76,20 @@ import {
 
 @Component({
   selector: 'log-view',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ScrollingModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatProgressSpinnerModule,
+    ClipboardModule,
+    CollapsibleSectionTitleComponent,
+    SelectWithFilterComponent,
+    SearchBoxComponent,
+    VariableHeightScrollDirective,
+  ],
   template: `
     <div class="view-header" *ngIf="title">
       <div class="title-section">
@@ -65,22 +102,46 @@ import {
 
     <div class="entries" [class.padded]="padEntries">
       <div class="headers table-header" *ngIf="headers.length > 0">
-        <div *ngIf="showTraceEntryTimes" class="time">
+        <div *ngIf="showTraceEntryTimes" class="time time-controls cell">
           <button
               color="primary"
-              mat-button
-              class="time-button go-to-current-time"
+              mat-icon-button
+              class="time-button go-to-first-entry"
+              (click)="onGoToFirstEntryClick()"
+              matTooltip="Go to first entry"
+              matTooltipPosition="above">
+            <mat-icon>first_page</mat-icon>
+          </button>
+          <button
+              color="primary"
+              mat-icon-button
+              class="time-button go-to-current-entry"
               *ngIf="showCurrentTimeButton"
-              (click)="onGoToCurrentTimeClick()">
-            Go to Current Time
+              (click)="onGoToCurrentEntryClick()"
+              matTooltip="Go to current entry"
+              matTooltipPosition="above">
+            <mat-icon>move_down</mat-icon>
+          </button>
+          <button
+              color="primary"
+              mat-icon-button
+              class="time-button go-to-last-entry"
+              (click)="onGoToLastEntryClick()"
+              matTooltip="Go to last entry"
+              matTooltipPosition="above">
+              <mat-icon>last_page</mat-icon>
           </button>
         </div>
 
         <ng-container *ngFor="let header of headers">
           <div
+            #headerEl
             *ngIf="!isHeaderWithFilter(header)"
-            class="mat-body-2 header"
-            [class]="header.spec.cssClass">
+            class="mat-body-2 header text-no-overflow"
+            [class]="header.spec.cssClass"
+            [matTooltip]="header.spec.name"
+            [matTooltipDisabled]="disableHeaderTooltip(headerEl)"
+            matTooltipPosition="above">
           {{header.spec.name}}</div>
 
           <div
@@ -93,8 +154,8 @@ import {
                 [options]="header.filter.options"
                 [outerFilterWidth]="header.filter.outerFilterWidthCss"
                 [innerFilterWidth]="header.filter.innerFilterWidthCss"
-                appearance="none"
-                formFieldClass="no-padding-field"
+                formFieldClass="log-select-filter mat-form-field-appearance-none no-ripple-field"
+                subscriptSizing="dynamic"
                 (selectChange)="onFilterChange($event, header)">
             </select-with-filter>
 
@@ -103,13 +164,11 @@ import {
               [textFilter]="header.filter.textFilter"
               [label]="header.spec.name"
               [filterName]="header.spec.name"
-              appearance="none"
               [formFieldClass]="
-                'wide-field no-padding-field center-field '
+                'wide-field center-field mat-form-field-appearance-none no-ripple-field '
                  + header.spec.cssClass
                  + (header.filter.textFilter.filterString?.length === 0 ? ' mat-body-2' : '')
               "
-              height="fit-content"
               (filterChange)="onSearchBoxChange($event, header)"></search-box>
           </div>
         </ng-container>
@@ -155,7 +214,7 @@ import {
             [class.current]="isCurrentEntry(i)"
             [class.selected]="isSelectedEntry(i)"
             (click)="onEntryClicked(i)">
-          <div *ngIf="showTraceEntryTimes" class="time">
+          <div *ngIf="showTraceEntryTimes" class="time cell">
             <button
                 mat-button
                 class="time-button"
@@ -167,15 +226,32 @@ import {
           </div>
 
           <div [class]="field.spec.cssClass + ' cell'" *ngFor="let field of entry.fields; index as i">
-            <span class="mat-body-1" *ngIf="!showFieldButton(entry, field)">{{ field.value }}</span>
+            <span class="mat-body-1" *ngIf="!showFieldButton(entry, field) && !isClickableArray(field.value)">{{ field.value }}</span>
             <button
                 *ngIf="showFieldButton(entry, field)"
                 mat-button
                 class="time-button"
                 color="primary"
                 (click)="onFieldButtonClick($event, entry, field)">
-              {{ formatFieldButton(field) }}
+              {{ formatFieldButton(field.value) }}
             </button>
+            <ng-container *ngIf="isClickableArray(field.value)">
+              <ng-container *ngFor="let item of field.value; let index=index">
+                  <span *ngIf ="isString(item)" class='mat-body-1'>{{item}}</span>
+                  <button
+                    *ngIf ="!isString(item)"
+                    mat-button
+                    class="window-button"
+                    color="primary"
+                    [matTooltip]="item.tooltip"
+                    matTooltipPosition = "above"
+                    matTooltipShowDelay = 100
+                    (click)="item.onClick()">
+                    {{ item.propertyValue }}
+                  </button>
+              </ng-container>
+            </ng-container>
+
             <mat-icon
                 *ngIf="field.icon"
                 aria-hidden="false"
@@ -194,6 +270,9 @@ import {
   `,
   styles: [
     `
+      .log-title {
+        padding-bottom: 8px;
+      }
       .view-header {
         display: flex;
         flex-direction: column;
@@ -209,6 +288,7 @@ import {
     selectedElementStyle,
     currentElementStyle,
     timeButtonStyle,
+    targetWindowButtonStyle,
     inlineButtonStyle,
     viewerCardStyle,
     viewerCardInnerStyle,
@@ -241,12 +321,20 @@ export class LogComponent {
     @Inject(ElementRef) private elementRef: ElementRef<HTMLElement>,
   ) {}
 
-  getHeadersWithFilters() {
-    return this.headers.filter((header) => this.isHeaderWithFilter(header));
-  }
-
   isHeaderWithFilter(header: LogHeader): boolean {
     return header.filter !== undefined;
+  }
+
+  disableHeaderTooltip(header: HTMLElement): boolean {
+    return !isElementOverflowing(header);
+  }
+
+  isClickableArray(value: LogFieldValue): boolean {
+    return Array.isArray(value);
+  }
+
+  isString(item: LogFieldValue) {
+    return typeof item === 'string';
   }
 
   showFieldButton(entry: LogEntry, field: LogField): boolean {
@@ -255,10 +343,8 @@ export class LogComponent {
     return field.value instanceof Timestamp || propagateEntryTimestamp;
   }
 
-  formatFieldButton(field: LogField): string | number {
-    return field.value instanceof Timestamp
-      ? this.formatTimestamp(field.value)
-      : field.value;
+  formatFieldButton(field: string | number | Timestamp): string | number {
+    return field instanceof Timestamp ? this.formatTimestamp(field) : field;
   }
 
   areMultipleDatesPresent(): boolean {
@@ -319,9 +405,32 @@ export class LogComponent {
     this.emitEvent(ViewerEvents.LogEntryClick, index);
   }
 
-  onGoToCurrentTimeClick() {
+  onGoToFirstEntryClick() {
+    const firstEntry = this.entries.at(0);
+    if (firstEntry) {
+      this.scrollComponent?.scrollToIndex(0);
+      this.emitEvent(
+        ViewerEvents.TimestampClick,
+        new TimestampClickDetail(firstEntry.traceEntry),
+      );
+    }
+  }
+
+  onGoToCurrentEntryClick() {
     if (this.currentIndex !== undefined && this.scrollComponent) {
       this.scrollComponent.scrollToIndex(this.currentIndex);
+    }
+  }
+
+  onGoToLastEntryClick() {
+    const lastIndex = this.entries.length - 1;
+    const lastEntry = this.entries.at(lastIndex);
+    if (lastEntry) {
+      this.scrollComponent?.scrollToIndex(lastIndex);
+      this.emitEvent(
+        ViewerEvents.TimestampClick,
+        new TimestampClickDetail(lastEntry.traceEntry),
+      );
     }
   }
 
@@ -379,9 +488,7 @@ export class LogComponent {
   }
 
   isFixedSizeScrollViewport() {
-    return (
-      this.traceType === TraceType.CUJS || this.traceType === TraceType.SEARCH
-    );
+    return this.traceType === TraceType.CUJS;
   }
 
   updateTableMarginEnd() {

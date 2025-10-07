@@ -18,7 +18,6 @@ import {assertDefined} from 'common/assert_utils';
 import {Store} from 'common/store/store';
 import {Timestamp} from 'common/time/time';
 import {TimeUtils} from 'common/time/time_utils';
-import {UserNotifier} from 'common/user_notifier';
 import {CrossToolProtocol} from 'cross_tool/cross_tool_protocol';
 import {Analytics} from 'logging/analytics';
 import {ProgressListener} from 'messaging/progress_listener';
@@ -48,10 +47,11 @@ import {
 } from 'messaging/winscope_event';
 import {WinscopeEventEmitter} from 'messaging/winscope_event_emitter';
 import {WinscopeEventListener} from 'messaging/winscope_event_listener';
-import {TraceEntry} from 'trace/trace';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TracePosition} from 'trace/trace_position';
-import {TraceType} from 'trace/trace_type';
+import {UserNotifier} from 'services/user_notifier';
+import {TraceEntry} from 'trace_api/trace';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TracePosition} from 'trace_api/trace_position';
+import {TraceType} from 'trace_api/trace_type';
 import {RequestedTraceTypes} from 'trace_collection/adb_files';
 import {View, Viewer, ViewType} from 'viewers/viewer';
 import {ViewerFactory} from 'viewers/viewer_factory';
@@ -307,12 +307,9 @@ export class Mediator {
       }
     });
 
-    await event.visit(
-      WinscopeEventType.NO_TRACE_TARGETS_SELECTED,
-      async (event) => {
-        UserNotifier.add(new NoTraceTargetsSelected()).notify();
-      },
-    );
+    await event.visit(WinscopeEventType.NO_TRACE_TARGETS_SELECTED, async () => {
+      UserNotifier.add(new NoTraceTargetsSelected()).notify();
+    });
 
     await event.visit(
       WinscopeEventType.FILTER_PRESET_SAVE_REQUEST,

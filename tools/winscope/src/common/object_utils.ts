@@ -24,7 +24,10 @@ class Key {
    * @param key The key name.
    * @param index The index of the key in an array, or undefined if it's not an array key.
    */
-  constructor(public key: string, public index?: number) {}
+  constructor(
+    public key: string,
+    public index?: number,
+  ) {}
 
   /**
    * Returns true if the key is an array key.
@@ -39,36 +42,6 @@ class Key {
  */
 export class ObjectUtils {
   private static readonly ARRAY_KEY_REGEX = new RegExp('(.+)\\[(\\d+)\\]');
-
-  /**
-   * Gets the property at the given path in the object.
-   *
-   * @param obj The object to get the property from.
-   * @param path The path to the property, using dot notation for nested objects.
-   * @return The value of the property at the given path.
-   */
-  static getProperty(obj: object, path: string): any {
-    const keys = ObjectUtils.parseKeys(path);
-    keys.forEach((key) => {
-      if (obj === undefined) {
-        return;
-      }
-
-      if (key.isArrayKey()) {
-        if ((obj as any)[key.key] === undefined) {
-          return;
-        }
-        assertTrue(
-          Array.isArray((obj as any)[key.key]),
-          () => 'Expected to be array',
-        );
-        obj = (obj as any)[key.key][assertDefined(key.index)];
-      } else {
-        obj = (obj as any)[key.key];
-      }
-    });
-    return obj;
-  }
 
   /**
    * Sets the property at the given path in the object.

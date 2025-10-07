@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import {ClipboardModule} from '@angular/cdk/clipboard';
+import {CommonModule} from '@angular/common';
 import {
   ChangeDetectorRef,
   Component,
@@ -30,14 +32,22 @@ import {
   AbstractControl,
   FormControl,
   FormGroup,
+  ReactiveFormsModule,
   ValidationErrors,
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import {MatButtonModule} from '@angular/material/button';
+import {MatRippleModule} from '@angular/material/core';
+import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatIconModule} from '@angular/material/icon';
+import {MatInputModule} from '@angular/material/input';
+import {MatSelectModule} from '@angular/material/select';
+import {MatTooltipModule} from '@angular/material/tooltip';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {TimelineData} from 'app/timeline_data';
 import {assertDefined} from 'common/assert_utils';
-import {KeyboardEventKey} from 'common/dom_utils';
+import {isInputTextField, KeyboardEventKey} from 'common/dom_utils';
 import {FunctionUtils} from 'common/function_utils';
 import {PersistentStore} from 'common/store/persistent_store';
 import {parseBigIntStrippingUnit} from 'common/string_utils';
@@ -56,17 +66,33 @@ import {
   WinscopeEventEmitter,
 } from 'messaging/winscope_event_emitter';
 import {WinscopeEventListener} from 'messaging/winscope_event_listener';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TracePosition} from 'trace/trace_position';
-import {TraceType, TraceTypeUtils} from 'trace/trace_type';
+import {Trace} from 'trace_api/trace';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TracePosition} from 'trace_api/trace_position';
+import {TraceType, TraceTypeUtils} from 'trace_api/trace_type';
+import {Traces} from 'trace_api/traces';
 import {multlineTooltip} from 'viewers/components/styles/tooltip.styles';
+import {ExpandedTimelineComponent} from './expanded-timeline/expanded_timeline_component';
 import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
 
 @Component({
   selector: 'timeline',
   encapsulation: ViewEncapsulation.None,
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    ExpandedTimelineComponent,
+    MiniTimelineComponent,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatTooltipModule,
+    ClipboardModule,
+    MatSelectModule,
+    MatRippleModule,
+  ],
   template: `
     <div
       *ngIf="isDisabled"
@@ -110,19 +136,22 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
               <form [formGroup]="timestampForm" class="time-selector-form">
                 <mat-form-field
                   class="time-input human"
+                  subscriptSizing="dynamic"
                   appearance="fill"
                   (keydown.esc)="$event.target.blur()"
                   (keydown.enter)="onKeydownEnterTimeInputField($event)"
                   (change)="onHumanTimeInputChange($event)">
                   <mat-icon
+                    class="prefix"
                     [matTooltip]="getHumanTimeTooltip()"
                     matTooltipClass="multline-tooltip"
-                    matPrefix>schedule</mat-icon>
+                    matIconPrefix>schedule</mat-icon>
                   <input
                     matInput
                     name="humanTimeInput"
+                    class="mat-body-2"
                     [formControl]="selectedTimeFormControl" />
-                  <div class="field-suffix" matSuffix>
+                  <div class="field-suffix" matTextSuffix>
                     <span class="time-difference"> {{ getUTCOffset() }} </span>
                     <button
                       mat-icon-button
@@ -130,32 +159,36 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
                       matTooltipClass="multline-tooltip"
                       [cdkCopyToClipboard]="getHumanTime()"
                       (cdkCopyToClipboardCopied)="onTimeCopied('human')"
-                      matSuffix>
+                      matIconSuffix>
                       <mat-icon>content_copy</mat-icon>
                     </button>
                   </div>
                 </mat-form-field>
                 <mat-form-field
                   class="time-input nano"
+                  subscriptSizing="dynamic"
                   appearance="fill"
                   (keydown.esc)="$event.target.blur()"
                   (keydown.enter)="onKeydownEnterNanosecondsTimeInputField($event)"
                   (change)="onNanosecondsInputTimeChange($event)">
                   <mat-icon
-                    class="bookmark-icon"
+                    class="bookmark-icon prefix"
                     [class.material-symbols-outlined]="!currentPositionBookmarked()"
                     matTooltip="bookmark timestamp"
                     (click)="toggleBookmarkCurrentPosition($event)"
-                    matPrefix>flag</mat-icon>
+                    matRipple
+                    [matRippleCentered]="true"
+                    [matRippleRadius]="10"
+                    matIconPrefix>flag</mat-icon>
                   <input matInput name="nsTimeInput" [formControl]="selectedNsFormControl" />
-                  <div class="field-suffix" matSuffix>
+                  <div class="field-suffix" matTextSuffix>
                     <button
                       mat-icon-button
                       [matTooltip]="getCopyPositionTooltip(selectedNsFormControl.value)"
                       matTooltipClass="multline-tooltip"
                       [cdkCopyToClipboard]="selectedNsFormControl.value"
                       (cdkCopyToClipboardCopied)="onTimeCopied('ns')"
-                      matSuffix>
+                      matIconSuffix>
                       <mat-icon>content_copy</mat-icon>
                     </button>
                   </div>
@@ -183,8 +216,8 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
               </div>
             </div>
             <div id="trace-selector">
-              <mat-form-field appearance="none">
-                <mat-select #traceSelector [formControl]="selectedTracesFormControl" multiple>
+              <mat-form-field class="mat-form-field-appearance-none no-ripple-field" subscriptSizing="dynamic">
+                <mat-select #traceSelector [formControl]="selectedTracesFormControl" panelWidth="340px" multiple>
                   <div class="select-traces-panel">
                     <div class="tip">Filter traces in the timeline</div>
                     <mat-option
@@ -193,7 +226,6 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
                       [matTooltip]="trace.getDescriptors().join(', ')"
                       matTooltipPosition="right"
                       [style]="{
-                        color: 'var(--blue-text-color)',
                         opacity: isOptionDisabled(trace) ? 0.5 : 1.0
                       }"
                       [disabled]="isOptionDisabled(trace)"
@@ -211,7 +243,7 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
                       </button>
                     </div>
                   </div>
-                  <mat-select-trigger class="shown-selection">
+                  <mat-select-trigger matRipple class="shown-selection">
                     <div class="filter-header">
                       <span class="mat-body-2"> Filter </span>
                       <mat-icon class="material-symbols-outlined">expand_circle_up</mat-icon>
@@ -320,14 +352,13 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
         width: 282px;
         background-color: var(--drawer-block-primary);
       }
-      #time-selector .mat-form-field-wrapper {
+      #time-selector .mat-mdc-text-field-wrapper {
         width: 100%;
       }
-      #time-selector .mat-form-field-infix, #trace-selector .mat-form-field-infix {
-        padding: 0 0.75rem 0 0.5rem !important;
-        border-top: unset;
+      #time-selector .mat-mdc-form-field-infix {
+        padding: 0;
       }
-      #time-selector .mat-form-field-flex, #time-selector .field-suffix {
+      #time-selector .mat-mdc-form-field-flex, #time-selector .field-suffix {
         border-radius: 0;
         padding: 0;
         display: flex;
@@ -343,20 +374,19 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
         width: 90%;
         justify-content: center;
         align-items: center;
-        gap: 5px;
+        gap: 8px;
       }
       .time-selector-form mat-form-field {
-        margin-bottom: -1.34375em;
         display: flex;
         width: 100%;
         font-size: 12px;
       }
       .time-selector-form input {
         text-overflow: ellipsis;
-        font-weight: bold;
       }
       .time-selector-form .time-difference {
         padding-right: 2px;
+        white-space: nowrap;
       }
       #time-selector .time-controls {
         border-radius: 10px;
@@ -367,24 +397,26 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
         width: 90%;
         background-color: var(--drawer-block-secondary);
       }
-      #time-selector .mat-icon-button {
+      #time-selector .mat-mdc-icon-button {
         width: 24px;
         height: 24px;
         padding-left: 3px;
         padding-right: 3px;
+        display: flex;
+        align-items: center;
       }
       #time-selector .mat-icon {
+        display: flex;
         font-size: 18px;
         width: 18px;
         height: 18px;
         line-height: 18px;
-        display: flex;
       }
       .shown-selection .trace-icon {
         font-size: 18px;
         width: 18px;
         height: 18px;
-        padding-left: 4px;
+        padding-left: 4px;fweb
         padding-right: 4px;
         padding-top: 2px;
       }
@@ -416,8 +448,9 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
         overflow-y: auto;
         overflow-x: hidden;
       }
-      #trace-selector .mat-form-field-infix {
-        width: 80px;
+      #trace-selector .mat-mdc-form-field-infix {
+        width: 90px;
+        padding: 0 0 0 10px;
       }
       #trace-selector .shown-selection {
         height: 116px;
@@ -431,6 +464,7 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
       #trace-selector .filter-header {
         padding-top: 4px;
         display: flex;
+        align-items: center;
         gap: 2px;
       }
       .shown-selection .trace-icons {
@@ -440,14 +474,14 @@ import {MiniTimelineComponent} from './mini-timeline/mini_timeline_component';
         align-content: flex-start;
         width: 70%;
       }
-      #trace-selector .mat-select-trigger {
+      #trace-selector .mat-mdc-select-trigger {
         height: unset;
         flex-direction: column-reverse;
       }
-      #trace-selector .mat-select-arrow-wrapper {
+      #trace-selector .mat-mdc-select-arrow-wrapper {
         display: none;
       }
-      #trace-selector .mat-form-field-wrapper {
+      #trace-selector .mat-mdc-text-field-wrapper {
         padding: 0;
       }
       :has(>.select-traces-panel) {
@@ -660,7 +694,10 @@ export class TimelineComponent
       this.sortedTraces.sort((a, b) =>
         TraceTypeUtils.compareByDisplayOrder(a.type, b.type),
       );
-      this.selectedTracesFormControl.setValue(this.sortedTraces);
+      const newSelection = [event.trace].concat(
+        this.selectedTracesFormControl.value ?? [],
+      );
+      this.selectedTracesFormControl.setValue(newSelection);
       this.applyNewTraceSelection(event.trace);
       await this.miniTimeline?.drawer?.draw();
     });
@@ -744,22 +781,14 @@ export class TimelineComponent
 
   @HostListener('document:focusin', ['$event'])
   handleFocusInEvent(event: FocusEvent) {
-    if (
-      (event.target as HTMLInputElement)?.tagName === 'INPUT' &&
-      (event.target as HTMLInputElement)?.type === 'text'
-    ) {
-      //check if text input field focused
+    if (event.target instanceof HTMLElement && isInputTextField(event.target)) {
       this.isInputFormFocused = true;
     }
   }
 
   @HostListener('document:focusout', ['$event'])
   handleFocusOutEvent(event: FocusEvent) {
-    if (
-      (event.target as HTMLInputElement)?.tagName === 'INPUT' &&
-      (event.target as HTMLInputElement)?.type === 'text'
-    ) {
-      //check if text input field focused
+    if (event.target instanceof HTMLElement && isInputTextField(event.target)) {
       this.isInputFormFocused = false;
     }
   }
@@ -902,7 +931,7 @@ export class TimelineComponent
       .split(', ');
     return `
       Date: ${date}
-      Time: ${time}\xa0\xa0\xa0\xa0${this.getUTCOffset()}
+      Time: ${time}\xa0\xa0${this.getUTCOffset()}
 
       Edit field to update position by inputting time as
       "hh:mm:ss.zz", "YYYY-MM-DDThh:mm:ss.zz", or "YYYY-MM-DD, hh:mm:ss.zz"

@@ -63,11 +63,6 @@ export class GraphComponent implements AfterViewInit, OnChanges {
       this.updateData();
       this.createChart();
     }
-    if(
-      changes['showTestList']
-    ){
-      this.graphId = `graph-${this.featureName}-${Date.now()}`;
-    }
   }
 
   private setupResizeObserver(): void {
@@ -136,10 +131,10 @@ export class GraphComponent implements AfterViewInit, OnChanges {
       }
 
       const newPoint: DataPoint = { x };
-      if (actualDataPoint && typeof actualDataPoint === 'number') {
+      if (typeof actualDataPoint === 'number') {
         newPoint.actualValue = actualDataPoint;
       }
-      if (expectedDataPoint && typeof expectedDataPoint === 'number') {
+      if (typeof expectedDataPoint === 'number') {
         newPoint.expectedValue = expectedDataPoint;
       }
       this.data.push(newPoint);

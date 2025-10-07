@@ -16,10 +16,10 @@
 import {assertDefined} from 'common/assert_utils';
 import {FilterFlag} from 'common/filter_flag';
 import {Timestamp} from 'common/time/time';
-import {Item} from 'trace/item';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
 import {WindowType} from 'trace/window_manager/window_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {Item} from 'tree_node/item';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
 import {TextFilter} from 'viewers/common/text_filter';
 import {WmImeUtils} from 'viewers/common/wm_ime_utils';
 import {TreeNodeFilter, UiTreeUtils} from './ui_tree_utils';
@@ -110,43 +110,41 @@ class ImeAdditionalPropertiesUtils {
     return new ProcessedWindowManagerState(entry.id, entry.name, props, entry);
   }
 
-  getImeLayers(
+  async getImeLayers(
     entryTree: HierarchyTreeNode,
     processedWindowManagerState: ProcessedWindowManagerState,
     sfEntryTimestamp: Timestamp | undefined,
-  ): ImeLayers | undefined {
+  ): Promise<ImeLayers | undefined> {
     const imeContainerLayer = entryTree.findDfs(this.isImeContainer);
-
     if (!imeContainerLayer) {
       return undefined;
     }
 
-    const imeContainerProps: ImeContainerProperties = {
-      id: imeContainerLayer.id,
-      zOrderRelativeOfId: assertDefined(
-        imeContainerLayer.getEagerPropertyByName('zOrderRelativeOf'),
-      ).getValue(),
-      z: assertDefined(
-        imeContainerLayer.getEagerPropertyByName('z'),
-      ).getValue(),
-    };
-
     const inputMethodSurfaceLayer = imeContainerLayer.findDfs(
       this.isInputMethodSurface,
     );
-
     if (!inputMethodSurfaceLayer) {
       return undefined;
     }
 
+    const imeContainerAllProps = await imeContainerLayer.getAllProperties();
+    const imeContainerProps: ImeContainerProperties = {
+      id: imeContainerLayer.id,
+      zOrderRelativeOfId: assertDefined(
+        imeContainerAllProps.getChildByName('zOrderRelativeOf'),
+      ).getValue(),
+      z: assertDefined(imeContainerAllProps.getChildByName('z')).getValue(),
+    };
+
+    const inputMethodSurfaceAllProps =
+      await inputMethodSurfaceLayer.getAllProperties();
     const inputMethodSurfaceProps: InputMethodSurfaceProperties = {
       id: inputMethodSurfaceLayer.id,
       isVisible: assertDefined(
-        inputMethodSurfaceLayer.getEagerPropertyByName('isComputedVisible'),
+        inputMethodSurfaceAllProps.getChildByName('isVisible'),
       ).getValue(),
-      screenBounds:
-        inputMethodSurfaceLayer.getEagerPropertyByName('screenBounds'),
-      rect: inputMethodSurfaceLayer.getEagerPropertyByName('bounds'),
+      screenBounds: inputMethodSurfaceAllProps.getChildByName('screenBounds'),
+      rect: inputMethodSurfaceAllProps.getChildByName('bounds'),
     };
 
     let focusedWindowLayer: HierarchyTreeNode | undefined;
@@ -162,7 +160,7 @@ class ImeAdditionalPropertiesUtils {
     }
 
     const focusedWindowColor = focusedWindowLayer
-      ? focusedWindowLayer.getEagerPropertyByName('color')
+      ? (await focusedWindowLayer.getAllProperties()).getChildByName('color')
       : undefined;
 
     // we want to see both ImeContainer and IME-snapshot if there are

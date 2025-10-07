@@ -19,7 +19,7 @@ import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {assertDefined} from 'common/assert_utils';
 import {DOMTestHelper} from 'test/unit/dom_test_utils';
-import {TraceType} from 'trace/trace_type';
+import {TraceType} from 'trace_api/trace_type';
 import {VISIBLE_CHIP} from 'viewers/common/chip';
 import {UserOptions} from 'viewers/common/user_options';
 import {UserOptionsComponent} from './user_options_component';
@@ -31,8 +31,7 @@ describe('UserOptionsComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MatButtonModule, MatIconModule],
-      declarations: [UserOptionsComponent],
+      imports: [UserOptionsComponent, MatButtonModule, MatIconModule],
     }).compileComponents();
     const fixture = TestBed.createComponent(UserOptionsComponent);
     component = fixture.componentInstance;

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import {CdkMenuModule} from '@angular/cdk/menu';
+import {CommonModule} from '@angular/common';
 import {
   ChangeDetectorRef,
   Component,
@@ -26,6 +28,8 @@ import {
   SimpleChanges,
   ViewChild,
 } from '@angular/core';
+import {MatButtonModule} from '@angular/material/button';
+import {MatIconModule} from '@angular/material/icon';
 import {TimelineData} from 'app/timeline_data';
 import {assertDefined} from 'common/assert_utils';
 import {KeyboardEventCode} from 'common/dom_utils';
@@ -33,17 +37,25 @@ import {PersistentStore} from 'common/store/persistent_store';
 import {TimeRange, Timestamp} from 'common/time/time';
 import {TimestampUtils} from 'common/time/timestamp_utils';
 import {Analytics} from 'logging/analytics';
-import {Trace} from 'trace/trace';
-import {TracePosition} from 'trace/trace_position';
-import {TraceTypeUtils} from 'trace/trace_type';
+import {Trace} from 'trace_api/trace';
+import {TracePosition} from 'trace_api/trace_position';
+import {TraceTypeUtils} from 'trace_api/trace_type';
 import {MiniTimelineDrawer} from './drawer/mini_timeline_drawer';
 import {MiniTimelineDrawerImpl} from './drawer/mini_timeline_drawer_impl';
 import {MiniTimelineDrawerInput} from './drawer/mini_timeline_drawer_input';
-import {MIN_SLIDER_WIDTH} from './slider_component';
+import {MIN_SLIDER_WIDTH, SliderComponent} from './slider_component';
 import {Transformer} from './transformer';
 
 @Component({
   selector: 'mini-timeline',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    CdkMenuModule,
+    SliderComponent,
+  ],
   template: `
     <div class="mini-timeline-outer-wrapper">
       <div class="zoom-buttons">
@@ -144,8 +156,10 @@ export class MiniTimelineComponent {
   >();
 
   @ViewChild('miniTimelineWrapper', {static: false})
-  miniTimelineWrapper: ElementRef | undefined;
-  @ViewChild('canvas', {static: false}) canvasRef: ElementRef | undefined;
+  miniTimelineWrapper: ElementRef<HTMLElement> | undefined;
+  @ViewChild('canvas', {static: false}) canvasRef:
+    | ElementRef<HTMLCanvasElement>
+    | undefined;
 
   getCanvas(): HTMLCanvasElement {
     return assertDefined(this.canvasRef).nativeElement;
@@ -312,7 +326,11 @@ export class MiniTimelineComponent {
     const zoomTo = this.hoverTimestamp;
     const isZoomIn = event.code === KeyboardEventCode.W;
     Analytics.Navigation.logZoom('key', 'timeline', isZoomIn ? 'in' : 'out');
-    isZoomIn ? this.zoomIn(zoomTo) : this.zoomOut(zoomTo);
+    if (isZoomIn) {
+      this.zoomIn(zoomTo);
+    } else {
+      this.zoomOut(zoomTo);
+    }
   }
 
   onZoomChanged(zoom: TimeRange) {
@@ -419,8 +437,8 @@ export class MiniTimelineComponent {
     canvas.style.height = 'auto';
 
     const miniTimelineWrapper = assertDefined(this.miniTimelineWrapper);
-    const width = miniTimelineWrapper.nativeElement.offsetWidth;
-    const height = miniTimelineWrapper.nativeElement.offsetHeight;
+    const width = miniTimelineWrapper.nativeElement.clientWidth;
+    const height = miniTimelineWrapper.nativeElement.clientHeight;
 
     const HiPPIwidth = window.devicePixelRatio * width;
     const HiPPIheight = window.devicePixelRatio * height;

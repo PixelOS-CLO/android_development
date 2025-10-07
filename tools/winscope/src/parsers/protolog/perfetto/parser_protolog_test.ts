@@ -20,11 +20,11 @@ import {
 } from 'common/time/test_utils';
 import {getPerfettoParser} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {CustomQueryType} from 'trace/custom_query';
-import {Parser} from 'trace/parser';
 import {ProtologColumnType} from 'trace/protolog/protolog_column_type';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {Parser} from 'trace_api/parser';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 
 describe('PerfettoParserProtolog', () => {
   let parser: Parser<HierarchyTreeNode>;
@@ -52,6 +52,12 @@ describe('PerfettoParserProtolog', () => {
       TimestampConverterUtils.makeRealTimestamp(1713866817780323445n),
     ];
     expect(timestamps.slice(0, 3)).toEqual(expected);
+  });
+
+  it('retrieves all entries', async () => {
+    const entries = await parser.getAllEntries();
+    expect(entries.length).toEqual(3);
+    expect(entries.every((entry) => entry !== undefined)).toBeTrue();
   });
 
   it('reconstructs human-readable log message (REAL time)', async () => {
@@ -102,7 +108,7 @@ describe('PerfettoParserProtolog', () => {
 
   it('supports LOG_TABLE_FILTER_VALUES custom query', async () => {
     const trace = new TraceBuilder()
-      .setType(TraceType.TRANSACTIONS)
+      .setType(TraceType.PROTO_LOG)
       .setParser(parser)
       .build();
     const traceEntries = trace.sliceEntries(0, 3);

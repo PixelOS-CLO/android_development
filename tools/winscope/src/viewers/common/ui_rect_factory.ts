@@ -16,12 +16,12 @@
 
 import {assertDefined} from 'common/assert_utils';
 import {Point} from 'common/geometry/point';
-import {TraceRect} from 'trace/trace_rect';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+import {DispatchedPointerAxis} from 'trace/input/dispatched_pointer_axis';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
+import {TraceRect} from 'tree_node/trace_rect';
 import {UiRect} from 'viewers/components/rects/ui_rect';
 import {UiRectBuilder} from 'viewers/components/rects/ui_rect_builder';
-import {DispatchedPointerAxis} from 'viewers/viewer_input/operations/dispatched_pointer_axis';
 
 class UiRectFactory {
   makeUiRects(
@@ -43,7 +43,7 @@ class UiRectFactory {
         .setId(traceRect.id)
         .setGroupId(traceRect.groupId)
         .setIsClickable(!traceRect.isDisplay)
-        .setCornerRadius(traceRect.cornerRadius)
+        .setCornerRadii(traceRect.cornerRadii)
         .setHasContent(
           viewCapturePackageNames.includes(
             traceRect.name.substring(0, traceRect.name.indexOf('/')),
@@ -73,7 +73,6 @@ class UiRectFactory {
         .setId(traceRect.id)
         .setGroupId(groupId)
         .setIsClickable(true)
-        .setCornerRadius(traceRect.cornerRadius)
         .setHasContent(traceRect.isVisible)
         .setDepth(assertDefined(traceRect.depth))
         .setOpacity(traceRect.opacity)
@@ -112,7 +111,6 @@ class UiRectFactory {
         .setId(traceRect.id)
         .setGroupId(traceRect.groupId)
         .setIsClickable(true)
-        .setCornerRadius(traceRect.cornerRadius)
         .setHasContent(hasContent(traceRect.id))
         .setDepth(traceRect.depth)
         .setOpacity(opacity)

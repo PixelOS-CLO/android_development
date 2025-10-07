@@ -19,21 +19,22 @@ import {
   toIntLittleEndian,
   toUintLittleEndian,
 } from 'common/array_utils';
+import {FileUtils} from 'common/file_utils';
 import {Timestamp} from 'common/time/time';
-import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {TIME_UNIT_TO_NANO} from 'common/time/time_units';
-import {UserNotifier} from 'common/user_notifier';
+import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {MonotonicScreenRecording} from 'messaging/user_warnings';
-import * as MP4Box from 'mp4box';
+import {createFile, MP4ArrayBuffer, MP4File, Sample} from 'mp4box';
 import {AbstractParser} from 'parsers/legacy/abstract_parser';
-import {CoarseVersion} from 'trace/coarse_version';
-import {MediaBasedTraceEntry} from 'trace/media_based_trace_entry';
+import {UserNotifier} from 'services/user_notifier';
 import {ScreenRecordingUtils} from 'trace/screen_recording_utils';
 import {TraceFile} from 'trace/trace_file';
-import {ScreenRecordingOffsets, TraceMetadata} from 'trace/trace_metadata';
-import {TraceType} from 'trace/trace_type';
+import {CoarseVersion} from 'trace_api/coarse_version';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {ScreenRecordingOffsets, TraceMetadata} from 'trace_api/trace_metadata';
+import {TraceType} from 'trace_api/trace_type';
 
-class ParserScreenRecording extends AbstractParser<
+export class ParserScreenRecording extends AbstractParser<
   MediaBasedTraceEntry,
   bigint
 > {
@@ -72,24 +73,32 @@ class ParserScreenRecording extends AbstractParser<
     const posVersion = this.searchMagicString(videoData);
     if (posVersion !== undefined) {
       return this.parseTimestampsUsingEmbeddedMetadata(videoData, posVersion);
-    } else if (this.metadata?.screenRecordingOffsets !== undefined) {
+    }
+
+    if (this.metadata?.screenRecordingOffsets !== undefined) {
       return await this.parseTimestampsUsingExternalMetadata(
         videoData,
         this.metadata.screenRecordingOffsets,
       );
     }
+
     // try parse offset from filename
-    const filename = this.traceFile.file.name;
-    if (filename.endsWith('-screen.mp4')) {
-      const noSuffix = filename.slice(0, filename.lastIndexOf('-'));
-      const maybeOffset = noSuffix.slice(noSuffix.lastIndexOf('-') + 1);
+    let filename = FileUtils.removeDirFromFileName(this.traceFile.file.name);
+    filename = FileUtils.removeExtensionFromFilename(filename);
+    let offsetMs = AndroidScreenRecording.tryParseFilename(filename);
+    if (offsetMs === undefined) {
+      offsetMs = ScreenRecordingWithUID.tryParseFilename(filename);
+    }
+
+    if (offsetMs !== undefined) {
       try {
-        const offset = BigInt(maybeOffset);
+        const offset = BigInt(offsetMs) * BigInt(TIME_UNIT_TO_NANO.ms);
         return await this.parseTimestampsUsingFilenameOffset(videoData, offset);
       } catch (e) {
         console.error(e);
       }
     }
+
     throw new TypeError(
       'Cannot parse screen recording. Video data does not contain winscope magic string. ' +
         'Metadata JSON not provided. ' +
@@ -271,16 +280,21 @@ class ParserScreenRecording extends AbstractParser<
   }
 
   private async parseTimestampsFromMp4(
-    arrayBuffer: ArrayBuffer,
+    arrayBuffer: ArrayBuffer | SharedArrayBuffer,
     elapsedRealTimeNanos: bigint,
   ): Promise<Array<bigint>> {
     const timestamps: Array<bigint> = [];
-    const mp4File: MP4Box.MP4File = MP4Box.createFile();
+    // There's an export issue with the createFile alias for TypeScript (1.5.0 - Jun 2025)
+    // It fails with the error below, use this as a bypass until the library is fixed.
+    // ERROR in src/parsers/screen_recording/parser_screen_recording.ts:288:48
+    // - error TS2554: Expected 0 arguments, but got 2.
+    const createFileAny = createFile as any;
+    const mp4File: MP4File = createFileAny(true, undefined);
     await new Promise<void>((resolve) => {
       mp4File.onReady = (info) => {
         mp4File.onSamples = (id, user, samples) => {
           let curr = elapsedRealTimeNanos;
-          samples.forEach((sample) => {
+          samples.forEach((sample: Sample) => {
             const timeSeconds = sample.duration / sample.timescale;
             const timeNs = BigInt(
               Math.floor(TIME_UNIT_TO_NANO.s * timeSeconds),
@@ -292,7 +306,7 @@ class ParserScreenRecording extends AbstractParser<
         };
         mp4File.setExtractionOptions(info.tracks[0].id);
       };
-      const buffer = arrayBuffer as MP4Box.MP4ArrayBuffer;
+      const buffer = arrayBuffer as MP4ArrayBuffer;
       buffer.fileStart = 0;
       mp4File.appendBuffer(buffer);
       mp4File.start();
@@ -309,4 +323,65 @@ class ParserScreenRecording extends AbstractParser<
   ]; // #VV1NSC0PET1ME2#
 }
 
-export {ParserScreenRecording};
+const START_TIME_REGEX = /^[0-9]+$/;
+
+class AndroidScreenRecording {
+  private static readonly DATE_REGEX = /^[0-9]{4}[0-9]{2}[0-9]{2}$/;
+  private static readonly TIME_REGEX = /^[0-9]{2}[0-9]{2}[0-9]{2}$/;
+
+  static tryParseFilename(filename: string): bigint | undefined {
+    // expected filename: screen-YYYYMMDD-HHmmss-<start_time_ms>
+    const [screen, saveDate, saveTime, startTimeMs] = filename.split('-');
+    if (!screen.endsWith('screen')) {
+      return undefined;
+    }
+    if (
+      saveDate === undefined ||
+      !AndroidScreenRecording.DATE_REGEX.test(saveDate)
+    ) {
+      return undefined;
+    }
+    if (
+      saveTime === undefined ||
+      !AndroidScreenRecording.TIME_REGEX.test(saveTime)
+    ) {
+      return undefined;
+    }
+    if (startTimeMs === undefined || !START_TIME_REGEX.test(startTimeMs)) {
+      return undefined;
+    }
+
+    return BigInt(startTimeMs);
+  }
+}
+
+class ScreenRecordingWithUID {
+  private static readonly DATE_REGEX = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+  private static readonly TIME_REGEX = /^[0-9]{2}-[0-9]{2}-[0-9]{2}$/;
+  private static readonly UID_REGEX = /^[0-9a-f]{32}$/;
+
+  static tryParseFilename(filename: string): bigint | undefined {
+    // expected filename: YYYY-MM-DD_HH-mm-ss-<uid>-<start_time_ms>-screen
+    const [date, rem] = filename.split('_');
+    if (rem === undefined || !ScreenRecordingWithUID.DATE_REGEX.test(date)) {
+      return undefined;
+    }
+    const time = rem.slice(0, 8);
+    if (!ScreenRecordingWithUID.TIME_REGEX.test(time)) {
+      return undefined;
+    }
+
+    const [uid, startTimeMs, suffix] = rem.slice(9).split('-');
+    if (!ScreenRecordingWithUID.UID_REGEX.test(uid)) {
+      return undefined;
+    }
+    if (suffix !== 'screen') {
+      return undefined;
+    }
+    if (startTimeMs === undefined || !START_TIME_REGEX.test(startTimeMs)) {
+      return undefined;
+    }
+
+    return BigInt(startTimeMs);
+  }
+}

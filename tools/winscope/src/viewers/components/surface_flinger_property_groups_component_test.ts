@@ -19,8 +19,8 @@ import {MatDividerModule} from '@angular/material/divider';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {DOMTestHelper} from 'test/unit/dom_test_utils';
-import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {EMPTY_OBJ_STRING} from 'trace/tree_node/formatters';
+import {UiTreeNodeUtils} from 'test/unit/ui_tree_node_utils';
+import {EMPTY_OBJ_STRING} from 'trace/formatters';
 import {SfCuratedProperties} from 'viewers/common/curated_properties';
 import {ViewerEvents} from 'viewers/common/viewer_events';
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
@@ -34,9 +34,11 @@ describe('SurfaceFlingerPropertyGroupsComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       providers: [{provide: ComponentFixtureAutoDetect, useValue: true}],
-      imports: [MatDividerModule, MatTooltipModule, MatIconModule],
-      declarations: [
+      imports: [
         TestHostComponent,
+        MatDividerModule,
+        MatTooltipModule,
+        MatIconModule,
         SurfaceFlingerPropertyGroupsComponent,
         TransformMatrixComponent,
         CollapsibleSectionTitleComponent,
@@ -146,12 +148,16 @@ describe('SurfaceFlingerPropertyGroupsComponent', () => {
     const calculatedDiv = dom.get('.effects .left-column');
     calculatedDiv.get('.shadow').checkTextExact('Shadow Radius: 1 px');
     calculatedDiv.get('.blur').checkTextExact('Blur Radius: 1 px');
-    calculatedDiv.get('.corner-radius').checkTextExact('Corner Radius: 1 px');
+    calculatedDiv
+      .get('.corner-radius')
+      .checkTextExact('Corner Radii: (1, 2, 3, 4)');
   });
 
   it('displays simple requested effects', () => {
     const requestedDiv = dom.get('.effects .right-column');
-    requestedDiv.get('.corner-radius').checkTextExact('Corner Radius: 1 px');
+    requestedDiv
+      .get('.corner-radius')
+      .checkTextExact('Corner Radii: (4, 3, 2, 1)');
   });
 
   it('displays color and alpha value in effects', () => {
@@ -198,6 +204,7 @@ describe('SurfaceFlingerPropertyGroupsComponent', () => {
   }
 
   @Component({
+    imports: [SurfaceFlingerPropertyGroupsComponent],
     selector: 'host-component',
     template: `
       <surface-flinger-property-groups
@@ -206,17 +213,21 @@ describe('SurfaceFlingerPropertyGroupsComponent', () => {
     `,
   })
   class TestHostComponent {
-    transformNode = TreeNodeUtils.makeUiPropertyNode('transform', 'transform', {
-      type: 0,
-      matrix: {
-        dsdx: 1,
-        dsdy: 0,
-        dtdx: 0,
-        dtdy: 1,
-        tx: 0,
-        ty: 0,
+    transformNode = UiTreeNodeUtils.makeUiPropertyNode(
+      'transform',
+      'transform',
+      {
+        type: 0,
+        matrix: {
+          dsdx: 1,
+          dsdy: 0,
+          dtdx: 0,
+          dtdy: 1,
+          tx: 0,
+          ty: 0,
+        },
       },
-    });
+    );
 
     properties: SfCuratedProperties = {
       summary: [
@@ -246,11 +257,11 @@ describe('SurfaceFlingerPropertyGroupsComponent', () => {
       relativeChildren: [],
       calcColor: `${EMPTY_OBJ_STRING}, alpha: 1`,
       calcShadowRadius: '1 px',
-      calcCornerRadius: '1 px',
+      calcCornerRadii: '(1, 2, 3, 4)',
       calcCornerRadiusCrop: EMPTY_OBJ_STRING,
       backgroundBlurRadius: '1 px',
       reqColor: `${EMPTY_OBJ_STRING}, alpha: 1`,
-      reqCornerRadius: '1 px',
+      reqCornerRadii: '(4, 3, 2, 1)',
       reqCrop: '(0, 0) - (1, 2)',
       inputTransform: this.transformNode,
       inputRegion: 'null',

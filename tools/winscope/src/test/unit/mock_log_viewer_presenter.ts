@@ -16,8 +16,8 @@
 
 import {assertDefined} from 'common/assert_utils';
 import {Store} from 'common/store/store';
-import {Trace} from 'trace/trace';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+import {Trace} from 'trace_api/trace';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
 import {
   AbstractLogViewerPresenter,
   NotifyLogViewCallbackType,

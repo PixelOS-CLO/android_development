@@ -18,10 +18,11 @@ import {
   TimestampConverterUtils,
   timestampEqualityTester,
 } from 'common/time/test_utils';
-import {getFixtureFile, LegacyParserProvider} from 'test/unit/fixture_utils';
-import {Parser} from 'trace/parser';
+import {getFixtureFile} from 'test/unit/fixture_file_utils';
+import {LegacyParserProvider} from 'test/unit/fixture_utils';
 import {TraceFile} from 'trace/trace_file';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {Parser} from 'trace_api/parser';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {ParserFactory} from './parser_factory';
 
 describe('Parser', () => {

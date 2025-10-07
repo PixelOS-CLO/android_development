@@ -1,7 +1,9 @@
 import { CommonModule, NgFor, NgIf } from '@angular/common';
 import {
   Component,
+  ElementRef,
   EventEmitter,
+  HostListener,
   Input,
   OnChanges,
   Output,
@@ -11,6 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { FormsModule } from '@angular/forms';
 import { MatMenuModule } from '@angular/material/menu';
+import { TruncatePipe } from '../app/pipes/truncate.pipe';
 
 @Component({
   selector: 'test-mode-list',
@@ -21,31 +24,49 @@ import { MatMenuModule } from '@angular/material/menu';
     FormsModule,
     MatIconModule,
     MatExpansionModule,
-    MatMenuModule
+    MatMenuModule,
+    TruncatePipe
   ],
   templateUrl: './test-mode.component.html',
 })
-export class TestModeComponent implements OnChanges{
+export class TestModeComponent implements OnChanges {
+  constructor(private elementRef: ElementRef) { }
+
   @Input() testModes: String[] = [];
+  @Input() testMode: String = "";
   @Output() selectedTestMode = new EventEmitter<String>();
 
 
-  selectedMode : String= ""
+  selectedMode: String = ""
+  showDropdown = false
 
+  toggleDropdown(): void {
+    this.showDropdown = !this.showDropdown
+  }
+
+  @HostListener('document:click', ['$event'])
+  onClickOutside(event: MouseEvent) {
+    if (!this.elementRef.nativeElement.contains(event.target)) {
+      this.showDropdown = false;
+    }
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
-
+    if (changes["testMode"]) {
+      this.selectedMode = this.testMode
+    }
   }
 
   onActionSelected(action: String): void {
-    this.selectedMode = action
-    this.switchMode(action)
+    if (this.selectedMode !== action) {// Take action only when selected mode changes.
+      this.selectedMode = action
+      this.switchMode(action)
+    }
+    this.toggleDropdown()
   }
 
-
-
-   switchMode(mode : String) {
-     this.selectedTestMode.emit(mode);
-    }
+  switchMode(mode: String) {
+    this.selectedTestMode.emit(mode);
+  }
 }
 

@@ -27,13 +27,14 @@ import {TraceBuilder} from 'test/unit/trace_builder';
 import {makeEmptyTrace} from 'test/unit/trace_utils';
 import {TreeNodeUtils} from 'test/unit/tree_node_utils';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {CustomQueryType} from 'trace/custom_query';
-import {Trace} from 'trace/trace';
-import {Traces} from 'trace/traces';
-import {TRACE_INFO} from 'trace/trace_info';
-import {TraceType} from 'trace/trace_type';
-import {EMPTY_OBJ_STRING} from 'trace/tree_node/formatters';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {EMPTY_OBJ_STRING} from 'trace/formatters';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {Trace} from 'trace_api/trace';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TraceType} from 'trace_api/trace_type';
+import {Traces} from 'trace_api/traces';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertySource} from 'tree_node/property_tree_node';
 import {NotifyHierarchyViewCallbackType} from 'viewers/common/abstract_hierarchy_viewer_presenter';
 import {AbstractHierarchyViewerPresenterTest} from 'viewers/common/abstract_hierarchy_viewer_presenter_test';
 import {VISIBLE_CHIP} from 'viewers/common/chip';
@@ -570,7 +571,40 @@ the default for its data type.`,
         expect(uiData.curatedProperties).toBeUndefined();
       });
 
+      it('sets properties tree but no curated properties for recursive root node', async () => {
+        await presenter.onAppEvent(this.getPositionUpdate());
+        const hierarchyTree = assertDefined(uiData.hierarchyTrees?.[0]);
+        Object.assign(hierarchyTree.getAllChildren()[0], {
+          name: 'WinscopeRecursiveLayerRoot',
+        });
+        await presenter.onHighlightedNodeChange(
+          hierarchyTree.getAllChildren()[0],
+        );
+        expect(uiData.propertiesTree).toBeDefined();
+        expect(uiData.curatedProperties).toBeUndefined();
+      });
+
       it('formats summary, color, pixel and crop correctly in curated properties', async () => {
+        const layer1Props = getPropertiesForCuratedPanel(1n);
+        Object.assign(layer1Props, {
+          occludedBy: [0n],
+          partiallyOccludedBy: [2n],
+          coveredBy: [3n],
+          destinationFrame: {left: 0, right: 1, top: 0, bottom: 1},
+          color: {r: 0, g: 0, b: 0, a: 1},
+          shadowRadius: 1,
+          cornerRadii: {tl: 1, tr: 2, br: 4},
+          crop: {left: 0, top: 0, right: 1, bottom: 2},
+          requestedCornerRadius: 5,
+        });
+
+        const layer2Props = getPropertiesForCuratedPanel(2n);
+        Object.assign(layer2Props, {
+          cornerRadius: 6,
+          cornerRadii: {tl: 0, tr: 0, bl: 0, br: 0},
+          requestedCornerRadii: {bl: 3},
+        });
+
         const tree = new HierarchyTreeBuilder()
           .setId('LayerTraceEntry')
           .setName('root')
@@ -578,26 +612,22 @@ the default for its data type.`,
             {
               id: '1',
               name: 'layer1',
-              properties: {
-                occludedBy: ['0 layer0'],
-                partiallyOccludedBy: ['2 layer2'],
-                coveredBy: ['3 layer3'],
-                flags: null,
-                zOrderRelativeOf: null,
-                bounds: null,
-                screenBounds: null,
-                activeBuffer: null,
-                currFrame: null,
-                destinationFrame: {left: 0, right: 1, top: 0, bottom: 1},
-                z: null,
-                color: {r: 0, g: 0, b: 0, a: 1},
-                shadowRadius: 1,
-                cornerRadius: null,
-                cornerRadiusCrop: null,
-                backgroundBlurRadius: null,
-                crop: {x: 0, y: 0, w: 1, h: 2},
-                requestedCornerRadius: null,
-              },
+              properties: layer1Props,
+            },
+            {
+              id: '0',
+              name: 'layer0',
+              properties: getPropertiesForCuratedPanel(0n),
+            },
+            {
+              id: '2',
+              name: 'layer2',
+              properties: layer2Props,
+            },
+            {
+              id: '3',
+              name: 'layer3',
+              properties: {layerId: 3n},
             },
           ])
           .build();
@@ -606,6 +636,12 @@ the default for its data type.`,
           .setType(TraceType.SURFACE_FLINGER)
           .setEntries([tree])
           .build();
+        const cornerRadii = (await traceSf.getEntry(0).getValue())
+          .getChildByName('layer2')
+          ?.getEagerPropertyByName('cornerRadii');
+        cornerRadii?.getAllChildren().forEach((child) => {
+          Object.assign(child, {source: PropertySource.DEFAULT});
+        });
         traces.addTrace(traceSf);
         const notifyViewCallback = (newData: UiData) => {
           uiData = newData;
@@ -623,7 +659,8 @@ the default for its data type.`,
         await presenter.onHighlightedIdChange(
           assertDefined(tree.getChildByName('layer1')).id,
         );
-        expect(uiData.curatedProperties?.summary).toEqual([
+        let properties = assertDefined(uiData.curatedProperties);
+        expect(properties.summary).toEqual([
           {
             key: 'Occluded by',
             desc: 'Fully occluded by these opaque layers',
@@ -640,17 +677,28 @@ the default for its data type.`,
             layerValues: [{layerId: '3', nodeId: '3 layer3', name: 'layer3'}],
           },
         ]);
-        expect(uiData.curatedProperties?.calcColor).toEqual(
-          '(0, 0, 0), alpha: 1',
+        expect(properties.calcColor).toEqual('(0, 0, 0), alpha: 1');
+        expect(properties.reqColor).toEqual('no color found');
+        expect(properties.calcShadowRadius).toEqual('1 px');
+        expect(properties.calcCornerRadii).toEqual('(1, 2, 0, 4)');
+        expect(properties.destinationFrame).toEqual('(0, 0) - (1, 1)');
+        expect(properties.calcCrop).toEqual(EMPTY_OBJ_STRING);
+        expect(properties.reqCrop).toEqual('(0, 0) - (1, 2)');
+        expect(properties.reqCornerRadii).toEqual('(5, 5, 5, 5)');
+
+        await presenter.onHighlightedIdChange(
+          assertDefined(tree.getChildByName('layer0')).id,
         );
-        expect(uiData.curatedProperties?.reqColor).toEqual('no color found');
-        expect(uiData.curatedProperties?.calcShadowRadius).toEqual('1 px');
-        expect(uiData.curatedProperties?.calcCornerRadius).toEqual('0 px');
-        expect(uiData.curatedProperties?.destinationFrame).toEqual(
-          '(0, 0) - (1, 1)',
+        properties = assertDefined(uiData.curatedProperties);
+        expect(properties.calcCornerRadii).toEqual('(0, 0, 0, 0)');
+        expect(properties.reqCornerRadii).toEqual('(0, 0, 0, 0)');
+
+        await presenter.onHighlightedIdChange(
+          assertDefined(tree.getChildByName('layer2')).id,
         );
-        expect(uiData.curatedProperties?.calcCrop).toEqual(EMPTY_OBJ_STRING);
-        expect(uiData.curatedProperties?.reqCrop).toEqual('(0, 0) - (1, 2)');
+        properties = assertDefined(uiData.curatedProperties);
+        expect(properties.calcCornerRadii).toEqual('(6, 6, 6, 6)');
+        expect(properties.reqCornerRadii).toEqual('(0, 0, 3, 0)');
       });
 
       it('draws input windows', async () => {
@@ -719,6 +767,30 @@ the default for its data type.`,
 
         await presenter.onAppEvent(positionUpdate);
         return [presenter, traceVc];
+      }
+
+      function getPropertiesForCuratedPanel(layerId: bigint) {
+        return {
+          layerId,
+          flags: null,
+          zOrderRelativeOf: null,
+          bounds: null,
+          screenBounds: null,
+          activeBuffer: null,
+          currFrame: null,
+          destinationFrame: null,
+          z: null,
+          color: null,
+          shadowRadius: null,
+          cornerRadii: null,
+          cornerRadius: null,
+          cornerRadiusCrop: null,
+          backgroundBlurRadius: null,
+          crop: null,
+          requestedColor: null,
+          requestedCornerRadii: null,
+          requestedCornerRadius: null,
+        };
       }
     });
   }

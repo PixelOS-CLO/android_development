@@ -24,16 +24,20 @@ export interface MotionGolden {
   testClassName: string;
   testMethodName: string;
   testTime: string;
-  updated: boolean;
   videoUrl: string | undefined;
   goldenName: string | undefined;
   dataSource: DataSource;
-  isLocalData: boolean;
   expectedData: MotionGoldenData;
   actualData: MotionGoldenData;
+  status?: 'IDLE' | 'UPDATING' | 'PASSED_UPDATE' | 'FAILED_UPDATE';
+  error?: string;
 }
 
-export enum DataSource{
+export interface PresubmitTest {
+  testname: string;
+}
+
+export enum DataSource {
   GERRIT = 'gerrit',
 }
 
@@ -58,7 +62,7 @@ type DataPointTypes =
 export interface DataPointObject {
   [member: string]: DataPointTypes;
 }
-export interface DataPointArray extends Array<DataPointTypes> {}
+export interface DataPointArray extends Array<DataPointTypes> { }
 export interface NotFound {
   type: 'not_found';
 }

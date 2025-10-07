@@ -16,7 +16,7 @@
 
 import {assertDefined} from 'common/assert_utils';
 import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
 import {AddDisplayProperties} from './add_display_properties';
 
 describe('AddDisplayProperties', () => {
@@ -126,5 +126,30 @@ describe('AddDisplayProperties', () => {
     expect(displayWithProperties.getChildByName('isOn')?.getValue()).toEqual(
       false,
     );
+  });
+
+  it('handles missing properties', () => {
+    expect(() => operation.apply(propertyRoot)).not.toThrowError();
+
+    const displays = TreeNodeUtils.makePropertyNode(
+      propertyRoot.id,
+      'displays',
+      [
+        {
+          dpiX: 0,
+          size: {w: 1080, h: 2340},
+          layerStack: 4294967295,
+        },
+        {
+          dpiY: 0,
+          size: {w: 1080, h: 2340},
+          layerStack: 4294967295,
+        },
+      ],
+    );
+    propertyRoot.addOrReplaceChild(displays);
+
+    operation.apply(propertyRoot);
+    expect(() => operation.apply(propertyRoot)).not.toThrowError();
   });
 });

@@ -24,7 +24,10 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {
+  BrowserAnimationsModule,
+  NoopAnimationsModule,
+} from '@angular/platform-browser/animations';
 import {assertDefined} from 'common/assert_utils';
 import {Rect} from 'common/geometry/rect';
 import {TimestampConverterUtils} from 'common/time/test_utils';
@@ -33,9 +36,9 @@ import {DOMTestHelper} from 'test/unit/dom_test_utils';
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
 import {waitToBeCalled} from 'test/unit/spy_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {TraceType} from 'trace/trace_type';
 import {TransitionStatus} from 'trace/transitions/status';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {TransitionTimelineComponent} from './transition_timeline_component';
 
 describe('TransitionTimelineComponent', () => {
@@ -60,6 +63,7 @@ describe('TransitionTimelineComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [
+        NoopAnimationsModule,
         FormsModule,
         MatButtonModule,
         MatFormFieldModule,
@@ -70,8 +74,8 @@ describe('TransitionTimelineComponent', () => {
         ReactiveFormsModule,
         BrowserAnimationsModule,
         DragDropModule,
+        TransitionTimelineComponent,
       ],
-      declarations: [TransitionTimelineComponent],
     })
       .overrideComponent(TransitionTimelineComponent, {
         set: {changeDetection: ChangeDetectionStrategy.Default},

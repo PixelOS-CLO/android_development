@@ -21,9 +21,9 @@ import {
   WinscopeEventType,
 } from 'messaging/winscope_event';
 import {EmitEvent} from 'messaging/winscope_event_emitter';
-import {MediaBasedTraceEntry} from 'trace/media_based_trace_entry';
-import {Trace, TraceEntry} from 'trace/trace';
-import {TraceEntryFinder} from 'trace/trace_entry_finder';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {Trace, TraceEntry} from 'trace_api/trace';
+import {TraceEntryFinder} from 'trace_api/trace_entry_finder';
 import {ViewerEvents} from 'viewers/common/viewer_events';
 import {UiData} from './ui_data';
 
@@ -31,12 +31,16 @@ export type NotifyHierarchyViewCallbackType<UiData> = (uiData: UiData) => void;
 
 export class Presenter {
   private readonly uiData: UiData;
+  private readonly traces: Array<Trace<MediaBasedTraceEntry>>;
+  private readonly notifyViewCallback: NotifyHierarchyViewCallbackType<UiData>;
   private emitWinscopeEvent: EmitEvent = FunctionUtils.DO_NOTHING_ASYNC;
 
   constructor(
-    private readonly traces: Array<Trace<MediaBasedTraceEntry>>,
-    private readonly notifyViewCallback: NotifyHierarchyViewCallbackType<UiData>,
+    traces: Array<Trace<MediaBasedTraceEntry>>,
+    notifyViewCallback: NotifyHierarchyViewCallbackType<UiData>,
   ) {
+    this.traces = traces;
+    this.notifyViewCallback = notifyViewCallback;
     this.uiData = new UiData(
       this.traces.map((trace) => trace.getDescriptors().join(', ')),
     );

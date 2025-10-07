@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 import {assertDefined} from 'common/assert_utils';
 import {
   TimestampConverterUtils,
@@ -20,12 +21,14 @@ import {
 } from 'common/time/test_utils';
 import {getPerfettoParser} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {CoarseVersion} from 'trace/coarse_version';
-import {CustomQueryType} from 'trace/custom_query';
-import {Parser} from 'trace/parser';
-import {TraceType} from 'trace/trace_type';
+import {TransactionColumnType} from 'trace/transactions/transaction_column_type';
 import {TransactionType} from 'trace/transactions/transaction_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {CoarseVersion} from 'trace_api/coarse_version';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {Parser} from 'trace_api/parser';
+import {Trace} from 'trace_api/trace';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 
 describe('PerfettoParserTransactions', () => {
   let parser: Parser<HierarchyTreeNode>;
@@ -59,12 +62,18 @@ describe('PerfettoParserTransactions', () => {
     expect(timestamps.slice(0, 3)).toEqual(expected);
   });
 
-  it('retrieves trace entry from timestamp', async () => {
+  it('retrieves all entries', async () => {
+    const entries = await parser.getAllEntries();
+    expect(entries.length).toEqual(712);
+    expect(entries.every((entry) => entry !== undefined)).toBeTrue();
+  });
+
+  it('retrieves trace entry', async () => {
     const entry = await parser.getEntry(1);
     expect(entry.id).toEqual('TransactionsTraceEntry entry');
   });
 
-  describe('eager fetching', () => {
+  describe('eager property fetching', () => {
     it('fetches id properties', async () => {
       const entry0 = await parser.getEntry(0);
       checkIdProperties(
@@ -268,15 +277,41 @@ describe('PerfettoParserTransactions', () => {
     });
   });
 
-  it('supports VSYNCID custom query', async () => {
-    const trace = new TraceBuilder()
-      .setType(TraceType.TRANSACTIONS)
-      .setParser(parser)
-      .build();
-    const entries = await trace
-      .sliceEntries(0, 3)
-      .customQuery(CustomQueryType.VSYNCID);
-    const values = entries.map((entry) => entry.getValue());
-    expect(values).toEqual([1n, 2n, 3n]);
+  describe('custom queries', () => {
+    let trace: Trace<HierarchyTreeNode>;
+
+    beforeEach(() => {
+      const fullTrace = new TraceBuilder<HierarchyTreeNode>()
+        .setType(TraceType.TRANSACTIONS)
+        .setParser(parser)
+        .build();
+      trace = fullTrace.sliceEntries(0, 3);
+    });
+
+    it('supports VSYNCID custom query', async () => {
+      const entries = await trace.customQuery(CustomQueryType.VSYNCID);
+      const values = entries.map((entry) => entry.getValue());
+      expect(values).toEqual([1n, 2n, 3n]);
+    });
+
+    it('supports LOG_TABLE_FILTER_VALUES custom query', async () => {
+      await checkFilterQuery(TransactionColumnType.TRANSACTION_ID, 1295);
+      await checkFilterQuery(TransactionColumnType.VSYNC_ID, 712);
+      await checkFilterQuery(TransactionColumnType.PID, 8);
+      await checkFilterQuery(TransactionColumnType.UID, 7);
+      await checkFilterQuery(TransactionColumnType.PROCESS, 4);
+      await checkFilterQuery(TransactionColumnType.TRANSACTION_TYPE, 6);
+      await checkFilterQuery(TransactionColumnType.LAYER_OR_DISPLAY_ID, 116);
+      await checkFilterQuery(TransactionColumnType.FLAGS, 29);
+    });
+
+    async function checkFilterQuery(col: TransactionColumnType, size: number) {
+      const values = await trace.customQuery(
+        CustomQueryType.LOG_TABLE_FILTER_VALUES,
+        col,
+      );
+      expect(values.length).toEqual(size);
+      expect(new Set(values).size).toEqual(values.length);
+    }
   });
 });

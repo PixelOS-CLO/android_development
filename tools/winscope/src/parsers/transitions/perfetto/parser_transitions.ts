@@ -23,7 +23,6 @@ import {MakeTimestampStrategyType} from 'common/time/time';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {HierarchyTreeBuilderLog} from 'parsers/hierarchy_tree_builder_log';
 import {AddDefaults} from 'parsers/operations/add_defaults';
-import {SetFormatters} from 'parsers/operations/set_formatters';
 import {TransformToTimestamp} from 'parsers/operations/transform_to_timestamp';
 import {TranslateIntDef} from 'parsers/operations/translate_intdef';
 import {AbstractParser} from 'parsers/perfetto/abstract_parser';
@@ -31,22 +30,25 @@ import {FakeProtoTransformer} from 'parsers/perfetto/fake_proto_transformer';
 import {queryArgs} from 'parsers/perfetto/utils';
 import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {PropertyTreeBuilderFromQueryRow} from 'parsers/property_tree_builder_from_query_row';
-import {TAMPERED_TRACE_PACKET} from 'parsers/tampered_message_type';
 import {TransformDuration} from 'parsers/transitions/operations/transform_duration';
 import {TransitionType} from 'parsers/transitions/transition_type';
-import {TraceType} from 'trace/trace_type';
 import {
   EnumFormatter,
-  PropertyFormatter,
   TIMESTAMP_NODE_FORMATTER,
   UPPER_CASE_FORMATTER,
-} from 'trace/tree_node/formatters';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {Operation} from 'trace/tree_node/operations/operation';
-import {PropertiesProvider} from 'trace/tree_node/properties_provider';
-import {PropertiesProviderBuilder} from 'trace/tree_node/properties_provider_builder';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+} from 'trace/formatters';
+import {TAMPERED_TRACE_PACKET} from 'trace/proto_utils/tampered_message_type';
+import {TraceType} from 'trace_api/trace_type';
 import {ColumnType, RowIterator} from 'trace_processor/query_result';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {Operation} from 'tree_node/operation';
+import {PropertiesProvider} from 'tree_node/properties_provider';
+import {PropertiesProviderBuilder} from 'tree_node/properties_provider_builder';
+import {
+  PropertyTreeNode,
+  PropertyFormatter,
+} from 'tree_node/property_tree_node';
+import {SetFormatters} from 'viewers/operations/set_formatters';
 
 export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
   private static readonly TRANSITION_FIELD =
@@ -119,7 +121,7 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
     const columns = ParserTransitions.EAGER_COLUMNS.map(
       (column) => `transitions.${column}`,
     ).join(', ');
-    const sql = `SELECT ${columns} FROM ${this.getTableName()} as transitions;`;
+    const sql = `SELECT ${columns} FROM ${this.getTableName()} as transitions ORDER BY transitions.ts;`;
     return this.makeHierarchyTrees(sql);
   }
 

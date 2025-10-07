@@ -50,9 +50,14 @@ export const logComponentStyles = `
     min-width: 135px;
   }
 
-  .go-to-current-time {
-    height: 100%;
+  .time-controls {
+    display: flex;
+    align-items: center;
+  }
+
+  .time-controls .time-button {
     width: fit-content;
+    padding: 0 4px;
   }
 
   .placeholder-text {
@@ -138,8 +143,8 @@ export const logComponentStyles = `
   }
 
   .header {
-    display: flex;
     align-items: center;
+    align-self: center;
   }
 
   .transition-type {
@@ -223,10 +228,12 @@ export const logComponentStyles = `
   }
   .input-display-id {
     flex: 1;
+    padding-right: 12px;
     min-width: 50px;
   }
   .entry .input-details {
     flex: 4;
+    padding-left: 12px;
     min-width: 50px;
   }
   .headers .input-details {

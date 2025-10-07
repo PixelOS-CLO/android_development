@@ -16,12 +16,12 @@
 
 import {ResizableBuffer} from 'common/buffer_utils';
 import {binaryEncode, utf8Decode} from 'common/string_utils';
-import {UserNotifier} from 'common/user_notifier';
 import {WindowUtils} from 'common/window_utils';
 import {
   ProxyTracingErrors,
   ProxyTracingWarnings,
 } from 'messaging/user_warnings';
+import {UserNotifier} from 'services/user_notifier';
 import {
   AdbDeviceConnection,
   AdbDeviceConnectionListener,
@@ -31,7 +31,6 @@ import {TraceTarget} from 'trace_collection/trace_target';
 import {DataListener} from './adb_websocket_stream';
 import {ShellStream} from './shell_stream';
 import {StreamProvider} from './stream_provider';
-import {WdpDeviceConnectionResponse} from './wdp_host_connection';
 import {ErrorListener} from './websocket_stream';
 
 export class WdpDeviceConnection extends AdbDeviceConnection {
@@ -199,3 +198,11 @@ export class WdpDeviceConnection extends AdbDeviceConnection {
 }
 
 const ESC_CHAR_VINTR = new Uint8Array([0x03]);
+
+export interface WdpDeviceConnectionResponse {
+  serialNumber: string;
+  proxyStatus: 'ADB' | 'PROXY_UNAUTHORIZED';
+  adbStatus: string;
+  adbProps?: {[key: string]: string};
+  approveUrl?: string;
+}

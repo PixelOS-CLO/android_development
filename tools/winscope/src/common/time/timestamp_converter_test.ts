@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-import {
-  TimestampConverterUtils,
-  timestampEqualityTester,
-} from 'common/time/test_utils';
-import {TimestampConverter} from './timestamp_converter';
+import {TimestampConverterUtils, timestampEqualityTester} from './test_utils';
 import {TIME_UNIT_TO_NANO} from './time_units';
+import {TimestampConverter} from './timestamp_converter';
 
 describe('TimestampConverter', () => {
   const MILLISECOND = BigInt(TIME_UNIT_TO_NANO.ms);

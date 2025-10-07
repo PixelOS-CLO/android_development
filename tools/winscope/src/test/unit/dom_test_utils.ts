@@ -15,7 +15,7 @@
  */
 
 import {Type} from '@angular/core';
-import {ComponentFixture, flush} from '@angular/core/testing';
+import {ComponentFixture} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {assertDefined} from 'common/assert_utils';
 import {KeyboardEventKey, KeyboardEventKeyCode} from 'common/dom_utils';
@@ -158,11 +158,17 @@ export class DOMTestHelper<T> {
   }
 
   isMatSelectOpen(): boolean {
-    return this.findInDocument('.mat-select-panel') !== undefined;
+    return (
+      this.findInDocument('.mat-mdc-select-panel') !== undefined ||
+      this.findInDocument('.mat-select-panel') !== undefined
+    );
   }
 
   async openMatSelect() {
-    await this.clickAndWaitStable('.mat-select-trigger');
+    const trigger =
+      this.find('.mat-select-trigger') ?? this.get('.mat-mdc-select-trigger');
+    trigger.click();
+    await trigger.whenStable();
   }
 
   clickMatOption() {
@@ -171,11 +177,17 @@ export class DOMTestHelper<T> {
   }
 
   getMatSelectPanel(): DOMTestHelper<T> {
-    return this.getInDocument('.mat-select-panel');
+    return (
+      this.findInDocument('.mat-select-panel') ??
+      this.getInDocument('.mat-mdc-select-panel')
+    );
   }
 
   findMatTooltipPanel(): DOMTestHelper<T> | undefined {
-    return this.findInDocument('.mat-tooltip-panel');
+    return (
+      this.findInDocument('.mat-tooltip-panel') ??
+      this.findInDocument('.mat-mdc-tooltip-panel')
+    );
   }
 
   getSnackBar(): DOMTestHelper<T> {
@@ -186,7 +198,6 @@ export class DOMTestHelper<T> {
     this.root.addEventListener(event, listener);
   }
 
-  // eslint-disable-next-line no-undef
   keydownEnter(init?: KeyboardEventInit) {
     const params = {key: KeyboardEventKey.ENTER};
     Object.assign(params, init);
@@ -223,9 +234,11 @@ export class DOMTestHelper<T> {
 
   private keydownByKey(key: string, toDocument = false) {
     const event = new KeyboardEvent('keydown', {key});
-    toDocument
-      ? this.dispatchEventInDocument(event)
-      : this.dispatchEvent(event);
+    if (toDocument) {
+      this.dispatchEventInDocument(event);
+    } else {
+      this.dispatchEvent(event);
+    }
   }
 
   focusOut() {
@@ -267,21 +280,27 @@ export class DOMTestHelper<T> {
   }
 
   checkInnerHTML(value: string, isPresent = true) {
-    isPresent
-      ? expect(this.root.innerHTML).toContain(value)
-      : expect(this.root.innerHTML).not.toContain(value);
+    if (isPresent) {
+      expect(this.root.innerHTML).toContain(value);
+    } else {
+      expect(this.root.innerHTML).not.toContain(value);
+    }
   }
 
   checkClassName(value: string, isPresent = true) {
-    isPresent
-      ? expect(this.root.className).toContain(value)
-      : expect(this.root.className).not.toContain(value);
+    if (isPresent) {
+      expect(this.root.className).toContain(value);
+    } else {
+      expect(this.root.className).not.toContain(value);
+    }
   }
 
   checkClassNameExact(value: string, isPresent = true) {
-    isPresent
-      ? expect(this.root.className).toEqual(value)
-      : expect(this.root.className).not.toEqual(value);
+    if (isPresent) {
+      expect(this.root.className).toEqual(value);
+    } else {
+      expect(this.root.className).not.toEqual(value);
+    }
   }
 
   checkDisabled(value: boolean) {
@@ -304,7 +323,7 @@ export class DOMTestHelper<T> {
   checkSectionCollapseAndExpand(selector: string, sectionTitle: string) {
     const section = this.get(selector);
     section
-      .get('collapsible-section-title .mat-title')
+      .get('collapsible-section-title .section-title')
       .checkTextExact(sectionTitle);
     section.findAndClick('collapsible-section-title button');
     section.checkClassName('collapsed');
@@ -339,28 +358,20 @@ export class DOMTestHelper<T> {
     clientX: number,
     clientY: number,
   ) {
-    const event = document.createEvent('MouseEvent');
-    event.initMouseEvent(
-      type,
-      true /* canBubble */,
-      false /* cancelable */,
-      window /* view */,
-      0 /* detail */,
-      screenX /* screenX */,
-      screenY /* screenY */,
-      clientX /* clientX */,
-      clientY /* clientY */,
-      false /* ctrlKey */,
-      false /* altKey */,
-      false /* shiftKey */,
-      false /* metaKey */,
-      0 /* button */,
-      null /* relatedTarget */,
-    );
-    Object.defineProperty(event, 'buttons', {get: () => 1});
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: false,
+      composed: true,
+      view: window,
+      detail: 1,
+      screenX,
+      screenY,
+      clientX,
+      clientY,
+      buttons: 1,
+    });
     source.dispatchEvent(event);
     this.detectChanges();
-    flush();
   }
 }
 

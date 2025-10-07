@@ -16,22 +16,22 @@
 
 import {MakeTimestampStrategyType} from 'common/time/time';
 import {HierarchyTreeBuilderLog} from 'parsers/hierarchy_tree_builder_log';
-import {SetFormatters} from 'parsers/operations/set_formatters';
 import {TransformToTimestamp} from 'parsers/operations/transform_to_timestamp';
 import {AbstractParser} from 'parsers/perfetto/abstract_parser';
 import {getDistinctValues} from 'parsers/perfetto/utils';
 import {PropertyTreeBuilderFromQueryRow} from 'parsers/property_tree_builder_from_query_row';
+import {ProtologColumnType} from 'trace/protolog/protolog_column_type';
 import {
   CustomQueryParamTypeMap,
   CustomQueryParserResultTypeMap,
   CustomQueryType,
   VisitableParserCustomQuery,
-} from 'trace/custom_query';
-import {EntriesRange} from 'trace/index_types';
-import {ProtologColumnType} from 'trace/protolog/protolog_column_type';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
-import {PropertiesProviderBuilder} from 'trace/tree_node/properties_provider_builder';
+} from 'trace_api/custom_query';
+import {EntriesRange} from 'trace_api/index_types';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {PropertiesProviderBuilder} from 'tree_node/properties_provider_builder';
+import {SetFormatters} from 'viewers/operations/set_formatters';
 
 export class ParserProtolog extends AbstractParser<HierarchyTreeNode> {
   override getTraceType(): TraceType {
@@ -42,8 +42,8 @@ export class ParserProtolog extends AbstractParser<HierarchyTreeNode> {
     const sql = `SELECT
         ${Object.values(ProtologColumnType).join(', ')}
       FROM
-        ${this.getTableName()}
-      WHERE protolog.id = ${this.entryIndexToRowIdMap[index]};`;
+        ${this.getTableName()} AS tbl
+      WHERE tbl.id = ${this.entryIndexToRowIdMap[index]};`;
 
     return this.makeHierarchyTrees(sql).then((trees) => trees[0]);
   }
@@ -52,8 +52,8 @@ export class ParserProtolog extends AbstractParser<HierarchyTreeNode> {
     const sql = `SELECT
         ${Object.values(ProtologColumnType).join(', ')}
       FROM
-        ${this.getTableName()}
-      ORDER BY protolog.id`;
+        ${this.getTableName()} AS tbl
+      ORDER BY tbl.id`;
 
     return this.makeHierarchyTrees(sql);
   }

@@ -15,6 +15,7 @@
  */
 
 import {assertDefined} from 'common/assert_utils';
+import {KeyboardEventKey} from 'common/dom_utils';
 import {InMemoryStorage} from 'common/store/in_memory_storage';
 import {TimestampConverterUtils} from 'common/time/test_utils';
 import {TimeUtils} from 'common/time/time_utils';
@@ -27,14 +28,11 @@ import {MockPresenter} from 'test/unit/mock_log_viewer_presenter';
 import {PropertyTreeBuilder} from 'test/unit/property_tree_builder';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {makeEmptyTrace} from 'test/unit/trace_utils';
-import {Trace} from 'trace/trace';
-import {TracePosition} from 'trace/trace_position';
-import {TraceType} from 'trace/trace_type';
-import {DEFAULT_PROPERTY_FORMATTER} from 'trace/tree_node/formatters';
-import {
-  PropertySource,
-  PropertyTreeNode,
-} from 'trace/tree_node/property_tree_node';
+import {DEFAULT_PROPERTY_FORMATTER} from 'trace/formatters';
+import {Trace} from 'trace_api/trace';
+import {TracePosition} from 'trace_api/trace_position';
+import {TraceType} from 'trace_api/trace_type';
+import {PropertySource, PropertyTreeNode} from 'tree_node/property_tree_node';
 import {TextFilter} from 'viewers/common/text_filter';
 import {LogSelectFilter, LogTextFilter} from './log_filters';
 import {LogHeader, UiDataLog} from './ui_data_log';
@@ -201,15 +199,24 @@ describe('AbstractLogViewerPresenter', () => {
     expect(spy).toHaveBeenCalledWith(filter);
 
     spy = spyOn(presenter, 'onPositionChangeByKeyPress');
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowLeft'}));
+    pressLeftArrowKey();
     pressRightArrowKey();
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowUp'}));
+    pressUpArrowKey();
     expect(spy).not.toHaveBeenCalled();
 
     document.body.append(element);
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowLeft'}));
+    pressLeftArrowKey();
+    expect(spy).toHaveBeenCalledTimes(1);
     pressRightArrowKey();
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowUp'}));
+    expect(spy).toHaveBeenCalledTimes(2);
+    pressUpArrowKey();
+    expect(spy).toHaveBeenCalledTimes(2);
+
+    const inputElement = document.createElement('input');
+    inputElement.type = 'text';
+    pressLeftArrowKey(inputElement);
+    pressRightArrowKey(inputElement);
+    pressUpArrowKey(inputElement);
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
@@ -296,7 +303,7 @@ describe('AbstractLogViewerPresenter', () => {
     await sendPositionUpdate(positionUpdate, true);
 
     await presenter.onPositionChangeByKeyPress(
-      new KeyboardEvent('keydown', {key: 'ArrowRight'}),
+      makeKeydownEvent(KeyboardEventKey.ARROW_RIGHT),
     );
     const nextEntry = assertDefined(
       uiData.entries.find(
@@ -323,7 +330,7 @@ describe('AbstractLogViewerPresenter', () => {
     await sendPositionUpdate(lastEntryPositionUpdate, true);
 
     await presenter.onPositionChangeByKeyPress(
-      new KeyboardEvent('keydown', {key: 'ArrowRight'}),
+      makeKeydownEvent(KeyboardEventKey.ARROW_RIGHT),
     );
     expect(emitEventSpy).not.toHaveBeenCalled();
   });
@@ -344,7 +351,7 @@ describe('AbstractLogViewerPresenter', () => {
       'hasValidTimestamp',
     ).and.returnValue(false);
     await presenter.onPositionChangeByKeyPress(
-      new KeyboardEvent('keydown', {key: 'ArrowLeft'}),
+      makeKeydownEvent(KeyboardEventKey.ARROW_LEFT),
     );
     expect(emitEventSpy).toHaveBeenCalledWith(
       new TracePositionUpdate(
@@ -363,7 +370,7 @@ describe('AbstractLogViewerPresenter', () => {
     await sendPositionUpdate(positionUpdate, true);
 
     await presenter.onPositionChangeByKeyPress(
-      new KeyboardEvent('keydown', {key: 'ArrowLeft'}),
+      makeKeydownEvent(KeyboardEventKey.ARROW_LEFT),
     );
     expect(emitEventSpy).not.toHaveBeenCalled();
   });
@@ -585,8 +592,28 @@ describe('AbstractLogViewerPresenter', () => {
     return element;
   }
 
-  function pressRightArrowKey() {
-    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight'}));
+  function pressLeftArrowKey(target?: EventTarget) {
+    pressKey(KeyboardEventKey.ARROW_LEFT, target);
+  }
+
+  function pressRightArrowKey(target?: EventTarget) {
+    pressKey(KeyboardEventKey.ARROW_RIGHT, target);
+  }
+
+  function pressUpArrowKey(target?: EventTarget) {
+    pressKey(KeyboardEventKey.ARROW_UP, target);
+  }
+
+  function pressKey(key: string, target?: EventTarget) {
+    const event = makeKeydownEvent(key);
+    if (target) {
+      spyOnProperty(event, 'target').and.returnValue(target);
+    }
+    document.dispatchEvent(event);
+  }
+
+  function makeKeydownEvent(key: string) {
+    return new KeyboardEvent('keydown', {key});
   }
 
   async function sendPositionUpdate(

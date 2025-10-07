@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 import {assertDefined} from 'common/assert_utils';
+import {Rect} from 'common/geometry/rect';
+import {Region} from 'common/geometry/region';
 import {
   TimestampConverterUtils,
   timestampEqualityTester,
@@ -22,12 +24,13 @@ import {DuplicateLayerIds} from 'messaging/user_warnings';
 import {getPerfettoParser} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {CoarseVersion} from 'trace/coarse_version';
-import {CustomQueryType} from 'trace/custom_query';
-import {Parser} from 'trace/parser';
-import {Trace} from 'trace/trace';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {CoarseVersion} from 'trace_api/coarse_version';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {EntriesRange} from 'trace_api/index_types';
+import {Parser} from 'trace_api/parser';
+import {Trace} from 'trace_api/trace';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {UiTreeUtils} from 'viewers/common/ui_tree_utils';
 
 describe('PerfettoParserSurfaceFlinger', () => {
@@ -82,6 +85,81 @@ describe('PerfettoParserSurfaceFlinger', () => {
       expect(entry.name).toEqual('root');
     });
 
+    it('gets a range of entries that excludes the end index', async () => {
+      const index = 1;
+      const amountOfTrees = 6;
+      const range: EntriesRange = {
+        start: index,
+        end: index + amountOfTrees,
+      };
+      const entries = await parser.getRangeOfEntries(range);
+      expect(entries.length).toEqual(amountOfTrees);
+      expect(entries.length).not.toEqual(amountOfTrees + 1);
+    });
+
+    it('provides eager properties', async () => {
+      const entry = await parser.getEntry(0);
+      const leaf = assertDefined(
+        entry.findDfs(UiTreeUtils.makeIdMatchFilter('27 Leaf:24:25#27')),
+      );
+      expect(leaf.getEagerPropertyByName('isVisible')?.getValue()).toBeTrue();
+      expect(
+        leaf.getEagerPropertyByName('isHiddenByPolicy')?.getValue(),
+      ).toBeFalse();
+      expect(
+        leaf.getEagerPropertyByName('isMissingZParent')?.getValue(),
+      ).toBeFalse();
+      expect(leaf.getParent()?.name).toEqual('WindowedMagnification:0:31#4');
+
+      const task = assertDefined(
+        entry.findDfs(UiTreeUtils.makeIdMatchFilter('45 Task=1#45')),
+      );
+      expect(task.getEagerPropertyByName('isVisible')?.getValue()).toBeFalse();
+      expect(
+        task.getEagerPropertyByName('isHiddenByPolicy')?.getValue(),
+      ).toBeTrue();
+
+      const relZParent = assertDefined(
+        entry.findDfs(
+          UiTreeUtils.makeIdMatchFilter('11 ImePlaceholder:13:14#11'),
+        ),
+      );
+      const relZChild = assertDefined(
+        entry.findDfs(UiTreeUtils.makeIdMatchFilter('12 ImeContainer#12')),
+      );
+      expect(relZParent.getRelativeChildren()).toEqual([relZChild]);
+      expect(relZChild.getZParent()).toEqual(relZParent);
+      expect(
+        relZChild.getEagerPropertyByName('zOrderRelativeOf')?.getValue(),
+      ).toEqual(11n);
+    });
+
+    it('provides rects', async () => {
+      const entry = await parser.getEntry(0);
+      const displays = entry.getRects();
+      expect(displays?.length).toEqual(1);
+      expect(displays?.[0].isDisplay).toBeTrue();
+
+      const overlay = assertDefined(
+        entry.findDfs(
+          UiTreeUtils.makeIdMatchFilter('60 ScreenDecorOverlay#60'),
+        ),
+      );
+      const layerRect = assertDefined(overlay.getRects()?.[0]);
+      expect(layerRect.isDisplay).toBeFalse();
+      expect(layerRect.w).toEqual(1080);
+      expect(layerRect.h).toEqual(118);
+      expect(layerRect.fillRegion).toBeUndefined();
+
+      const inputRect = assertDefined(overlay.getSecondaryRects()?.[0]);
+      expect(inputRect.isDisplay).toBeFalse();
+      expect(inputRect.w).toEqual(1080);
+      expect(inputRect.h).toEqual(118);
+      expect(inputRect.fillRegion).toEqual(
+        new Region([new Rect(492, 0, 124, 118)]),
+      );
+    });
+
     it('decodes layer state flags', async () => {
       const entry = await parser.getEntry(0);
       {
@@ -90,14 +168,10 @@ describe('PerfettoParserSurfaceFlinger', () => {
         );
         expect(layer.name).toEqual('Leaf:24:25#27');
 
+        const props = await layer.getAllProperties();
         expect(
-          assertDefined(layer.getEagerPropertyByName('flags')).formattedValue(),
+          assertDefined(props.getChildByName('flags')).formattedValue(),
         ).toEqual('0');
-        expect(
-          assertDefined(
-            layer.getEagerPropertyByName('verboseFlags'),
-          ).formattedValue(),
-        ).toEqual('');
       }
       {
         const layer = assertDefined(
@@ -105,13 +179,9 @@ describe('PerfettoParserSurfaceFlinger', () => {
         );
         expect(layer.name).toEqual('Task=4#48');
 
+        const props = await layer.getAllProperties();
         expect(
-          assertDefined(layer.getEagerPropertyByName('flags')).formattedValue(),
-        ).toEqual('1');
-        expect(
-          assertDefined(
-            layer.getEagerPropertyByName('verboseFlags'),
-          ).formattedValue(),
+          assertDefined(props.getChildByName('flags')).formattedValue(),
         ).toEqual('HIDDEN (0x1)');
       }
       {
@@ -122,13 +192,9 @@ describe('PerfettoParserSurfaceFlinger', () => {
         );
         expect(layer.name).toEqual('Wallpaper BBQ wrapper#77');
 
+        const props = await layer.getAllProperties();
         expect(
-          assertDefined(layer.getEagerPropertyByName('flags')).formattedValue(),
-        ).toEqual('256');
-        expect(
-          assertDefined(
-            layer.getEagerPropertyByName('verboseFlags'),
-          ).formattedValue(),
+          assertDefined(props.getChildByName('flags')).formattedValue(),
         ).toEqual('ENABLE_BACKPRESSURE (0x100)');
       }
     });

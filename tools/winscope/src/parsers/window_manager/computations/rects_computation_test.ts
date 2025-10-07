@@ -19,9 +19,9 @@ import {perfetto} from 'protos/perfetto/trace/static';
 import {com} from 'protos/windowmanager/udc/static';
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
 import {TreeNodeUtils} from 'test/unit/tree_node_utils';
-import {TraceRect} from 'trace/trace_rect';
-import {TraceRectBuilder} from 'trace/trace_rect_builder';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {TraceRect} from 'tree_node/trace_rect';
+import {TraceRectBuilder} from 'tree_node/trace_rect_builder';
 import {RectsComputation} from './rects_computation';
 
 type DisplayContentProto =
@@ -84,7 +84,6 @@ describe('WindowManager RectsComputation', () => {
         .setHeight(5)
         .setId('1 Test Display')
         .setName('Display - Test Display')
-        .setCornerRadius(0)
         .setDepth(0)
         .setGroupId(1)
         .setIsVisible(false)
@@ -100,7 +99,6 @@ describe('WindowManager RectsComputation', () => {
         .setHeight(5)
         .setId('2 Focused Display')
         .setName('Display - Focused Display')
-        .setCornerRadius(0)
         .setDepth(0)
         .setGroupId(2)
         .setIsVisible(false)
@@ -161,7 +159,6 @@ describe('WindowManager RectsComputation', () => {
         .setHeight(1)
         .setId('WindowState state1')
         .setName('state1')
-        .setCornerRadius(0)
         .setDepth(1)
         .setGroupId(1)
         .setIsVisible(true)
@@ -177,7 +174,6 @@ describe('WindowManager RectsComputation', () => {
         .setHeight(2)
         .setId('WindowState state2')
         .setName('state2')
-        .setCornerRadius(0)
         .setDepth(2)
         .setGroupId(1)
         .setIsVisible(false)

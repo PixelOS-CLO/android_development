@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import {GeometryFactory} from 'trace/geometry_factory';
-import {PropertyTreeNode} from 'trace/tree_node/property_tree_node';
+import {GeometryFactory} from 'tree_node/geometry_factory';
+import {PropertyTreeNode} from 'tree_node/property_tree_node';
 
 export class RawDataUtils {
   static isEmptyObj(obj: PropertyTreeNode): boolean {

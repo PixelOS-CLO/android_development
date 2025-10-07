@@ -31,7 +31,8 @@ import {PersistentStore} from 'common/store/persistent_store';
 import {DuplicateLayerIds, MissingLayerIds} from 'messaging/user_warnings';
 import {checkTooltips, DOMTestHelper} from 'test/unit/dom_test_utils';
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
-import {TraceType} from 'trace/trace_type';
+import {TRACE_INFO} from 'trace_api/trace_info';
+import {TraceType} from 'trace_api/trace_type';
 import {TextFilter} from 'viewers/common/text_filter';
 import {UiHierarchyTreeNode} from 'viewers/common/ui_hierarchy_tree_node';
 import {ViewerEvents} from 'viewers/common/viewer_events';
@@ -50,16 +51,14 @@ describe('HierarchyComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       providers: [{provide: ComponentFixtureAutoDetect, useValue: true}],
-      declarations: [
+      imports: [
         HierarchyComponent,
-        TreeComponent,
-        TreeNodeComponent,
         HierarchyTreeNodeDataViewComponent,
         CollapsibleSectionTitleComponent,
         UserOptionsComponent,
         SearchBoxComponent,
-      ],
-      imports: [
+        TreeComponent,
+        TreeNodeComponent,
         CommonModule,
         MatButtonModule,
         MatDividerModule,
@@ -143,9 +142,23 @@ describe('HierarchyComponent', () => {
     component.trees = [];
     component.placeholderText = 'Placeholder text.';
     dom.detectChanges();
-    dom
-      .get('.placeholder-text')
-      .checkTextExact('Placeholder text. Try changing timeline position.');
+
+    const placeholderText = dom.get('.placeholder-text');
+    placeholderText.checkTextExact(
+      'Placeholder text.' +
+        ` There may be no ${
+          TRACE_INFO[component.dependencies[0]].name
+        } state associated with the current state in the active trace.` +
+        ' Try changing timeline position.',
+    );
+
+    component.dependencies = [];
+    dom.detectChanges();
+    placeholderText.checkTextExact(
+      'Placeholder text.' +
+        ' There may be no state for this trace associated with the current state in the active trace.' +
+        ' Try changing timeline position.',
+    );
   });
 
   it('handles pinned node click', () => {

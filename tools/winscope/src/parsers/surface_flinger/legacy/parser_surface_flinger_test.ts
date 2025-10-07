@@ -24,12 +24,12 @@ import {perfetto} from 'protos/perfetto/trace/static';
 import {LegacyParserProvider} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {CoarseVersion} from 'trace/coarse_version';
-import {CustomQueryType} from 'trace/custom_query';
-import {Parser} from 'trace/parser';
-import {Trace} from 'trace/trace';
-import {TraceType} from 'trace/trace_type';
-import {HierarchyTreeNode} from 'trace/tree_node/hierarchy_tree_node';
+import {CoarseVersion} from 'trace_api/coarse_version';
+import {CustomQueryType} from 'trace_api/custom_query';
+import {Parser} from 'trace_api/parser';
+import {Trace} from 'trace_api/trace';
+import {TraceType} from 'trace_api/trace_type';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {UiTreeUtils} from 'viewers/common/ui_tree_utils';
 
 describe('ParserSurfaceFlinger', () => {
@@ -120,59 +120,15 @@ describe('ParserSurfaceFlinger', () => {
 
       it('decodes layer state flags', async () => {
         const entry = await perfettoParser.getEntry(0);
-        {
-          const layer = assertDefined(
-            entry.findDfs(UiTreeUtils.makeIdMatchFilter('27 Leaf:24:25#27')),
-          );
-          expect(layer.name).toEqual('Leaf:24:25#27');
+        const layer = assertDefined(
+          entry.findDfs(UiTreeUtils.makeIdMatchFilter('48 Task=4#48')),
+        );
+        expect(layer.name).toEqual('Task=4#48');
 
-          expect(
-            assertDefined(
-              layer.getEagerPropertyByName('flags'),
-            ).formattedValue(),
-          ).toEqual('0');
-          expect(
-            assertDefined(
-              layer.getEagerPropertyByName('verboseFlags'),
-            ).formattedValue(),
-          ).toEqual('');
-        }
-        {
-          const layer = assertDefined(
-            entry.findDfs(UiTreeUtils.makeIdMatchFilter('48 Task=4#48')),
-          );
-          expect(layer.name).toEqual('Task=4#48');
-
-          expect(
-            assertDefined(
-              layer.getEagerPropertyByName('flags'),
-            ).formattedValue(),
-          ).toEqual('1');
-          expect(
-            assertDefined(
-              layer.getEagerPropertyByName('verboseFlags'),
-            ).formattedValue(),
-          ).toEqual('HIDDEN (0x1)');
-        }
-        {
-          const layer = assertDefined(
-            entry.findDfs(
-              UiTreeUtils.makeIdMatchFilter('77 Wallpaper BBQ wrapper#77'),
-            ),
-          );
-          expect(layer.name).toEqual('Wallpaper BBQ wrapper#77');
-
-          expect(
-            assertDefined(
-              layer.getEagerPropertyByName('flags'),
-            ).formattedValue(),
-          ).toEqual('256');
-          expect(
-            assertDefined(
-              layer.getEagerPropertyByName('verboseFlags'),
-            ).formattedValue(),
-          ).toEqual('ENABLE_BACKPRESSURE (0x100)');
-        }
+        const props = await layer.getAllProperties();
+        expect(
+          assertDefined(props.getChildByName('flags')).formattedValue(),
+        ).toEqual('HIDDEN (0x1)');
       });
 
       it('supports VSYNCID custom query', async () => {

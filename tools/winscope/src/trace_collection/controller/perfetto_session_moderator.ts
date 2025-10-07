@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import {UserNotifier} from 'common/user_notifier';
 import {ProxyTracingWarnings} from 'messaging/user_warnings';
+import {UserNotifier} from 'services/user_notifier';
 import {AdbDeviceConnection} from 'trace_collection/adb/adb_device_connection';
 import {AdbFileIdentifier, TraceTarget} from 'trace_collection/trace_target';
 import {TracingSession} from './tracing_session';
@@ -45,7 +45,10 @@ export class PerfettoSessionModerator {
   private concurrentSessions: number | undefined;
   private configFilepath: string;
 
-  constructor(private device: AdbDeviceConnection, private isDump: boolean) {
+  constructor(
+    private device: AdbDeviceConnection,
+    private isDump: boolean,
+  ) {
     this.configFilepath = isDump
       ? PERFETTO_DUMP_CONFIG_FILE
       : PERFETTO_TRACE_CONFIG_FILE;
