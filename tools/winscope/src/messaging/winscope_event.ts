@@ -23,6 +23,7 @@ import {AdbFiles} from 'trace_collection/adb_files';
 import {View, Viewer, ViewType} from 'viewers/viewer';
 import {PlaybackState} from 'viewers/common/playback/playback_state';
 import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {TraceGeometryData} from 'parsers/trace_geometry_data';
 
 /**
  * An enum for Winscope event types.
@@ -63,6 +64,9 @@ export enum WinscopeEventType {
   PLAYBACK_STATE_CHANGE_HANDLED,
   PLAYBACK_SPEED_CHANGE,
   SCREEN_RECORDING_CHANGE,
+  PLAYBACK_STATE_CHANGE_PROPAGATE,
+  ACTIVE_SEARCH_QUERIES_UPDATE,
+  BOOKMARKS_CHANGED,
 }
 
 interface TypeMap {
@@ -101,6 +105,9 @@ interface TypeMap {
   [WinscopeEventType.PLAYBACK_STATE_CHANGE_HANDLED]: PlaybackStateChangeHandled;
   [WinscopeEventType.PLAYBACK_SPEED_CHANGE]: PlaybackSpeedChange;
   [WinscopeEventType.SCREEN_RECORDING_CHANGE]: ScreenRecordingChange;
+  [WinscopeEventType.PLAYBACK_STATE_CHANGE_PROPAGATE]: PlaybackStateChangePropagate;
+  [WinscopeEventType.ACTIVE_SEARCH_QUERIES_UPDATE]: ActiveSearchQueriesUpdate;
+  [WinscopeEventType.BOOKMARKS_CHANGED]: BookmarksChanged;
 }
 
 /**
@@ -537,5 +544,49 @@ export class PlaybackSpeedChange extends WinscopeEvent {
     super();
     this.traceType = traceType;
     this.speedValue = speedValue;
+  }
+}
+
+/**
+ * An event for when the playback state change is propagated from mediator back to viewers.
+ *
+ * @param state The playback state (FORWARDS, BACKWARDS).
+ * @param currentTraceIndex Starting position in the trace.
+ * @param traceGeometryData Trace geometry data from the pipeline.
+ */
+export class PlaybackStateChangePropagate extends WinscopeEvent {
+  override readonly type = WinscopeEventType.PLAYBACK_STATE_CHANGE_PROPAGATE;
+  readonly state: PlaybackState;
+  readonly currentTraceIndex: number;
+  readonly traceGeometryData: TraceGeometryData;
+
+  constructor(
+    state: PlaybackState,
+    currentTraceIndex: number,
+    traceGeometryData: TraceGeometryData,
+  ) {
+    super();
+    this.state = state;
+    this.currentTraceIndex = currentTraceIndex;
+    this.traceGeometryData = traceGeometryData;
+  }
+}
+
+/**
+ * An event for when the active search queries have been updated.
+ */
+export class ActiveSearchQueriesUpdate extends WinscopeEvent {
+  override readonly type = WinscopeEventType.ACTIVE_SEARCH_QUERIES_UPDATE;
+
+  constructor(readonly queries: string[]) {
+    super();
+  }
+}
+
+export class BookmarksChanged extends WinscopeEvent {
+  override readonly type = WinscopeEventType.BOOKMARKS_CHANGED;
+
+  constructor(readonly bookmarks: Timestamp[]) {
+    super();
   }
 }

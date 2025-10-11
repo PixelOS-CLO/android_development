@@ -15,7 +15,7 @@
  */
 
 import {Timestamp} from 'common/time/time';
-import {perfetto} from 'protos/perfetto/trace/static';
+import {TracePacket} from 'compat/perfetto_version';
 import {CoarseVersion} from './coarse_version';
 import {
   CustomQueryParamTypeMap,
@@ -24,7 +24,11 @@ import {
 } from './custom_query';
 import {AbsoluteEntryIndex, EntriesRange} from './index_types';
 import {TraceType} from './trace_type';
-import {QueryResults} from 'trace_processor/query_result';
+import {
+  QueryResults,
+  RawDataQueryResult,
+  QueryResult,
+} from 'trace_processor/query_result';
 
 /**
  * Interface for a trace parser.
@@ -43,10 +47,13 @@ export interface Parser<T> {
   getEntry(index: AbsoluteEntryIndex): Promise<T>;
   getRangeOfEntries(
     entriesRange: EntriesRange,
-    precomputedQuery?: QueryResults,
+    precomputedQuery?: QueryResults<T>,
   ): Promise<Array<T | undefined>>;
   getAllEntries(): Promise<Array<T | undefined>>;
-  getQueryResults(entriesRange: EntriesRange): Promise<QueryResults>;
+  getQueryResults(
+    entriesRange: EntriesRange,
+    queryRawData: boolean,
+  ): Promise<QueryResults<QueryResult | RawDataQueryResult>>;
   customQuery<Q extends CustomQueryType>(
     type: Q,
     entriesRange: EntriesRange,
@@ -61,6 +68,6 @@ export interface Parser<T> {
     sequenceId: number,
     trustedUid?: number,
     trustedPid?: number,
-  ): perfetto.protos.TracePacket[];
+  ): TracePacket[];
   isPerfetto(): boolean;
 }
