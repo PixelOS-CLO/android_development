@@ -31,7 +31,7 @@ import {
   makeZeroTimestamp,
 } from 'test/unit/time_test_helpers';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {makeEmptyTrace} from 'test/unit/trace_utils';
+import {makeEmptyTrace} from 'test/unit/trace_test_helpers';
 import {DEFAULT_PROPERTY_FORMATTER} from 'trace/formatters';
 import {Trace} from 'trace_api/trace';
 import {TracePosition} from 'trace_api/trace_position';
@@ -48,7 +48,7 @@ import {
   TimestampClickDetail,
   ViewerEvents,
 } from './viewer_events';
-import {SetFormatters} from 'viewers/operations/set_formatters';
+import {SetFormatters} from 'parsers/set_formatters';
 
 describe('AbstractLogViewerPresenter', () => {
   let uiData: UiDataLog;
