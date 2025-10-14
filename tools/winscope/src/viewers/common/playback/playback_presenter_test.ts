@@ -23,7 +23,7 @@ import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
 import {TraceType} from 'trace_api/trace_type';
 import {Timer} from 'common/time/timer';
-import {makeEmptyTrace} from 'test/unit/trace_utils';
+import {makeEmptyTrace} from 'test/unit/trace_test_helpers';
 import {
   PlaybackStateChangeHandled,
   TracePositionUpdate,
@@ -31,14 +31,12 @@ import {
 import {PlaybackState} from './playback_state';
 import {TracesBuilder} from 'test/unit/traces_builder';
 import {assertDefined} from 'common/assert';
-import {
-  RawDataQueryResult,
-  QueryResult,
-  QueryResults,
-} from 'trace_processor/query_result';
+import {QueryResult, QueryResults} from 'trace_processor/query_result';
+import {RawDataQueryResult} from 'trace_processor/raw_data_query_result';
 import {TraceGeometryData} from 'parsers/trace_geometry_data';
 import {Rect} from 'common/geometry/rect';
 import {TransformMatrix} from 'common/geometry/transform_matrix';
+import {Parser} from 'trace_api/parser';
 
 describe('PlaybackPresenter', () => {
   const timestamp0 = makeElapsedTimestamp(0n);
@@ -89,11 +87,16 @@ describe('PlaybackPresenter', () => {
       ])
       .setTimestamps([timestamp2, timestamp3, timestamp4])
       .build();
-
+    const mockParser = {
+      getRectsMap: () => new Map(),
+    };
+    spyOn(trace, 'getParser').and.returnValue(
+      mockParser as Parser<HierarchyTreeNode>,
+    );
     spyOn(trace, 'getQueryResults').and.callFake(async () => {
       return Promise.resolve({
         snapshotRange: new RawDataQueryResult(),
-        layersRange: new RawDataQueryResult(),
+        nodeRange: new RawDataQueryResult(),
         allVisibleRects: undefined,
         allSnapshots: undefined,
       } as QueryResults<QueryResult | RawDataQueryResult>);

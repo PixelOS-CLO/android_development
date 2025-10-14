@@ -17,48 +17,70 @@
 import {TraceType} from 'trace_api/trace_type';
 import {TraceGeometryData} from 'parsers/trace_geometry_data';
 import {EntryHierarchyTreeFactory} from 'parsers/surface_flinger/entry_hierarchy_tree_factory';
-import {SnapshotRects} from 'parsers/surface_flinger/rect_extractor';
 import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
 import {assertDefined} from 'common/assert';
 import {QueryResult} from 'trace_processor/query_result';
+import {RectsForTrace} from './rect_extractor_result';
+import {makeEntryHierarchyTrees as wmMakeEntryHierarchyTrees} from './window_manager/perfetto/entry_hierarchy_tree_factory';
+import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 
+/**
+ * A builder class for creating trace entry values.
+ *
+ * This class collects various data dependencies required to construct a specific
+ * type of trace entry value (e.g., a hierarchy tree for SurfaceFlinger traces).
+ * It allows setting different components like trace type, query results, and
+ * geometry data, and then uses these to build the final object when `build()`
+ * is called. This is useful for decoupling the creation logic from the
+ * components that provide the necessary data.
+ */
 export class TraceEntryValueBuilder {
   private traceType: TraceType | undefined;
   private snapshotResults: QueryResult | undefined;
-  private layerResults: QueryResult | undefined;
-  private sfRectsMap: Map<bigint, SnapshotRects> | undefined;
+  private rectsMap: RectsForTrace | undefined;
+  private nodeResults: QueryResult | undefined;
   private traceGeometryData: TraceGeometryData | undefined;
 
-  setType(traceType: TraceType) {
+  setType(traceType: TraceType): TraceEntryValueBuilder {
     this.traceType = traceType;
+    return this;
   }
 
-  setSnapshotResults(snapshots: QueryResult) {
+  setSnapshotResults(snapshots: QueryResult): TraceEntryValueBuilder {
     this.snapshotResults = snapshots;
+    return this;
   }
 
-  setLayersResults(layers: QueryResult) {
-    this.layerResults = layers;
+  setNodeResults(layers: QueryResult): TraceEntryValueBuilder {
+    this.nodeResults = layers;
+    return this;
   }
 
-  setSfRectsMap(rectsMap: Map<bigint, SnapshotRects>) {
-    this.sfRectsMap = rectsMap;
+  setRectsMap(rectsMap: RectsForTrace): TraceEntryValueBuilder {
+    this.rectsMap = rectsMap;
+    return this;
   }
 
-  setGeometryData(data: TraceGeometryData) {
+  setGeometryData(data: TraceGeometryData): TraceEntryValueBuilder {
     this.traceGeometryData = data;
+    return this;
   }
 
-  build() {
-    if (this.traceType === undefined) {
-      return;
-    }
+  build(): HierarchyTreeNode[] {
+    assertDefined(this.traceType);
     switch (this.traceType) {
       case TraceType.SURFACE_FLINGER:
         return EntryHierarchyTreeFactory.makeEntryHierarchyTrees(
           assertDefined(this.snapshotResults),
-          assertDefined(this.layerResults),
-          assertDefined(this.sfRectsMap),
+          assertDefined(this.nodeResults),
+          assertDefined(this.rectsMap),
+          undefined,
+          assertDefined(this.traceGeometryData),
+        );
+      case TraceType.WINDOW_MANAGER:
+        return wmMakeEntryHierarchyTrees(
+          assertDefined(this.nodeResults),
+          assertDefined(this.rectsMap),
           undefined,
           assertDefined(this.traceGeometryData),
         );

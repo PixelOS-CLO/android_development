@@ -14,11 +14,22 @@
  * limitations under the License.
  */
 
-/**
- * Represents the different types of input events that can be captured in a trace.
- * This enum is used to categorize input events as either key events or motion events.
+import {TraceRect} from 'tree_node/trace_rect';
+
+/*
+ * Type to keep the primary and secondary rects
  */
-export enum InputEventType {
-  KEY,
-  MOTION,
+export interface NodeRects {
+  primaryRects: TraceRect[];
+  secondaryRects: TraceRect[] | undefined;
 }
+
+/*
+ * Map for a singular snapshot
+ */
+export type SnapshotRects = Map<bigint, NodeRects>;
+
+/*
+ * Map for snapshot rects, where the snapshot id is mapped to the rects
+ */
+export type RectsForTrace = Map<bigint, SnapshotRects>;

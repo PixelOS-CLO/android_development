@@ -30,11 +30,9 @@ import {Parser} from 'trace_api/parser';
 import {TraceMetadata} from 'trace_api/trace_metadata';
 import {TraceType} from 'trace_api/trace_type';
 import {throwIfMagicNumberDoesNotMatch} from './parsing_utils';
-import {
-  QueryResult,
-  QueryResults,
-  RawDataQueryResult,
-} from 'trace_processor/query_result';
+import {QueryResult, QueryResults} from 'trace_processor/query_result';
+import {RawDataQueryResult} from 'trace_processor/raw_data_query_result';
+import {RectsForTrace} from 'parsers/rect_extractor_result';
 
 export abstract class AbstractParser<
   T extends object,
@@ -128,6 +126,10 @@ export abstract class AbstractParser<
     trustedPid: number,
     trustedUid: number,
   ): perfetto.protos.TracePacket[] {
+    throw NOT_IMPLEMENTED_ERROR;
+  }
+
+  getRectsMap(): RectsForTrace | undefined {
     throw NOT_IMPLEMENTED_ERROR;
   }
 

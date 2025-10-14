@@ -31,17 +31,21 @@ export class TracePosition {
   }
 
   static fromTraceEntry(
-    entry: TraceEntry<{}>,
+    entry: TraceEntry<{}, {} | undefined>,
     explicitTimestamp?: Timestamp,
   ): TracePosition {
     let frame: AbsoluteFrameIndex | undefined;
     if (entry.getFullTrace().hasFrameInfo()) {
       const frames = entry.getFramesRange();
-      frame = frames && frames.start < frames.end ? frames.start : undefined;
+      frame =
+        frames !== undefined && frames.start < frames.end
+          ? frames.start
+          : undefined;
     }
-    const timestamp = explicitTimestamp
-      ? explicitTimestamp
-      : entry.getTimestamp();
+    const timestamp =
+      explicitTimestamp !== undefined
+        ? explicitTimestamp
+        : entry.getTimestamp();
     return new TracePosition(timestamp, frame, entry);
   }
 
@@ -57,6 +61,6 @@ export class TracePosition {
   private constructor(
     readonly timestamp: Timestamp,
     readonly frame?: AbsoluteFrameIndex,
-    readonly entry?: TraceEntry<{}>,
+    readonly entry?: TraceEntry<{}, {} | undefined>,
   ) {}
 }

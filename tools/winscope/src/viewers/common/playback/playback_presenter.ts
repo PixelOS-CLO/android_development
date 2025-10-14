@@ -15,7 +15,7 @@
  */
 
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
-import {Trace} from 'trace_api/trace';
+import {Trace, TraceEntry} from 'trace_api/trace';
 import {EmitEvent} from 'messaging/winscope_event_emitter';
 import {
   PlaybackStateChangeHandled,
@@ -34,8 +34,7 @@ import {TraceRect} from 'tree_node/trace_rect';
 import {CornerRadii} from 'common/geometry/corner_radii';
 import {TransformMatrix} from 'common/geometry/transform_matrix';
 import {TraceGeometryData} from 'parsers/trace_geometry_data';
-import {ParserSurfaceFlinger} from 'parsers/surface_flinger/perfetto/parser_surface_flinger';
-import {RawDataQueryResult} from 'trace_processor/query_result';
+import {RawDataQueryResult} from 'trace_processor/raw_data_query_result';
 
 type EagerTraceEntry<T = HierarchyTreeNode> = TraceEntryEager<T, T | undefined>;
 
@@ -176,13 +175,14 @@ export class PlaybackPresenter {
       new PlaybackStateChangeHandled(this.currPlaybackState, this.trace.type),
     );
 
-    let finalEntryForPositionUpdate;
-
+    let finalEntryForPositionUpdate:
+      | EagerTraceEntry<MediaBasedTraceEntry>
+      | TraceEntry<HierarchyTreeNode>;
     if (this.allScreenRecordingEntries) {
       finalEntryForPositionUpdate =
         this.allScreenRecordingEntries[this.entryIndex];
     } else {
-      finalEntryForPositionUpdate = await this.trace.getEntry(this.entryIndex);
+      finalEntryForPositionUpdate = this.trace.getEntry(this.entryIndex);
     }
 
     if (finalEntryForPositionUpdate) {
@@ -196,9 +196,7 @@ export class PlaybackPresenter {
   }
 
   private async runPlaybackLoop() {
-    let lastEntry:
-      | TraceEntryEager<HierarchyTreeNode, HierarchyTreeNode | undefined>
-      | undefined;
+    let lastEntry: EagerTraceEntry<HierarchyTreeNode> | undefined;
 
     while (this.currPlaybackState !== PlaybackState.PAUSED) {
       const bufferIndex = this.entryIndex - this.activeBufferStartIndex;
@@ -458,30 +456,33 @@ export class PlaybackPresenter {
             this.workerPromiseRejecter = reject;
 
             const snapshotResults = queryResults.snapshotRange;
-            const layersResults = queryResults.layersRange;
+            const nodesResults = queryResults.nodeRange;
 
-            if (
-              !(
-                snapshotResults instanceof RawDataQueryResult &&
-                layersResults instanceof RawDataQueryResult
-              )
-            ) {
+            if (!(nodesResults instanceof RawDataQueryResult)) {
               return;
             }
 
-            const snapshotBatches = snapshotResults.batches;
-            const layerBatches = layersResults.batches;
-            const parser = this.trace.getParser();
-            let map;
-            if (parser instanceof ParserSurfaceFlinger) {
-              map = parser.getSfRectsMap();
+            let snapshotBatches: Uint8Array[] | undefined;
+            if (
+              snapshotResults !== undefined &&
+              snapshotResults instanceof RawDataQueryResult
+            ) {
+              snapshotBatches = snapshotResults.batches;
             }
+            const nodeBatches = nodesResults.batches;
+            const parser = this.trace.getParser();
+            if (parser.getRectsMap === undefined) {
+              throw Error(
+                'Playback is only implemented for parsers with rects map',
+              );
+            }
+            const map = parser.getRectsMap();
 
             this.playbackWorker.postMessage({
               start,
               end,
               snapshotBatches,
-              layerBatches,
+              nodeBatches,
               type: this.trace.type,
               traceGeometryData: this.traceGeometryData,
               visibleRectsMap: map,
