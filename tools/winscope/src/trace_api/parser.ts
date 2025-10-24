@@ -46,7 +46,7 @@ export interface Parser<T> {
   getRangeOfEntries(
     entriesRange: EntriesRange,
     precomputedQuery?: QueryResults<T>,
-  ): Promise<Array<T | undefined>>;
+  ): Promise<T[]>;
   getAllEntries(): Promise<Array<T | undefined>>;
   getQueryResults(
     entriesRange: EntriesRange,
@@ -62,7 +62,7 @@ export interface Parser<T> {
   getRealToBootTimeOffsetNs(): bigint | undefined;
   createTimestamps(): void;
   canConvertToPerfetto(): boolean;
-  getRectsMap?(): RectsForTrace | undefined;
+  getRectsMap?(): Promise<RectsForTrace | undefined>;
   convertToPerfettoPackets?(
     sequenceId: number,
     trustedUid?: number,

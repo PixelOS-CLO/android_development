@@ -16,13 +16,14 @@
 
 import {TraceType} from 'trace_api/trace_type';
 import {TraceGeometryData} from 'parsers/trace_geometry_data';
-import {EntryHierarchyTreeFactory} from 'parsers/surface_flinger/entry_hierarchy_tree_factory';
 import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
 import {assertDefined} from 'common/assert';
 import {QueryResult} from 'trace_processor/query_result';
 import {RectsForTrace} from './rect_extractor_result';
 import {makeEntryHierarchyTrees as wmMakeEntryHierarchyTrees} from './window_manager/perfetto/entry_hierarchy_tree_factory';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {makeEntryHierarchyTrees as vcMakeEntryHierarchyTree} from './view_capture/perfetto/entry_hierarchy_tree_factory';
+import {makeEntryHierarchyTrees as sfMakeEntryHierarchyTree} from './surface_flinger/entry_hierarchy_tree_factory';
 
 /**
  * A builder class for creating trace entry values.
@@ -70,7 +71,7 @@ export class TraceEntryValueBuilder {
     assertDefined(this.traceType);
     switch (this.traceType) {
       case TraceType.SURFACE_FLINGER:
-        return EntryHierarchyTreeFactory.makeEntryHierarchyTrees(
+        return sfMakeEntryHierarchyTree(
           assertDefined(this.snapshotResults),
           assertDefined(this.nodeResults),
           assertDefined(this.rectsMap),
@@ -79,6 +80,13 @@ export class TraceEntryValueBuilder {
         );
       case TraceType.WINDOW_MANAGER:
         return wmMakeEntryHierarchyTrees(
+          assertDefined(this.nodeResults),
+          assertDefined(this.rectsMap),
+          undefined,
+          assertDefined(this.traceGeometryData),
+        );
+      case TraceType.VIEW_CAPTURE:
+        return vcMakeEntryHierarchyTree(
           assertDefined(this.nodeResults),
           assertDefined(this.rectsMap),
           undefined,
