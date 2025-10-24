@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import {FunctionUtils} from 'common/function_utils';
 import {
   ActiveTraceChanged,
+  ScreenRecordingChange,
   WinscopeEvent,
   WinscopeEventType,
 } from 'messaging/winscope_event';
@@ -33,7 +33,7 @@ export class Presenter {
   private readonly uiData: UiData;
   private readonly traces: Array<Trace<MediaBasedTraceEntry>>;
   private readonly notifyViewCallback: NotifyHierarchyViewCallbackType<UiData>;
-  private emitWinscopeEvent: EmitEvent = FunctionUtils.DO_NOTHING_ASYNC;
+  private emitWinscopeEvent: EmitEvent = () => Promise.resolve();
 
   constructor(
     traces: Array<Trace<MediaBasedTraceEntry>>,
@@ -56,6 +56,12 @@ export class Presenter {
       ViewerEvents.OverlayDblClick,
       async (event) => {
         this.onOverlayDblClick((event as CustomEvent).detail);
+      },
+    );
+    htmlElement.addEventListener(
+      ViewerEvents.OverlayScreenRecordingChange,
+      async (event) => {
+        this.onOverlayScreenRecordingChange((event as CustomEvent).detail);
       },
     );
   }
@@ -93,6 +99,13 @@ export class Presenter {
     const currTrace = this.traces.at(index);
     if (currTrace) {
       this.emitWinscopeEvent(new ActiveTraceChanged(currTrace));
+    }
+  }
+
+  async onOverlayScreenRecordingChange(index: number) {
+    const currTrace = this.traces.at(index);
+    if (currTrace) {
+      this.emitWinscopeEvent(new ScreenRecordingChange(currTrace));
     }
   }
 }

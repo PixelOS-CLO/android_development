@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
-import {FunctionUtils} from 'common/function_utils';
+import {assertDefined} from 'common/assert';
 import {InMemoryStorage} from 'common/store/in_memory_storage';
 import {parseMap, stringifyMap} from 'common/store/persistent_store_proxy';
 import {Store} from 'common/store/store';
@@ -43,20 +42,25 @@ import {PresetHierarchy, TextFilterValues} from './preset_hierarchy';
 import {RectShowState} from './rect_show_state';
 import {UiDataHierarchy} from './ui_data_hierarchy';
 import {ViewerEvents} from './viewer_events';
+import {PlaybackPresenter} from './playback/playback_presenter';
+import {PlaybackState} from './playback/playback_state';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
 
 export type NotifyHierarchyViewCallbackType<UiData> = (uiData: UiData) => void;
 
 export abstract class AbstractHierarchyViewerPresenter<
   UiData extends UiDataHierarchy,
 > {
-  protected emitWinscopeEvent: EmitEvent = FunctionUtils.DO_NOTHING_ASYNC;
+  protected emitWinscopeEvent: EmitEvent = () => Promise.resolve();
   protected overridePropertiesTree: PropertyTreeNode | undefined;
   protected overridePropertiesTreeName: string | undefined;
+  protected playbackPresenter?: PlaybackPresenter;
   protected rectsPresenter?: RectsPresenter;
   protected abstract hierarchyPresenter: HierarchyPresenter;
   protected abstract propertiesPresenter: PropertiesPresenter;
   protected abstract readonly multiTraceType?: TraceType;
   private highlightedItem = '';
+  private screenRecordingTrace?: Trace<MediaBasedTraceEntry>;
 
   constructor(
     private readonly trace: Trace<HierarchyTreeNode> | undefined,
@@ -258,6 +262,66 @@ export abstract class AbstractHierarchyViewerPresenter<
         this.refreshUIData();
       },
     );
+    await event.visit(
+      WinscopeEventType.PLAYBACK_STATE_CHANGE_REQUEST,
+      async (event) => {
+        if (!this.trace) {
+          return;
+        }
+        if (!this.screenRecordingTrace) {
+          this.screenRecordingTrace = this.traces.getTrace(
+            TraceType.SCREEN_RECORDING,
+          );
+        }
+
+        switch (event.state) {
+          case PlaybackState.FORWARDS:
+          case PlaybackState.BACKWARDS:
+            if (this.playPlayback) {
+              await this.playPlayback(
+                this.trace,
+                assertDefined(event.currentTraceIndex),
+                event.state,
+                this.screenRecordingTrace,
+              );
+            }
+            return;
+
+          case PlaybackState.PAUSED:
+            if (this.pausePlayback) {
+              await this.pausePlayback();
+            }
+            return;
+          default:
+            return;
+        }
+      },
+    );
+    await event.visit(
+      WinscopeEventType.PLAYBACK_STATE_CHANGE_HANDLED,
+      async (event) => {
+        if (event.stateToReflect === PlaybackState.PAUSED) {
+          this.uiData.isPlaybackPlaying = false;
+        } else {
+          this.uiData.isPlaybackPlaying = true;
+        }
+        this.refreshHierarchyViewerUiData();
+      },
+    );
+    await event.visit(
+      WinscopeEventType.PLAYBACK_SPEED_CHANGE,
+      async (event) => {
+        if (this.playbackPresenter && this.trace) {
+          this.playbackPresenter.changeSpeed(event.speedValue);
+        }
+      },
+    );
+    await event.visit(
+      WinscopeEventType.SCREEN_RECORDING_CHANGE,
+      async (event) => {
+        this.screenRecordingTrace = event.trace;
+      },
+    );
     await this.onViewerSpecificWinscopeEvent(event);
   }
 
@@ -374,7 +438,9 @@ export abstract class AbstractHierarchyViewerPresenter<
     this.rectsPresenter?.applyHierarchyTreesChange(currentHierarchyTrees ?? []);
     this.logFetchComponentData(rectStartTime, 'rects');
 
-    await this.updatePropertiesTree();
+    if (!this.playbackPresenter || !this.playbackPresenter.isPlaying()) {
+      await this.updatePropertiesTree();
+    }
   }
 
   protected async applyHighlightedNodeChange(node: UiHierarchyTreeNode) {
@@ -506,6 +572,13 @@ export abstract class AbstractHierarchyViewerPresenter<
   ): string | undefined;
   protected abstract refreshUIData(): void;
   protected initializeIfNeeded?(event: TracePositionUpdate): Promise<void>;
+  protected playPlayback?(
+    trace: Trace<HierarchyTreeNode>,
+    currentPosition: number,
+    requestedState: PlaybackState,
+    screenRecordingTrace: Trace<MediaBasedTraceEntry> | undefined,
+  ): Promise<void>;
+  protected pausePlayback?(): Promise<void>;
   protected processDataAfterPositionUpdate?(
     event: TracePositionUpdate,
   ): Promise<void>;

@@ -19,7 +19,7 @@ import {
   assertBigIntOrUndefined,
   assertDefined,
   assertString,
-} from 'common/assert_utils';
+} from 'common/assert';
 import {UserWarning} from 'messaging/user_warning';
 import {
   DuplicateLayerIds,
@@ -32,6 +32,7 @@ import {FakeProtoTransformer} from 'parsers/perfetto/fake_proto_transformer';
 import {queryArgs} from 'parsers/perfetto/utils';
 import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {PropertyTreeBuilderFromQueryRow} from 'parsers/property_tree_builder_from_query_row';
+import {TraceGeometryData} from 'parsers/trace_geometry_data';
 import {perfetto} from 'protos/perfetto/trace/static';
 import {EnumFormatter, LAYER_ID_FORMATTER} from 'trace/formatters';
 import {TAMPERED_TRACE_PACKET} from 'trace/proto_utils/tampered_message_type';
@@ -119,6 +120,7 @@ export class EntryHierarchyTreeFactory {
       {displayRects: TraceRect[]; layerRects: Map<bigint, LayerRects>}
     >,
     traceProcessor: TraceProcessor,
+    traceGeometryData: TraceGeometryData,
   ): HierarchyTreeNode[] {
     const currLayer = layersResults.iter({});
     const currSnapshot = snapshotResults.iter({});
@@ -139,6 +141,7 @@ export class EntryHierarchyTreeFactory {
         traceProcessor,
         currentId,
         visibleLayerRects,
+        traceGeometryData,
       );
 
       const tree = this.buildHierarchyTree(
@@ -226,6 +229,7 @@ export class EntryHierarchyTreeFactory {
     traceProcessor: TraceProcessor,
     currSnapshotId: bigint | undefined,
     visibleLayerInputRects: Map<bigint, LayerRects>,
+    traceGeometryData: TraceGeometryData,
   ): {
     layers: PropertiesProvider[];
     rects: Map<bigint, LayerRects>;
@@ -254,13 +258,8 @@ export class EntryHierarchyTreeFactory {
         // some row ids will be repeated due querying multiple fill region rects
         const layerIdBigint = assertBigInt(it.get('layer_id'));
         const layerRects = rects.get(layerIdBigint);
-        if (layerRects?.input) {
-          const fillRegionRect = RectExtractor.extractFillRegionRect(it);
-          if (fillRegionRect) {
-            assertDefined(layerRects.input.fillRegion).rects.push(
-              fillRegionRect,
-            );
-          }
+        if (layerRects) {
+          this.tryUpdateFillRegion(layerRects, it, traceGeometryData);
         }
         continue;
       }
@@ -292,6 +291,7 @@ export class EntryHierarchyTreeFactory {
         traceProcessor,
       );
       layers.push(layerProps);
+      const uniqueNodeId = layerProps.getEagerProperties().id;
 
       if (visibleLayerInputRects.has(layerIdBigint)) {
         const precomputedRects = assertDefined(
@@ -301,19 +301,13 @@ export class EntryHierarchyTreeFactory {
       } else {
         const layerRects = RectExtractor.extractLayerRects(
           it,
-          uniqueRowId.toString(),
+          uniqueNodeId,
           layerName,
+          traceGeometryData,
         );
         if (layerRects) {
           rects.set(layerIdBigint, layerRects);
-          if (layerRects?.input) {
-            const fillRegionRect = RectExtractor.extractFillRegionRect(it);
-            if (fillRegionRect) {
-              assertDefined(layerRects.input.fillRegion).rects.push(
-                fillRegionRect,
-              );
-            }
-          }
+          this.tryUpdateFillRegion(layerRects, it, traceGeometryData);
         }
       }
     }
@@ -337,6 +331,22 @@ export class EntryHierarchyTreeFactory {
       rects,
       warnings,
     };
+  }
+
+  private tryUpdateFillRegion(
+    layerRects: LayerRects,
+    row: RowIterator,
+    traceGeometryData: TraceGeometryData,
+  ) {
+    if (layerRects?.input) {
+      const fillRegionRect = RectExtractor.extractFillRegionRect(
+        row,
+        traceGeometryData,
+      );
+      if (fillRegionRect) {
+        assertDefined(layerRects.input.fillRegion).rects.push(fillRegionRect);
+      }
+    }
   }
 
   private makeLayerPropertiesProvider(

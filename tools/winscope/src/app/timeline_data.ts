@@ -19,7 +19,7 @@ import {ComponentTimestampConverter} from 'common/time/timestamp_converter';
 import {Analytics} from 'logging/analytics';
 import {CannotParseAllTransitions} from 'messaging/user_warnings';
 import {UserNotifier} from 'services/user_notifier';
-import {ScreenRecordingUtils} from 'trace/screen_recording_utils';
+import {timestampToVideoTimeSeconds} from 'trace/screen_recording_utils';
 import {Trace, TraceEntry} from 'trace_api/trace';
 import {TraceEntryFinder} from 'trace_api/trace_entry_finder';
 import {TracePosition} from 'trace_api/trace_position';
@@ -27,6 +27,12 @@ import {TraceType, TraceTypeUtils} from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 
+/**
+ * A container of all the timeline-related data.
+ *
+ * The timeline data is composed of the traces, plus a set of properties (e.g. the current
+ * position) that are used to render the timeline UI.
+ */
 export class TimelineData {
   private traces = new Traces();
   private screenRecordingVideo?: Blob;
@@ -200,10 +206,8 @@ export class TimelineData {
 
     if (
       this.lastReturnedFullTimeRange === undefined ||
-      this.lastReturnedFullTimeRange.from.getValueNs() !==
-        fullTimeRange.from.getValueNs() ||
-      this.lastReturnedFullTimeRange.to.getValueNs() !==
-        fullTimeRange.to.getValueNs()
+      this.lastReturnedFullTimeRange.startNs !== fullTimeRange.startNs ||
+      this.lastReturnedFullTimeRange.endNs !== fullTimeRange.endNs
     ) {
       this.lastReturnedFullTimeRange = fullTimeRange;
     }
@@ -269,7 +273,7 @@ export class TimelineData {
       return undefined;
     }
 
-    return ScreenRecordingUtils.timestampToVideoTimeSeconds(
+    return timestampToVideoTimeSeconds(
       firstTimestamp.getValueNs(),
       entry.getTimestamp().getValueNs(),
     );

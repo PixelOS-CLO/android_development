@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
-import {FileUtils} from 'common/file_utils';
-import {FunctionUtils} from 'common/function_utils';
-import {utf8Decode} from 'common/string_utils';
+import {assertDefined} from 'common/assert';
+import {getFileDirectory, isZipFile, unzipFile} from 'common/io';
+import {utf8Decode} from 'common/string_helpers';
 import {TimezoneInfo} from 'common/time/time';
 import {Analytics} from 'logging/analytics';
 import {UserWarning} from 'messaging/user_warning';
@@ -44,18 +43,38 @@ import {UserNotifier} from 'services/user_notifier';
 import {TraceFile} from 'trace/trace_file';
 import {TraceMetadata} from 'trace_api/trace_metadata';
 
+/**
+ * The build type of the Android device that generated the bugreport.
+ */
 export enum BuildType {
+  /**
+   * A user build of the Android device.
+   */
   USER = 'user',
+
+  /**
+   * A userdebug build of the Android device.
+   */
   USERDEBUG = 'userdebug',
+
+  /**
+   * An eng build of the Android device.
+   */
   ENG = 'eng',
 }
 
+/**
+ * Metadata extracted from a bugreport.
+ */
 export interface BugreportData {
   timezoneInfo?: TimezoneInfo;
   buildType?: BuildType;
   isPersistentTracingEnabled: boolean;
 }
 
+/**
+ * The result of parsing a set of files.
+ */
 export interface ParsedFiles {
   legacy: FileAndParser[];
   perfetto: FileAndParsers | undefined;
@@ -74,12 +93,21 @@ type ParsePerfettoFileStrategy = (
   file: TraceFile,
 ) => Promise<FileAndParsers | undefined>;
 
-type ParseLegacyFilesStrategy = (
+/**
+ * A strategy for parsing legacy files.
+ */
+export type ParseLegacyFilesStrategy = (
   files: TraceFile[],
   metadata: TraceMetadata,
   timezoneInfo?: TimezoneInfo,
 ) => Promise<ProcessedFiles>;
 
+/**
+ * A filter for trace files.
+ *
+ * The filter identifies the type of each file and, if applicable, extracts metadata from it.
+ * The filter is also responsible for parsing the files and returning the corresponding parsers.
+ */
 export class TraceFileFilter
   implements WinscopeEventListener, WinscopeEventEmitter
 {
@@ -102,7 +130,7 @@ export class TraceFileFilter
     '.perfetto',
   ];
 
-  private emitEvent: EmitEvent = FunctionUtils.DO_NOTHING_ASYNC;
+  private emitEvent: EmitEvent = () => Promise.resolve();
   private selectedFile: string | undefined;
 
   setEmitEvent(callback: EmitEvent) {
@@ -342,9 +370,9 @@ export class TraceFileFilter
     const unzippedLegacyFiles: TraceFile[] = [];
 
     for (const file of legacyFiles) {
-      if (await FileUtils.isZipFile(file.file)) {
+      if (await isZipFile(file.file)) {
         try {
-          const subFiles = await FileUtils.unzipFile(file.file);
+          const subFiles = await unzipFile(file.file);
           const subTraceFiles = subFiles.map((subFile) => {
             return new TraceFile(subFile, file.file);
           });
@@ -358,7 +386,7 @@ export class TraceFileFilter
     }
     const brPerfettoFiles = perfettoFiles.filter(
       (file) =>
-        FileUtils.getFileDirectory(file.file.name) ===
+        getFileDirectory(file.file.name) ===
         TraceFileFilter.BUGREPORT_PERFETTO_TRACE_DIR,
     );
 

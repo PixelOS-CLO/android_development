@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {Timestamp, TimezoneInfo} from 'common/time/time';
 import {TimestampConverter} from 'common/time/timestamp_converter';
 import {
@@ -109,7 +109,7 @@ Check the test run artifacts for trace files
     const receivedEvent = emittedEvent as RemoteToolTimestampReceived;
     const timestamp = assertDefined(receivedEvent.deferredTimestamp)();
     expect(timestamp).toBeInstanceOf(Timestamp);
-    expect(timestamp?.getValueNs()).toEqual(1750932189844553958n);
+    expect(timestamp?.getValueNs()).toBe(1750932189844553958n);
   });
 
   it('handles debug info message without timestamp', async () => {

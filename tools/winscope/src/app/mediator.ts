@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {Store} from 'common/store/store';
 import {Timestamp} from 'common/time/time';
-import {TimeUtils} from 'common/time/time_utils';
+import {Timer} from 'common/time/timer';
 import {CrossToolProtocol} from 'cross_tool/cross_tool_protocol';
 import {Analytics} from 'logging/analytics';
 import {ProgressListener} from 'messaging/progress_listener';
@@ -48,7 +48,7 @@ import {
 import {WinscopeEventEmitter} from 'messaging/winscope_event_emitter';
 import {WinscopeEventListener} from 'messaging/winscope_event_listener';
 import {UserNotifier} from 'services/user_notifier';
-import {TraceEntry} from 'trace_api/trace';
+import {Trace, TraceEntry} from 'trace_api/trace';
 import {TRACE_INFO} from 'trace_api/trace_info';
 import {TracePosition} from 'trace_api/trace_position';
 import {TraceType} from 'trace_api/trace_type';
@@ -59,8 +59,14 @@ import {FilesSource} from './files_source';
 import {TimelineData} from './timeline_data';
 import {TracePipeline} from './trace_pipeline';
 import {TraceSearchInitializer} from './trace_search/trace_search_initializer';
+import {PlaybackState} from 'viewers/common/playback/playback_state';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
 
+/**
+ * Mediator class for communication between components
+ */
 export class Mediator {
+  initialTimelineTabTraceType: TraceType | undefined;
   private abtChromeExtensionProtocol: WinscopeEventEmitter &
     WinscopeEventListener;
   private crossToolProtocol: CrossToolProtocol;
@@ -80,6 +86,7 @@ export class Mediator {
   private areViewersLoaded = false;
   private lastRemoteToolDeferredTimestampReceived?: () => Timestamp | undefined;
   private currentProgressListener?: ProgressListener;
+  private screenRecordingTrace?: Trace<MediaBasedTraceEntry>;
 
   constructor(
     tracePipeline: TracePipeline,
@@ -265,6 +272,7 @@ export class Mediator {
           await viewer.onWinscopeEvent(activeTraceChanged);
         }
       }
+      await this.timelineComponent?.onWinscopeEvent(event);
       this.focusedTabView = event.newFocusedView;
       await this.propagateTracePosition(
         this.timelineData.getCurrentPosition(),
@@ -288,6 +296,16 @@ export class Mediator {
       WinscopeEventType.EXPANDED_TIMELINE_TOGGLED,
       async (event) => {
         await this.propagateToOverlays(event);
+      },
+    );
+
+    await event.visit(
+      WinscopeEventType.SCREEN_RECORDING_CHANGE,
+      async (event) => {
+        this.screenRecordingTrace = event.trace;
+        for (const viewer of this.viewers) {
+          await viewer.onWinscopeEvent(event);
+        }
       },
     );
 
@@ -378,6 +396,72 @@ export class Mediator {
       WinscopeEventType.BUGREPORT_FILE_SELECTION_REQUEST,
       async (event) => {
         await this.appComponent.onWinscopeEvent(event);
+      },
+    );
+
+    await event.visit(
+      WinscopeEventType.PLAYBACK_STATE_CHANGE_REQUEST,
+      async (event) => {
+        const viewer = this.findViewerByType(event.traceType);
+        if (!viewer) {
+          return;
+        }
+        switch (event.state) {
+          case PlaybackState.FORWARDS:
+          case PlaybackState.BACKWARDS: {
+            const visible = this.isViewerVisible(viewer);
+            if (!visible) {
+              return;
+            }
+
+            if (!this.screenRecordingTrace) {
+              this.screenRecordingTrace = this.tracePipeline
+                .getTraces()
+                .getTrace(TraceType.SCREEN_RECORDING);
+            }
+            const eventTrace = this.tracePipeline
+              .getTraces()
+              .getTrace(event.traceType);
+            const trace = this.screenRecordingTrace ?? eventTrace;
+
+            if (trace === undefined) {
+              return;
+            }
+
+            this.timelineData.trySetActiveTrace(trace as Trace<object>);
+            await viewer.onWinscopeEvent(event);
+            return;
+          }
+          case PlaybackState.PAUSED:
+            return await viewer.onWinscopeEvent(event);
+
+          default:
+            return;
+        }
+      },
+    );
+
+    await event.visit(
+      WinscopeEventType.PLAYBACK_STATE_CHANGE_HANDLED,
+      async (event) => {
+        if (event.traceType) {
+          const viewer = this.findViewerByType(event.traceType);
+          if (!viewer) {
+            return;
+          }
+          viewer.onWinscopeEvent(event);
+        }
+        return this.timelineComponent?.onWinscopeEvent(event);
+      },
+    );
+
+    await event.visit(
+      WinscopeEventType.PLAYBACK_SPEED_CHANGE,
+      async (event) => {
+        const viewer = this.findViewerByType(event.traceType);
+        if (viewer) {
+          await viewer.onWinscopeEvent(event);
+        }
       },
     );
   }
@@ -518,6 +602,7 @@ export class Mediator {
 
   private async loadViewers(source: FilesSource, discardLegacyTraces: boolean) {
     const e2eStartTimeMs = Date.now();
+    const timer = new Timer(10, 10);
 
     if (discardLegacyTraces) {
       this.tracePipeline.discardLegacyTraces();
@@ -526,7 +611,7 @@ export class Mediator {
         'Converting legacy traces to perfetto...',
         undefined,
       );
-      await TimeUtils.sleepMs(10); // allow the UI to update before making the main thread very busy
+      await timer.sleepMs(); // allow the UI to update before making the main thread very busy
       await this.tracePipeline.convertLegacyTracesToPerfetto();
       this.currentProgressListener?.onOperationFinished(true);
     }
@@ -536,7 +621,7 @@ export class Mediator {
       undefined,
     );
 
-    await TimeUtils.sleepMs(10); // allow the UI to update before making the main thread very busy
+    await timer.sleepMs(); // allow the UI to update before making the main thread very busy
 
     this.tracePipeline.filterTracesWithoutVisualization();
     if (this.tracePipeline.getTraces().getSize() === 0) {
@@ -562,7 +647,7 @@ export class Mediator {
 
     // TODO: move this into the ProgressListener
     // allow the UI to update before making the main thread very busy
-    await TimeUtils.sleepMs(10);
+    await timer.sleepMs();
 
     try {
       await this.timelineData.initialize(
@@ -616,6 +701,7 @@ export class Mediator {
     // "trace position update" could be processed concurrently within the same viewer.
     // Meaning the viewer could perform twice the initial heavy pre-processing,
     // thus increasing UI initialization times.
+    this.initialTimelineTabTraceType = this.focusedTabView?.traces[0]?.type;
     await this.appComponent.onWinscopeEvent(new ViewersLoaded(this.viewers));
     Analytics.Loading.logLoadViewersTime(Date.now() - e2eStartTimeMs);
   }
@@ -665,6 +751,7 @@ export class Mediator {
     this.areViewersLoaded = false;
     this.lastRemoteToolDeferredTimestampReceived = undefined;
     this.focusedTabView = undefined;
+    this.initialTimelineTabTraceType = undefined;
     await this.appComponent.onWinscopeEvent(new ViewersUnloaded());
   }
 

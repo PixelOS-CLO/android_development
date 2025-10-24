@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {Store} from 'common/store/store';
 import {Timestamp} from 'common/time/time';
 import {TransitionStatus} from 'trace/transitions/status';
@@ -227,8 +227,10 @@ export class Presenter extends AbstractLogViewerPresenter<
         {
           spec: Presenter.COLUMNS.id,
           value: assertDefined(
-            transitionNode.getEagerPropertyByName('transitionId'),
-          ).getValue(),
+            transitionNode
+              .getEagerPropertyByName('transitionId')
+              ?.getValue<number>(),
+          ),
         },
         {spec: Presenter.COLUMNS.type, value: transitionType},
         {

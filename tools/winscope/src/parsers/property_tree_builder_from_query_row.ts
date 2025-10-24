@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-import {convertSnakeToCamelCase} from 'common/string_utils';
+import {convertSnakeToCamelCase} from 'common/string_helpers';
 import {ColumnType, RowIterator} from 'trace_processor/query_result';
 import {PropertySource, PropertyTreeNode} from 'tree_node/property_tree_node';
 import {PropertyTreeNodeFactory} from 'tree_node/property_tree_node_factory';
 import {AbstractPropertyTreeBuilder} from './abstract_property_tree_builder';
 
+/**
+ * A builder for creating a property tree from a query row.
+ */
 export class PropertyTreeBuilderFromQueryRow extends AbstractPropertyTreeBuilder<RowIterator> {
   private columns: string[] | undefined;
   private booleanColumns: string[] = [];

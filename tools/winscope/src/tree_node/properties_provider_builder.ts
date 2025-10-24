@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {Operation} from './operation';
 import {OperationChain} from './operation_chain';
 import {
@@ -23,6 +23,9 @@ import {
 } from './properties_provider';
 import {PropertyTreeNode} from './property_tree_node';
 
+/**
+ * A builder for a properties provider.
+ */
 export class PropertiesProviderBuilder {
   private eagerProperties: PropertyTreeNode | undefined;
   private lazyPropertiesStrategy: LazyPropertiesStrategyType | undefined;

@@ -37,6 +37,7 @@ import {MatListModule} from '@angular/material/list';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
 import {MatSelectModule} from '@angular/material/select';
 import {MatSliderModule} from '@angular/material/slider';
+import {MatMenuModule} from '@angular/material/menu';
 import {MatSnackBarModule} from '@angular/material/snack-bar';
 import {MatTabsModule} from '@angular/material/tabs';
 import {MatToolbarModule} from '@angular/material/toolbar';
@@ -46,10 +47,9 @@ import {
   BrowserAnimationsModule,
   NoopAnimationsModule,
 } from '@angular/platform-browser/animations';
-import {assertDefined} from 'common/assert_utils';
-import {Download} from 'common/download';
-import {FileUtils} from 'common/file_utils';
-import {TimestampConverterUtils} from 'common/time/test_utils';
+import {assertDefined} from 'common/assert';
+import {RequestData} from 'cross_tool/g3_proxy';
+import {DOWNLOAD_FILENAME_REGEX} from 'common/io';
 import {
   FailedToInitializeTimelineData,
   NoValidFiles,
@@ -62,7 +62,8 @@ import {
   ViewersUnloaded,
 } from 'messaging/winscope_event';
 import {UserNotifier} from 'services/user_notifier';
-import {DOMTestHelper} from 'test/unit/dom_test_utils';
+import {DOMTestHelper} from 'test/unit/dom_test_helpers';
+import {UTC_CONVERTER} from 'test/unit/time_test_helpers';
 import {waitToBeCalled} from 'test/unit/spy_utils';
 import {TracesBuilder} from 'test/unit/traces_builder';
 import {ViewerSurfaceFlingerComponent} from 'viewers/viewer_surface_flinger/viewer_surface_flinger_component';
@@ -120,6 +121,7 @@ describe('AppComponent', () => {
         MatSnackBarModule,
         MatCheckboxModule,
         MatProgressBarModule,
+        MatMenuModule,
         MatTabsModule,
         WinscopeProxySetupComponent,
         WdpSetupComponent,
@@ -150,10 +152,13 @@ describe('AppComponent', () => {
       'winscope',
       Validators.compose([
         Validators.required,
-        Validators.pattern(FileUtils.DOWNLOAD_FILENAME_REGEX),
+        Validators.pattern(DOWNLOAD_FILENAME_REGEX),
       ]),
     );
-    downloadTracesSpy = spyOn(Download, 'fromUrl');
+    downloadTracesSpy = jasmine.createSpy('fromUrl');
+    component.downloadRequest = (url: string, fileName: string) => {
+      downloadTracesSpy(url, fileName);
+    };
     dom.detectChanges();
   });
 
@@ -162,7 +167,7 @@ describe('AppComponent', () => {
   });
 
   it('has the expected title', () => {
-    expect(component.title).toEqual('winscope');
+    expect(component.title).toBe('winscope');
   });
 
   it('shows permanent header items on homepage', () => {
@@ -263,7 +268,7 @@ describe('AppComponent', () => {
     component.timelineData.initialize(
       new TracesBuilder().build(),
       undefined,
-      TimestampConverterUtils.TIMESTAMP_CONVERTER,
+      UTC_CONVERTER,
     );
 
     await component.onWinscopeEvent(new ViewersUnloaded());
@@ -454,7 +459,7 @@ describe('AppComponent', () => {
 
     const mediatorSpy = spyOn(component.mediator, 'onWinscopeEvent');
     const actions = dialog.findAll('.warning-action-buttons button');
-    expect(actions.length).toEqual(1);
+    expect(actions.length).toBe(1);
     actions[0].click();
     await dom.whenStable();
     expect(eventHandled).toBeTrue();
@@ -464,13 +469,212 @@ describe('AppComponent', () => {
     expect(dom.findInDocument('warning-dialog')).toBeUndefined();
   });
 
+  describe('settings button', () => {
+    let isInsideWinscopeProxyFrameSpy: jasmine.Spy;
+    let getReportedParentOriginSpy: jasmine.Spy;
+    let isSupportedParentOriginSpy: jasmine.Spy;
+
+    beforeEach(() => {
+      isInsideWinscopeProxyFrameSpy = spyOn(
+        component,
+        'isInsideWinscopeProxyFrame',
+      ).and.returnValue(false);
+      getReportedParentOriginSpy = spyOn(
+        component,
+        'getReportedParentOrigin',
+      ).and.returnValue(null);
+      isSupportedParentOriginSpy = spyOn(
+        component,
+        'isSupportedReportedParentOrigin',
+      ).and.returnValue(false);
+    });
+
+    it('is not shown if not in winscope proxy iframe', () => {
+      isInsideWinscopeProxyFrameSpy.and.returnValue(false);
+      dom.detectChanges();
+      expect(dom.find('.iframe-settings')).toBeUndefined();
+    });
+
+    it('is shown if in winscope proxy iframe', () => {
+      isInsideWinscopeProxyFrameSpy.and.returnValue(true);
+      dom.detectChanges();
+      expect(dom.find('.iframe-settings')).toBeTruthy();
+    });
+
+    it('sends message to parent on click', () => {
+      const parentOrigin = 'https://allowed.origin';
+      isInsideWinscopeProxyFrameSpy.and.returnValue(true);
+      getReportedParentOriginSpy.and.returnValue(parentOrigin);
+      isSupportedParentOriginSpy.and.returnValue(true);
+      dom.detectChanges();
+      const postMessageSpy: jasmine.Spy<
+        (message: any, targetOrigin: string, transfer?: Transferable[]) => void
+      > = spyOn(window.parent, 'postMessage');
+      dom.findAndClick('.iframe-settings');
+      expect(postMessageSpy).toHaveBeenCalledOnceWith(
+        {winscopeAction: 'openSettings'},
+        parentOrigin,
+      );
+    });
+  });
+
+  describe('share button', () => {
+    let isInsideWinscopeProxyFrameSpy: jasmine.Spy;
+    let getReportedParentOriginSpy: jasmine.Spy;
+    let getReportedRequestSpy: jasmine.Spy;
+
+    beforeEach(() => {
+      isInsideWinscopeProxyFrameSpy = spyOn(
+        component,
+        'isInsideWinscopeProxyFrame',
+      ).and.returnValue(false);
+      getReportedParentOriginSpy = spyOn(
+        component,
+        'getReportedParentOrigin',
+      ).and.returnValue(null);
+      getReportedRequestSpy = spyOn(
+        component,
+        'getReportedRequest',
+      ).and.returnValue(undefined);
+    });
+
+    it('is always shown', () => {
+      dom.detectChanges();
+      expect(dom.find('.share-btn')).toBeTruthy();
+    });
+
+    describe('when not in winscope proxy iframe', () => {
+      beforeEach(() => {
+        isInsideWinscopeProxyFrameSpy.and.returnValue(false);
+        dom.detectChanges();
+      });
+
+      it('is disabled', () => {
+        const shareButton = dom.get('.share-btn');
+        shareButton.checkDisabled(true);
+      });
+
+      it('shows tooltip explaining why it is disabled', async () => {
+        const shareButtonWrapper = dom.get('.share-btn-wrapper');
+        await shareButtonWrapper.checkTooltip(
+          'Share functionality is not available for the provided traces',
+        );
+      });
+    });
+
+    describe('when in winscope proxy iframe', () => {
+      const parentOrigin = 'https://winscope.corp.google.com';
+      const request: RequestData = {
+        artifacts: [{name: 'artifact', invocationId: '123'}],
+      };
+
+      beforeEach(() => {
+        isInsideWinscopeProxyFrameSpy.and.returnValue(true);
+        getReportedParentOriginSpy.and.returnValue(parentOrigin);
+        getReportedRequestSpy.and.returnValue(request);
+        dom.detectChanges();
+      });
+
+      it('is enabled', () => {
+        const shareButton = dom.get('.share-btn');
+        shareButton.checkDisabled(false);
+      });
+
+      it('shows "Share" tooltip', async () => {
+        const shareButton = dom.get('.share-btn');
+        await shareButton.checkTooltip('Share');
+      });
+
+      it('generates correct share link and shows it in menu', async () => {
+        component.updateShareLink();
+        dom.detectChanges();
+
+        const params = new URLSearchParams();
+        params.set(
+          'request',
+          btoa(JSON.stringify({artifacts: request.artifacts})),
+        );
+        const expectedLink = `${parentOrigin}?${params.toString()}`;
+        expect(component.generatedShareLink).toEqual(expectedLink);
+
+        dom.findAndClick('.share-btn');
+        await dom.whenStable();
+
+        const shareInputElement = document.querySelector(
+          '.share-link-field input',
+        ) as HTMLInputElement;
+        assertDefined(shareInputElement);
+        expect(shareInputElement.value).toEqual(expectedLink);
+
+        const copyButton = dom.getInDocument('.share-link-container button');
+        copyButton.checkDisabled(false);
+      });
+
+      it('generates correct share link with no artifacts', async () => {
+        const request: RequestData = {
+          artifacts: [],
+        };
+        getReportedRequestSpy.and.returnValue(request);
+
+        component.updateShareLink();
+        dom.detectChanges();
+
+        const params = new URLSearchParams();
+        params.set('request', btoa(JSON.stringify({artifacts: []})));
+        const expectedLink = `${parentOrigin}?${params.toString()}`;
+        expect(component.generatedShareLink).toEqual(expectedLink);
+
+        dom.findAndClick('.share-btn');
+        await dom.whenStable();
+
+        const shareInputElement = document.querySelector(
+          '.share-link-field input',
+        ) as HTMLInputElement;
+        assertDefined(shareInputElement);
+        expect(shareInputElement.value).toEqual(expectedLink);
+      });
+
+      it('generates correct share link when original request is undefined', async () => {
+        getReportedRequestSpy.and.returnValue(undefined);
+
+        component.updateShareLink();
+        dom.detectChanges();
+
+        const params = new URLSearchParams();
+        params.set('request', btoa(JSON.stringify({artifacts: []})));
+        const expectedLink = `${parentOrigin}?${params.toString()}`;
+        expect(component.generatedShareLink).toEqual(expectedLink);
+
+        dom.findAndClick('.share-btn');
+        await dom.whenStable();
+
+        const shareInputElement = document.querySelector(
+          '.share-link-field input',
+        ) as HTMLInputElement;
+        assertDefined(shareInputElement);
+        expect(shareInputElement.value).toEqual(expectedLink);
+      });
+
+      it('disables copy button when no link is generated', async () => {
+        component.generatedShareLink = '';
+        dom.detectChanges();
+
+        dom.findAndClick('.share-btn');
+        await dom.whenStable();
+
+        const copyButton = dom.getInDocument('.share-link-container button');
+        copyButton.checkDisabled(true);
+      });
+    });
+  });
+
   function goToTraceView() {
     component.dataLoaded = true;
     component.showDataLoadedElements = true;
     component.timelineData.initialize(
       new TracesBuilder().build(),
       undefined,
-      TimestampConverterUtils.TIMESTAMP_CONVERTER,
+      UTC_CONVERTER,
     );
     dom.detectChanges();
   }

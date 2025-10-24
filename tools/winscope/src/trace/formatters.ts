@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-import {TransformType} from 'common/geometry/transform_utils';
+import {getTypeFlags} from 'common/geometry/transform';
 import {Timestamp} from 'common/time/time';
 import {TimeDuration} from 'common/time/time_duration';
 import {
   PropertyFormatter,
   PropertyTreeNode,
 } from 'tree_node/property_tree_node';
-import {RawDataUtils} from 'tree_node/raw_data_utils';
 import {CujType} from './cuj_type';
 
 const EMPTY_OBJ_STRING = '{empty}';
@@ -74,7 +73,7 @@ class ColorFormatter implements PropertyFormatter {
 
     const alpha = formatAsDecimal(alphaNode?.getValue() ?? 0);
     const alphaString = `alpha: ${alpha}`;
-    if (RawDataUtils.isEmptyObj(node)) {
+    if (node.isEmptyObj()) {
       return `${EMPTY_OBJ_STRING}, ${alphaString}`;
     }
     return `${rgbString}, ${alphaString}`;
@@ -198,7 +197,7 @@ const POSITION_FORMATTER = new PositionFormatter();
 
 class RectFormatter implements PropertyFormatter {
   format(node: PropertyTreeNode): string {
-    if (!RawDataUtils.isRect(node) || RawDataUtils.isEmptyObj(node)) {
+    if (!node.isRect() || node.isEmptyObj()) {
       return EMPTY_OBJ_STRING;
     }
     const left = formatAsDecimal(node.getChildByName('left')?.getValue() ?? 0);
@@ -256,9 +255,7 @@ const TIMESTAMP_NODE_FORMATTER = new TimestampNodeFormatter();
 class TransformFormatter implements PropertyFormatter {
   format(node: PropertyTreeNode): string {
     const type = node.getChildByName('type');
-    return type !== undefined
-      ? TransformType.getTypeFlags(type.getValue() ?? 0)
-      : 'null';
+    return type !== undefined ? getTypeFlags(type.getValue() ?? 0) : 'null';
   }
 }
 const TRANSFORM_FORMATTER = new TransformFormatter();

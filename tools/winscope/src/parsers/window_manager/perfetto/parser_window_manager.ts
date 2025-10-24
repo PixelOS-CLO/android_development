@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert_utils';
+import {assertDefined} from 'common/assert';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {AbstractParser} from 'parsers/perfetto/abstract_parser';
 import {FakeProtoTransformer} from 'parsers/perfetto/fake_proto_transformer';
@@ -37,6 +37,9 @@ import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {PropertiesProvider} from 'tree_node/properties_provider';
 import {TAMPERED_PROTOS_LATEST} from './tampered_protos_latest';
 
+/**
+ * Parser for WindowManager Perfetto traces.
+ */
 export class ParserWindowManager extends AbstractParser<HierarchyTreeNode> {
   private readonly protoTransformer = new FakeProtoTransformer(
     assertDefined(TAMPERED_PROTOS_LATEST.entryField.tamperedMessageType),

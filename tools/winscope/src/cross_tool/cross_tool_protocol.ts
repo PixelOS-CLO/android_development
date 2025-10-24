@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined, assertUnreachable} from 'common/assert_utils';
-import {FunctionUtils} from 'common/function_utils';
+import {assertDefined, assertUnreachable} from 'common/assert';
 import {Timestamp} from 'common/time/time';
 import {RemoteToolTimestampConverter} from 'common/time/timestamp_converter';
 import {
@@ -50,11 +49,14 @@ class RemoteTool {
   ) {}
 }
 
+/**
+ * A protocol for communication between Winscope and other tools.
+ */
 export class CrossToolProtocol
   implements WinscopeEventEmitter, WinscopeEventListener
 {
   private remoteTool?: RemoteTool;
-  private emitEvent: EmitEvent = FunctionUtils.DO_NOTHING_ASYNC;
+  private emitEvent: EmitEvent = () => Promise.resolve();
   private timestampConverter: RemoteToolTimestampConverter;
   private allowTimestampSync = true;
 
