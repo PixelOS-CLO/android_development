@@ -47,7 +47,10 @@ import {RectsForTrace} from 'parsers/rect_extractor_result';
 export class ParserWindowManager extends AbstractParser<HierarchyTreeNode> {
   private visibleAndDisplayRects: RectsForTrace | undefined;
 
-  override getRectsMap() {
+  override async getRectsMap() {
+    if (!this.visibleAndDisplayRects) {
+      this.visibleAndDisplayRects = await this.fetchAllVisibleAndDisplayRects();
+    }
     return this.visibleAndDisplayRects;
   }
 
@@ -61,7 +64,7 @@ export class ParserWindowManager extends AbstractParser<HierarchyTreeNode> {
 
   override async getRangeOfEntries(
     range: EntriesRange,
-  ): Promise<Array<HierarchyTreeNode | undefined>> {
+  ): Promise<HierarchyTreeNode[]> {
     // assuming the entryIndex monotically increases, true for WindowManager
     const snapshotStart = this.entryIndexToRowIdMap[range.start];
     const snapshotEnd = snapshotStart + range.end - range.start;

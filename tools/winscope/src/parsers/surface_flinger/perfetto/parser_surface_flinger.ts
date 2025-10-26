@@ -21,7 +21,6 @@ import {
 } from 'common/assert';
 import {AbstractParser} from 'parsers/perfetto/abstract_parser';
 import {queryVsyncId} from 'parsers/perfetto/utils';
-import {EntryHierarchyTreeFactory} from 'parsers/surface_flinger/entry_hierarchy_tree_factory';
 import {RectExtractor} from 'parsers/surface_flinger/rect_extractor';
 import {
   CustomQueryParserResultTypeMap,
@@ -34,14 +33,17 @@ import {QueryResult, QueryResults} from 'trace_processor/query_result';
 import {RawDataQueryResult} from 'trace_processor/raw_data_query_result';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {RectsForTrace} from 'parsers/rect_extractor_result';
+import {makeEntryHierarchyTrees} from 'parsers/surface_flinger/entry_hierarchy_tree_factory';
 
 export class ParserSurfaceFlinger extends AbstractParser<HierarchyTreeNode> {
-  private readonly factory = EntryHierarchyTreeFactory;
   private visibleAndDisplayRects: RectsForTrace | undefined;
   private allVisibleRects: QueryResult | undefined;
   private allSnapshots: QueryResult | undefined;
 
-  override getRectsMap() {
+  override async getRectsMap() {
+    if (!this.visibleAndDisplayRects) {
+      this.visibleAndDisplayRects = await this.fetchAllVisibleAndDisplayRects();
+    }
     return this.visibleAndDisplayRects;
   }
 
@@ -56,7 +58,7 @@ export class ParserSurfaceFlinger extends AbstractParser<HierarchyTreeNode> {
   override async getRangeOfEntries(
     entriesRange: EntriesRange,
     precomputedQuery?: QueryResults<QueryResult>,
-  ): Promise<Array<HierarchyTreeNode | undefined>> {
+  ): Promise<HierarchyTreeNode[]> {
     const queryResults =
       precomputedQuery ?? (await this.getQueryResults(entriesRange, false));
     const {snapshotRange: snapshotResult, nodeRange: layersResult} =
@@ -71,7 +73,7 @@ export class ParserSurfaceFlinger extends AbstractParser<HierarchyTreeNode> {
     const visibleAndDisplayRects = assertDefined(
       await this.fetchAllVisibleAndDisplayRects(),
     );
-    return this.factory.makeEntryHierarchyTrees(
+    return makeEntryHierarchyTrees(
       assertDefined(snapshotResult),
       layersResult,
       visibleAndDisplayRects,
@@ -216,7 +218,11 @@ export class ParserSurfaceFlinger extends AbstractParser<HierarchyTreeNode> {
           ON display.trace_rect_id = trace_rect.id
         WHERE sfs.id >= ${start} AND sfs.id < ${end}
           ORDER BY sfs.id, display.id;`;
-    return await this.executeQuery(snapshotQuery, queryRawData);
+    if (queryRawData) {
+      return await this.traceProcessor.rawQuery(snapshotQuery);
+    } else {
+      return await this.traceProcessor.query(snapshotQuery);
+    }
   }
 
   private async queryRangeLayersAndRects(
@@ -265,7 +271,11 @@ export class ParserSurfaceFlinger extends AbstractParser<HierarchyTreeNode> {
           ON fr.rect_id = frr.id
         WHERE sfl.snapshot_id >= ${start} AND sfl.snapshot_id < ${end}
           ORDER BY sfl.id`;
-    return await this.executeQuery(layersQuery, queryRawData);
+    if (queryRawData) {
+      return await this.traceProcessor.rawQuery(layersQuery);
+    } else {
+      return await this.traceProcessor.query(layersQuery);
+    }
   }
 
   private async queryAllVisibleAndDisplayRects(): Promise<QueryResult> {
@@ -308,13 +318,5 @@ export class ParserSurfaceFlinger extends AbstractParser<HierarchyTreeNode> {
           ORDER BY sfl.id;
     `;
     return this.traceProcessor.query(visibleRectsDisplayQuery);
-  }
-
-  private async executeQuery(sqlQuery: string, queryRawData: boolean = false) {
-    if (queryRawData) {
-      return this.traceProcessor.rawQuery(sqlQuery);
-    } else {
-      return this.traceProcessor.query(sqlQuery);
-    }
   }
 }
