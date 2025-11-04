@@ -18,13 +18,10 @@ import {assertDefined} from 'common/assert';
 import {createZipArchive, DOWNLOAD_FILENAME_REGEX, unzipFile} from 'common/io';
 import {ProgressListenerStub} from 'messaging/progress_listener_stub';
 import {UserWarning} from 'messaging/user_warning';
-import {
-  CorruptedArchive,
-  InvalidPerfettoTrace,
-  NoValidFiles,
-  TraceOverridden,
-  UnsupportedFileFormat,
-} from 'messaging/user_warnings';
+import {CorruptedArchive} from 'app/warnings/corrupted_archive';
+import {NoValidFiles} from 'app/warnings/no_valid_files';
+import {UnsupportedFileFormat} from 'app/warnings/unsupported_file_format';
+import {InvalidPerfettoTrace} from 'parsers/warnings/invalid_perfetto_trace';
 import {BugreportFileSelected} from 'messaging/winscope_event';
 import {LegacyToPerfettoConverter} from 'parsers/legacy_to_perfetto_converter';
 import {getFixtureFile} from 'test/unit/io_helpers';
@@ -463,36 +460,12 @@ describe('TracePipeline', () => {
     expect(sfTrace.getDescriptors().length).toBeGreaterThan(0);
   });
 
-  it('gets screenrecording data', async () => {
+  it('gets screenrecording trace', async () => {
     const files = [screenRecordingFile];
     await loadFiles(files);
     await expectLoadResult(1, []);
-
-    const video = await tracePipeline.getScreenRecordingVideo();
-    expect(video).toBeDefined();
-    expect(video?.size).toBeGreaterThan(0);
-  });
-
-  it('gets screenshot data', async () => {
-    const files = [screenshotFile];
-    await loadFiles(files);
-    await expectLoadResult(1, []);
-
-    const video = await tracePipeline.getScreenRecordingVideo();
-    expect(video).toBeDefined();
-    expect(video?.size).toBeGreaterThan(0);
-  });
-
-  it('prioritizes screenrecording over screenshot data', async () => {
-    const files = [screenshotFile, screenRecordingFile];
-    await loadFiles(files);
-    await expectLoadResult(1, [
-      new TraceOverridden('screenshot.png', TraceType.SCREEN_RECORDING),
-    ]);
-
-    const video = await tracePipeline.getScreenRecordingVideo();
-    expect(video).toBeDefined();
-    expect(video?.size).toBeGreaterThan(0);
+    const trace = tracePipeline.getScreenRecordingTrace();
+    expect(trace).toBeDefined();
   });
 
   it('creates traces with correct type', async () => {
@@ -582,12 +555,27 @@ describe('TracePipeline', () => {
 
   describe('legacy to perfetto conversion', () => {
     let parserSf: Parser<object>;
-    let converterSpy: jasmine.Spy;
+    let setLegacyParsersSpy: jasmine.Spy;
+    let setAllParsersSpy: jasmine.Spy;
+    let setPerfettoFileSpy: jasmine.Spy;
+    let convertSpy: jasmine.Spy;
 
     beforeEach(async () => {
-      converterSpy = spyOn(
-        LegacyToPerfettoConverter,
-        'convertToSinglePerfettoFile',
+      setLegacyParsersSpy = spyOn(
+        LegacyToPerfettoConverter.prototype,
+        'setLegacyParsers',
+      ).and.callThrough();
+      setAllParsersSpy = spyOn(
+        LegacyToPerfettoConverter.prototype,
+        'setAllParsers',
+      ).and.callThrough();
+      setPerfettoFileSpy = spyOn(
+        LegacyToPerfettoConverter.prototype,
+        'setPerfettoFile',
+      ).and.callThrough();
+      convertSpy = spyOn(
+        LegacyToPerfettoConverter.prototype,
+        'convert',
       ).and.callThrough();
       await loadFiles([validSfFile]);
       parserSf = assertDefined(
@@ -602,19 +590,19 @@ describe('TracePipeline', () => {
       tracePipeline.clear();
       await loadFiles([screenshotFile]);
       await tracePipeline.convertLegacyTracesToPerfetto();
-      expect(converterSpy).not.toHaveBeenCalled();
+      expect(convertSpy).not.toHaveBeenCalled();
     });
 
     it('robust to failed legacy-to-perfetto conversion', async () => {
-      converterSpy.and.returnValue(Promise.resolve(undefined));
+      convertSpy.and.returnValue(Promise.resolve(undefined));
       await expectAsync(
         tracePipeline.convertLegacyTracesToPerfetto(),
       ).not.toBeRejected();
-      expect(converterSpy).toHaveBeenCalledTimes(1);
+      expect(convertSpy).toHaveBeenCalledTimes(1);
     });
 
     it('robust to no perfetto data in converted file', async () => {
-      converterSpy.and.returnValue(Promise.resolve(new TraceFile(validSfFile)));
+      convertSpy.and.returnValue(Promise.resolve(new TraceFile(validSfFile)));
       await tracePipeline.convertLegacyTracesToPerfetto();
       userNotifierChecker.expectAdded([
         new InvalidPerfettoTrace('SurfaceFlinger.pb', [
@@ -626,11 +614,10 @@ describe('TracePipeline', () => {
 
     it('with single legacy trace', async () => {
       await tracePipeline.convertLegacyTracesToPerfetto();
-      expect(converterSpy).toHaveBeenCalledOnceWith(
-        [parserSf],
-        [parserSf],
-        undefined,
-      );
+      expect(setLegacyParsersSpy).toHaveBeenCalledOnceWith([parserSf]);
+      expect(setAllParsersSpy).toHaveBeenCalledOnceWith([parserSf]);
+      expect(setPerfettoFileSpy).not.toHaveBeenCalled();
+      expect(convertSpy).toHaveBeenCalledTimes(1);
       expect(tracePipeline.getTraces().getSize()).toBe(1);
       checkSfTraceIsPerfetto();
     });
@@ -639,11 +626,15 @@ describe('TracePipeline', () => {
       await loadFiles([perfettoFileProtolog]);
       const parserPerfetto = getParser(TraceType.PROTO_LOG);
       await tracePipeline.convertLegacyTracesToPerfetto();
-      expect(converterSpy).toHaveBeenCalledOnceWith(
-        [parserSf],
-        [parserSf, parserPerfetto],
+      expect(setLegacyParsersSpy).toHaveBeenCalledOnceWith([parserSf]);
+      expect(setAllParsersSpy).toHaveBeenCalledOnceWith([
+        parserSf,
+        parserPerfetto,
+      ]);
+      expect(setPerfettoFileSpy).toHaveBeenCalledOnceWith(
         new TraceFile(perfettoFileProtolog),
       );
+      expect(convertSpy).toHaveBeenCalledTimes(1);
       expect(tracePipeline.getTraces().getSize()).toBe(2);
       checkSfTraceIsPerfetto();
     });
@@ -652,11 +643,13 @@ describe('TracePipeline', () => {
       await loadFiles([validWmFile]);
       const parserWm = getParser(TraceType.WINDOW_MANAGER);
       await tracePipeline.convertLegacyTracesToPerfetto();
-      expect(converterSpy).toHaveBeenCalledOnceWith(
-        [parserSf, parserWm],
-        [parserSf, parserWm],
-        undefined,
-      );
+      expect(setLegacyParsersSpy).toHaveBeenCalledOnceWith([
+        parserSf,
+        parserWm,
+      ]);
+      expect(setAllParsersSpy).toHaveBeenCalledOnceWith([parserSf, parserWm]);
+      expect(setPerfettoFileSpy).not.toHaveBeenCalled();
+      expect(convertSpy).toHaveBeenCalledTimes(1);
       expect(tracePipeline.getTraces().getSize()).toBe(2);
       checkSfTraceIsPerfetto();
     });
