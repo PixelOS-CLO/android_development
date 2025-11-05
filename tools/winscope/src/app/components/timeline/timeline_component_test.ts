@@ -74,6 +74,7 @@ import {SliderComponent} from './mini-timeline/slider_component';
 import {TimelineComponent} from './timeline_component';
 import {PlaybackState} from 'viewers/common/playback/playback_state';
 import {PlaybackControlsComponent} from './playback_component';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
 
 describe('TimelineComponent', () => {
   const time90 = makeRealTimestamp(90n);
@@ -1133,7 +1134,43 @@ describe('TimelineComponent', () => {
     expect(miniDrawSpy).toHaveBeenCalledTimes(1); // all on one canvas so spy called once
   });
 
-  describe('playback controls', async () => {
+  it('does not show screen recording content in expanded timeline overlay', () => {
+    loadSfWmTraces();
+    openExpandedTimeline();
+    expect(dom.find('#video-content')).toBeUndefined();
+  });
+
+  it('shows screen recording placeholder in expanded timeline overlay', () => {
+    loadAllTraces();
+    openExpandedTimeline();
+    dom.get('.no-video-message').checkText('No screen recording frame to show');
+  });
+
+  it('shows screen recording canvas in expanded timeline overlay', async () => {
+    const frame = jasmine.createSpyObj<VideoFrame>('frame', [], {
+      codedWidth: 4,
+      codedHeight: 10,
+    });
+    const entry = new MediaBasedTraceEntry(undefined, frame);
+    const drawSpy = spyOn(entry, 'tryDrawOnCanvas');
+
+    const trace = new TraceBuilder<MediaBasedTraceEntry>()
+      .setType(TraceType.SCREEN_RECORDING)
+      .setTimestamps([time110])
+      .setEntries([entry])
+      .build();
+
+    loadAllTraces(undefined, undefined, undefined, trace);
+    await dom.whenStable();
+
+    openExpandedTimeline();
+    await dom.whenStable();
+    await dom.whenRenderingDone();
+    expect(dom.get('#video-content canvas')).toBeDefined();
+    expect(drawSpy).toHaveBeenCalledTimes(1);
+  });
+
+  describe('playback controls', () => {
     let emitEventSpy: jasmine.Spy;
 
     beforeEach(() => {
@@ -1144,14 +1181,14 @@ describe('TimelineComponent', () => {
       component.timeline?.setEmitEvent(emitEventSpy);
     });
 
-    it('disables timeline component on playback initialization', async () => {
+    it('disables timeline component on playback initialization', () => {
       const timelineComponent = assertDefined(component.timeline);
       timelineComponent.playbackState = PlaybackState.PAUSED;
       dom.keydownSpace();
       expect(timelineComponent.isDisabled).toEqual(true);
     });
 
-    it('starts playback on space click', async () => {
+    it('starts playback on space click', () => {
       const timelineComponent = assertDefined(component.timeline);
       timelineComponent.playbackState = PlaybackState.PAUSED;
 
@@ -1186,7 +1223,7 @@ describe('TimelineComponent', () => {
       );
     });
 
-    it('stops playback on space click if already playing', async () => {
+    it('stops playback on space click if already playing', () => {
       const timelineComponent = assertDefined(component.timeline);
       timelineComponent.playbackState = PlaybackState.FORWARDS;
 
@@ -1200,7 +1237,19 @@ describe('TimelineComponent', () => {
       );
     });
 
-    it('changes playback direction to backwards on media track previous click', async () => {
+    it('starts playing backwards on media track previous click', () => {
+      dom.keydownMediaTrackPrevious(true);
+      expect(emitEventSpy).toHaveBeenCalledTimes(1);
+      expect(emitEventSpy).toHaveBeenCalledWith(
+        new PlaybackStateChangeRequest(
+          TraceType.SURFACE_FLINGER,
+          PlaybackState.BACKWARDS,
+          0,
+        ),
+      );
+    });
+
+    it('changes playback direction to backwards on media track previous click', () => {
       const timelineComponent = assertDefined(component.timeline);
       timelineComponent.playbackState = PlaybackState.FORWARDS;
 
@@ -1215,7 +1264,26 @@ describe('TimelineComponent', () => {
       );
     });
 
-    it('changes playback direction to forwards on media track next click', async () => {
+    it('does not send event on media track previous click if already playing backwards', () => {
+      dom.keydownMediaTrackPrevious(true);
+      expect(emitEventSpy).toHaveBeenCalledTimes(1);
+      dom.keydownMediaTrackPrevious(true);
+      expect(emitEventSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('starts playing forwards on media track next click', () => {
+      dom.keydownMediaTrackNext(true);
+      expect(emitEventSpy).toHaveBeenCalledTimes(1);
+      expect(emitEventSpy).toHaveBeenCalledWith(
+        new PlaybackStateChangeRequest(
+          TraceType.SURFACE_FLINGER,
+          PlaybackState.FORWARDS,
+          0,
+        ),
+      );
+    });
+
+    it('changes playback direction to forwards on media track next click', () => {
       const timelineComponent = assertDefined(component.timeline);
       timelineComponent.playbackState = PlaybackState.BACKWARDS;
 
@@ -1228,6 +1296,13 @@ describe('TimelineComponent', () => {
           0,
         ),
       );
+    });
+
+    it('does not send event on media track next click if already playing backwards', () => {
+      dom.keydownMediaTrackNext(true);
+      expect(emitEventSpy).toHaveBeenCalledTimes(1);
+      dom.keydownMediaTrackNext(true);
+      expect(emitEventSpy).toHaveBeenCalledTimes(1);
     });
 
     it('does not handle arrow key presses if playback is playing', () => {
@@ -1290,7 +1365,7 @@ describe('TimelineComponent', () => {
       expect(timelineComponent.playbackState).toEqual(event.state);
     });
 
-    it('emits PlaybackStateChangeRequest event on a playback button clicked', async () => {
+    it('emits PlaybackStateChangeRequest event on a playback button clicked', () => {
       const timelineComponent = assertDefined(component.timeline);
       const emitEventSpy = jasmine.createSpy('emitEvent');
       timelineComponent.setEmitEvent(emitEventSpy);
@@ -1326,8 +1401,9 @@ describe('TimelineComponent', () => {
     hostComponent = component,
     domHelper = dom,
     loadAllTraces = true,
+    srTrace?: Trace<MediaBasedTraceEntry>,
   ) {
-    const traces = new TracesBuilder()
+    const builder = new TracesBuilder()
       .setTimestamps(TraceType.SURFACE_FLINGER, [time100, time110])
       .setTimestamps(TraceType.WINDOW_MANAGER, [
         time90,
@@ -1335,18 +1411,25 @@ describe('TimelineComponent', () => {
         time110,
         time112,
       ])
-      .setTimestamps(
-        TraceType.SCREEN_RECORDING,
-        [time110],
-        ['mock_screen_recording'],
-      )
       .setTimestamps(TraceType.PROTO_LOG, [time100])
       .setTimestamps(
         TraceType.VIEW_CAPTURE,
         [time100],
         ['Test Window', 'mock_view_capture'],
-      )
-      .build();
+      );
+    if (srTrace === undefined) {
+      builder.setTimestamps(
+        TraceType.SCREEN_RECORDING,
+        [time110],
+        ['mock_screen_recording'],
+      );
+    }
+
+    const traces = builder.build();
+
+    if (srTrace !== undefined) {
+      traces.addTrace(srTrace);
+    }
 
     let timelineDataTraces: Traces | undefined;
     if (loadAllTraces) {

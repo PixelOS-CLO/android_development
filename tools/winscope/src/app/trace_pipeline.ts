@@ -33,13 +33,11 @@ import {
 import {Analytics} from 'logging/analytics';
 import {ProgressListener} from 'messaging/progress_listener';
 import {UserWarning} from 'messaging/user_warning';
-import {
-  CorruptedArchive,
-  InvalidLegacyTrace,
-  InvalidPerfettoTrace,
-  NoValidFiles,
-  UnsupportedFileFormat,
-} from 'messaging/user_warnings';
+import {CorruptedArchive} from 'app/warnings/corrupted_archive';
+import {NoValidFiles} from 'app/warnings/no_valid_files';
+import {UnsupportedFileFormat} from 'app/warnings/unsupported_file_format';
+import {InvalidLegacyTrace} from 'parsers/warnings/invalid_legacy_trace';
+import {InvalidPerfettoTrace} from 'parsers/warnings/invalid_perfetto_trace';
 import {WinscopeEvent} from 'messaging/winscope_event';
 import {
   EmitEvent,
@@ -78,6 +76,7 @@ import {FilesSource} from './files_source';
 import {LoadedParsers} from './loaded_parsers';
 import {TraceFileFilter} from './trace_file_filter';
 import {TraceGeometryData} from 'parsers/trace_geometry_data';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
 
 /**
  * A pipeline that loads, parses and transforms traces.
@@ -250,15 +249,12 @@ export class TracePipeline
     return this.lostPerfettoPackets;
   }
 
-  async getScreenRecordingVideo(): Promise<undefined | Blob> {
-    const traces = this.getTraces();
-    const screenRecording =
-      traces.getTrace(TraceType.SCREEN_RECORDING) ??
-      traces.getTrace(TraceType.SCREENSHOT);
-    if (!screenRecording || screenRecording.lengthEntries === 0) {
+  getScreenRecordingTrace(): Trace<MediaBasedTraceEntry> | undefined {
+    const trace = this.getTraces().getTrace(TraceType.SCREEN_RECORDING);
+    if (!trace || trace.lengthEntries === 0) {
       return undefined;
     }
-    return (await screenRecording.getEntry(0).getValue()).videoData;
+    return trace;
   }
 
   async tryCreateSearchTrace(
@@ -537,11 +533,16 @@ export class TracePipeline
       return trace.getParser();
     });
 
-    return await LegacyToPerfettoConverter.convertToSinglePerfettoFile(
-      legacyParsers,
-      allParsers,
-      this.loadedParsers.getPerfettoFile(),
-    );
+    const converter = new LegacyToPerfettoConverter()
+      .setLegacyParsers(legacyParsers)
+      .setAllParsers(allParsers);
+
+    const perfettoFile = this.loadedParsers.getPerfettoFile();
+    if (perfettoFile) {
+      converter.setPerfettoFile(perfettoFile);
+    }
+
+    return await converter.convert();
   }
 
   private makeDownloadArchiveFilename(
