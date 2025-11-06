@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
-import {UserWarning} from 'messaging/user_warning';
+import {assertTrue} from 'common/assert';
+import {Trace} from 'trace_api/trace';
+import {View, ViewType} from 'viewers/viewer';
+import {WinscopeEvent} from 'messaging/winscope_event';
 
-export class CannotParseAllTransitions extends UserWarning {
-  getDescriptor(): string {
-    return 'cannot parse all transitions';
+export class TabbedViewSwitched implements WinscopeEvent {
+  constructor(readonly newFocusedView: View) {
+    assertTrue(
+      newFocusedView.type === ViewType.TRACE_TAB ||
+        newFocusedView.type === ViewType.GLOBAL_SEARCH,
+    );
   }
+}
 
-  getMessage(): string {
-    return 'Cannot parse all transitions. Some may be missing in Transitions viewer.';
-  }
+export class TabbedViewSwitchRequest implements WinscopeEvent {
+  constructor(readonly newActiveTrace: Trace<object>) {}
 }
