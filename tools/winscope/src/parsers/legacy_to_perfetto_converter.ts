@@ -18,7 +18,7 @@ import {assertDefined} from 'common/assert';
 import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
 // TODO(b/311642700): Not compatible with google3
 import Long from 'long';
-import {FailedToConvertLegacyTraces} from 'parsers/warnings/failed_to_convert_legacy_traces';
+import {makeWarningFailedToConvertLegacyTraces} from './warnings';
 import {UserNotifier} from 'services/user_notifier';
 // TODO(b/311642700): Not compatible with google3
 import {Writer} from 'protobufjs';
@@ -70,7 +70,7 @@ export class LegacyToPerfettoConverter {
     } catch (e) {
       console.error(e);
       UserNotifier.add(
-        new FailedToConvertLegacyTraces((e as Error).message),
+        makeWarningFailedToConvertLegacyTraces((e as Error).message),
       ).notify();
       return this.perfettoFile;
     }
@@ -80,6 +80,19 @@ export class LegacyToPerfettoConverter {
       return undefined;
     }
     trace.packet.push(...legacyPackets);
+
+    // Packets with zero timestamps must be assigned a timestamp within
+    // the range of timestamps present in the trace to avoid issues with
+    // timestamp syncing. The packets for these traces will be parsed by
+    // TP with the "has_invalid_elapsed_ts" column set to true.
+    const nonZeroTs = trace.packet.find((packet) => {
+      return packet.timestamp && !packet.timestamp.isZero();
+    })?.timestamp;
+    legacyPackets.forEach((packet) => {
+      if (nonZeroTs && packet.timestamp.isZero()) {
+        packet.timestamp = nonZeroTs;
+      }
+    });
 
     // To avoid out-of-memory crashes with larger traces, we add encoded
     // packets to size-limited chunks. TraceProcessor can load files in
@@ -306,6 +319,7 @@ export class LegacyToPerfettoConverter {
             trustedUid,
             trustedPid,
           );
+
           if (legacyPackets.length > 0) {
             legacyPackets[0].firstPacketOnSequence = true;
             packets.push(...legacyPackets);

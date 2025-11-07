@@ -38,9 +38,10 @@ import {
 } from '@angular/platform-browser/animations';
 import {assertDefined} from 'common/assert';
 import {InMemoryStorage} from 'common/store/in_memory_storage';
-import {ProxyTraceTimeout} from 'app/warnings/proxy_trace_timeout';
-import {AppRefreshDumpsRequest, WinscopeEvent} from 'messaging/winscope_event';
-import {NoTraceTargetsSelectedEvent} from 'messaging/winscope_event';
+import {makeWarningProxyTraceTimeout} from 'app/warnings';
+import {AppRefreshDumpsRequest} from 'app/app_events';
+import {NoTraceTargetsSelectedEvent} from 'app/misc_events';
+import {WinscopeEvent} from 'messaging/winscope_event';
 import {DOMTestHelper} from 'test/unit/dom_test_helpers';
 import {waitToBeCalled} from 'test/unit/spy_utils';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
@@ -569,7 +570,7 @@ describe('CollectTracesComponent', () => {
     await component.onConnectionStateChange(ConnectionState.TRACE_TIMEOUT);
     await dom.whenStable();
     expect(spy).toHaveBeenCalledTimes(1);
-    userNotifierChecker.expectAdded([new ProxyTraceTimeout()]);
+    userNotifierChecker.expectAdded([makeWarningProxyTraceTimeout()]);
   });
 
   it('updates options in media based config on devices change from host', () => {

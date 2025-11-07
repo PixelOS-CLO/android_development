@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-import {UserWarning} from 'messaging/user_warning';
+import {Timestamp} from 'common/time/time';
+import {WinscopeEvent} from 'messaging/winscope_event';
 
-export class MonotonicScreenRecording extends UserWarning {
-  getDescriptor(): string {
-    return 'monotonic screen recording';
-  }
+export class RemoteToolDownloadStart implements WinscopeEvent {}
 
-  getMessage(): string {
-    return `Screen recording may not be synchronized with the
-      other traces. Metadata contains monotonic time instead of elapsed.`;
-  }
+export class RemoteToolFilesReceived implements WinscopeEvent {
+  constructor(
+    readonly files: File[],
+    readonly deferredTimestamp?: () => Timestamp | undefined,
+  ) {}
+}
+
+export class RemoteToolTimestampReceived implements WinscopeEvent {
+  constructor(readonly deferredTimestamp: () => Timestamp | undefined) {}
 }

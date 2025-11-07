@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,8 @@
  * limitations under the License.
  */
 
-import {UserWarning} from 'messaging/user_warning';
+import {WinscopeEvent} from 'messaging/winscope_event';
 
-/**
- * A warning for an invalid Perfetto trace.
- */
-export class InvalidPerfettoTrace extends UserWarning {
-  constructor(
-    private readonly descriptor: string,
-    private readonly errorMessages: string[],
-  ) {
-    super();
-  }
-
-  getDescriptor(): string {
-    return 'invalid perfetto trace';
-  }
-
-  getMessage(): string {
-    return `${this.descriptor}: ${this.errorMessages.join(', ')}`;
-  }
+export class ExpandedTimelineToggled implements WinscopeEvent {
+  constructor(readonly isTimelineExpanded: boolean) {}
 }

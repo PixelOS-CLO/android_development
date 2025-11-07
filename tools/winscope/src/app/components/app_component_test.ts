@@ -50,19 +50,19 @@ import {
 import {assertDefined} from 'common/assert';
 import {RequestData} from 'cross_tool/g3_proxy';
 import {DOWNLOAD_FILENAME_REGEX} from 'common/io';
-import {NoValidFiles} from 'app/warnings/no_valid_files';
-import {FailedToInitializeTimelineData} from 'app/warnings/failed_to_initialize_timeline_data';
 import {
-  AppRefreshDumpsRequest,
+  makeWarningNoValidFiles,
+  makeWarningFailedToInitializeTimelineData,
+} from 'app/warnings';
+import {AppRefreshDumpsRequest} from 'app/app_events';
+import {
   BookmarksChanged,
   BugreportFileSelected,
   BugreportFileSelectionRequest,
-  TabbedViewSwitchRequest,
-  TracePositionUpdate,
-  TraceSearchRequest,
-  ViewersLoaded,
-  ViewersUnloaded,
-} from 'messaging/winscope_event';
+} from 'app/misc_events';
+import {TabbedViewSwitchRequest} from 'app/tabbed_view_events';
+import {ViewersLoaded, ViewersUnloaded} from 'app/viewers_events';
+import {TracePositionUpdate, TraceSearchRequest} from 'trace/trace_events';
 import {TraceType} from 'trace_api/trace_type';
 import {View, Viewer, ViewType} from 'viewers/viewer';
 import {UserNotifier} from 'services/user_notifier';
@@ -412,31 +412,31 @@ describe('AppComponent', () => {
 
   it('sets snackbar opener to global user notifier', () => {
     expect(dom.findInDocument('snack-bar')).toBeUndefined();
-    UserNotifier.add(new NoValidFiles());
+    UserNotifier.add(makeWarningNoValidFiles());
     UserNotifier.notify();
     expect(dom.findInDocument('snack-bar')).toBeTruthy();
   });
 
   it('does not open new snackbar until existing snackbar has been dismissed', async () => {
     expect(dom.findInDocument('snack-bar')).toBeUndefined();
-    const firstMessage = new NoValidFiles();
+    const firstMessage = makeWarningNoValidFiles();
     UserNotifier.add(firstMessage);
     UserNotifier.notify();
     await dom.detectChangesAndRenderingDone();
     let snackbar = dom.getSnackBar();
-    snackbar.checkText(firstMessage.getMessage());
+    snackbar.checkText(firstMessage.message);
 
-    const secondMessage = new FailedToInitializeTimelineData();
+    const secondMessage = makeWarningFailedToInitializeTimelineData();
     UserNotifier.add(secondMessage);
     UserNotifier.notify();
     await dom.detectChangesAndRenderingDone();
     snackbar = dom.getSnackBar();
-    snackbar.checkText(firstMessage.getMessage());
+    snackbar.checkText(firstMessage.message);
 
     snackbar.findAndClick('.snack-bar-actions .close-button');
     await dom.whenRenderingDone();
     snackbar = dom.getSnackBar();
-    snackbar.checkText(secondMessage.getMessage());
+    snackbar.checkText(secondMessage.message);
   });
 
   it('shows bugreport selection dialog', async () => {
@@ -519,7 +519,7 @@ describe('AppComponent', () => {
       > = spyOn(window.parent, 'postMessage');
       dom.findAndClick('.iframe-settings');
       expect(postMessageSpy).toHaveBeenCalledOnceWith(
-        {winscopeAction: 'openSettings'},
+        JSON.stringify({action: 'openSettings'}),
         parentOrigin,
       );
     });
