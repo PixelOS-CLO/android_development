@@ -701,7 +701,7 @@ export class TimelineComponent
   async onWinscopeEvent(event: WinscopeEvent) {
     switch (event.constructor) {
       case TracePositionUpdate:
-        return await this.onTracePositionUpdate();
+        return await this.onTracePositionUpdate(event as TracePositionUpdate);
       case ActiveTraceChanged:
         return await this.onActiveTraceChanged(event as ActiveTraceChanged);
       case DarkModeToggled:
@@ -1168,9 +1168,11 @@ export class TimelineComponent
       return undefined;
     }
 
-    return this.timelineData
-      ?.findCurrentEntryFor(currentTrace as Trace<object>)
-      ?.getIndex();
+    return (
+      this.timelineData
+        ?.findCurrentEntryFor(currentTrace as Trace<object>)
+        ?.getIndex() ?? 0
+    );
   }
 
   private updateTimeInputValuesToCurrentTimestamp() {
@@ -1259,7 +1261,7 @@ export class TimelineComponent
     const entry = (await this.timelineData
       ?.findCurrentEntryFor(trace)
       ?.getValue()) as MediaBasedTraceEntry;
-    if (!entry?.videoFrame) {
+    if (!entry) {
       this.screenRecordingEntry = undefined;
       return;
     }
@@ -1268,7 +1270,6 @@ export class TimelineComponent
   }
 
   private renderFrame(entry: MediaBasedTraceEntry) {
-    const videoFrame = assertDefined(entry.videoFrame);
     const canvas = document.querySelector<HTMLCanvasElement>(
       '#videoCanvasElementTimeline',
     );
@@ -1276,12 +1277,15 @@ export class TimelineComponent
       return;
     }
     const container = assertDefined(canvas.parentElement);
-    const scaledWidth = videoFrame.codedWidth / videoFrame.codedHeight;
+    const scaledWidth = entry.image.width / entry.image.height;
     container.style.minWidth = `min(320px, (calc(${scaledWidth} * 60vh))`;
     entry.tryDrawOnCanvas(canvas);
   }
 
-  private async onTracePositionUpdate() {
+  private async onTracePositionUpdate(event: TracePositionUpdate) {
+    if (event.seekPos) {
+      this.seekTracePosition = event.seekPos;
+    }
     this.updateTimeInputValuesToCurrentTimestamp();
     this.updateScreenRecordingVisualization();
   }
