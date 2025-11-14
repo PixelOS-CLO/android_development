@@ -82,6 +82,10 @@ export abstract class AbstractHierarchyViewerPresenter<
     this.copyUiDataAndNotifyView();
   }
 
+  onDestroy() {
+    this.playbackPresenter?.onDestroy();
+  }
+
   setEmitEvent(callback: EmitEvent) {
     this.emitWinscopeEvent = callback;
   }
@@ -365,7 +369,7 @@ export abstract class AbstractHierarchyViewerPresenter<
           event as ScreenRecordingChange,
         );
       default:
-        console.log('Not processing event ' + event);
+      // do nothing
     }
 
     await this.onViewerSpecificWinscopeEvent(event);

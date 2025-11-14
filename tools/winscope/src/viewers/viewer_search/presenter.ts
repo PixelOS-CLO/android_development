@@ -79,6 +79,10 @@ export class Presenter {
     this.emitWinscopeEvent = callback;
   }
 
+  onDestroy() {
+    // do nothing
+  }
+
   addEventListeners(htmlElement: HTMLElement) {
     this.viewerElement = htmlElement;
     htmlElement.addEventListener(
@@ -141,9 +145,9 @@ export class Presenter {
       case TraceAddRequest:
         return await this.onTraceAddRequest(event as TraceAddRequest);
       case TraceSearchFailed:
-        return await this.onTraceSearchFailed();
+        return this.onTraceSearchFailed();
       default:
-        console.log('Not processing event ' + event.constructor);
+      // do nothing
     }
 
     for (const activeSearch of this.activeSearches.values()) {

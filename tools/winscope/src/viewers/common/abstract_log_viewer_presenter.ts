@@ -67,6 +67,10 @@ export abstract class AbstractLogViewerPresenter<
     this.notifyViewChanged();
   }
 
+  onDestroy() {
+    // do nothing
+  }
+
   setEmitEvent(callback: EmitEvent) {
     this.emitAppEvent = callback;
   }
@@ -181,7 +185,7 @@ export abstract class AbstractLogViewerPresenter<
       case ActiveTraceChanged:
         return await this.onActiveTraceChanged(event as ActiveTraceChanged);
       default:
-        console.log('Not processing event ' + event);
+      // do nothing
     }
   }
 

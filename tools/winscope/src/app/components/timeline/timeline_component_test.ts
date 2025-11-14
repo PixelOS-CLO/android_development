@@ -1149,11 +1149,11 @@ describe('TimelineComponent', () => {
   });
 
   it('shows screen recording canvas in expanded timeline overlay', async () => {
-    const frame = jasmine.createSpyObj<VideoFrame>('frame', [], {
-      codedWidth: 4,
-      codedHeight: 10,
+    const frame = jasmine.createSpyObj<ImageBitmap>('frame', [], {
+      width: 4,
+      height: 10,
     });
-    const entry = new MediaBasedTraceEntry(undefined, frame);
+    const entry = new MediaBasedTraceEntry(frame);
     const drawSpy = spyOn(entry, 'tryDrawOnCanvas');
 
     const trace = new TraceBuilder<MediaBasedTraceEntry>()
@@ -1170,6 +1170,19 @@ describe('TimelineComponent', () => {
     await dom.whenRenderingDone();
     expect(dom.get('#video-content canvas')).toBeDefined();
     expect(drawSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows hover timestamp', () => {
+    loadSfWmTraces();
+    expect(dom.find('.hover-timestamp')).toBeUndefined();
+
+    const tsValue = '01:23:45.789';
+    const miniTimeline = assertDefined(component.timeline?.miniTimeline);
+    miniTimeline.onHoverPositionUpdate.emit({posX: 10, tsValue});
+    dom.detectChanges();
+
+    const hoverTs = dom.get('.hover-timestamp');
+    hoverTs.checkTextExact(tsValue);
   });
 
   describe('playback controls', () => {
@@ -1358,7 +1371,7 @@ describe('TimelineComponent', () => {
       const emitEventSpy = jasmine.createSpy('emitEvent');
       timelineComponent.setEmitEvent(emitEventSpy);
 
-      dom.findAndClick('playback-controls #play_playback_button');
+      dom.findAndClick('playback-controls #play-playback-button');
       const event = emitEventSpy.calls.mostRecent().args[0];
       expect(event.state).toEqual(PlaybackState.FORWARDS);
       await timelineComponent.onWinscopeEvent(
@@ -1372,13 +1385,63 @@ describe('TimelineComponent', () => {
       const emitEventSpy = jasmine.createSpy('emitEvent');
       timelineComponent.setEmitEvent(emitEventSpy);
 
-      dom.findAndClick('playback-controls #play_playback_button');
+      dom.findAndClick('playback-controls #play-playback-button');
       expect(emitEventSpy).toHaveBeenCalledTimes(1);
       const event = emitEventSpy.calls.mostRecent().args[0];
       expect(event).toBeInstanceOf(PlaybackStateChangeRequest);
       expect(event.state).toEqual(PlaybackState.FORWARDS);
       expect(event.traceType).toEqual(TraceType.SURFACE_FLINGER);
     });
+
+    it('emits PlaybackStateChangeRequest on position update during playback', async () => {
+      const timelineComponent = assertDefined(component.timeline);
+      const emitEventSpy = jasmine.createSpy('emitEvent');
+      timelineComponent.setEmitEvent(emitEventSpy);
+
+      await timelineComponent.onWinscopeEvent(
+        new PlaybackStateChangeHandled(PlaybackState.BACKWARDS),
+      );
+      await timelineComponent.updatePosition(
+        TracePosition.fromTimestamp(time110),
+      );
+      expect(emitEventSpy).toHaveBeenCalledOnceWith(
+        new PlaybackStateChangeRequest(
+          TraceType.SURFACE_FLINGER,
+          PlaybackState.BACKWARDS,
+          1,
+        ),
+      );
+    });
+
+    it('emits PlaybackStateChangeRequest event with current index of trace', () => {
+      checkIndexOfStateChangeRequest(1, 1);
+    });
+
+    it('emits PlaybackStateChangeRequest event with first index of trace if no current entry found', () => {
+      checkIndexOfStateChangeRequest(undefined, 0);
+    });
+
+    function checkIndexOfStateChangeRequest(
+      currentIndex: number | undefined,
+      expectedIndex: number,
+    ) {
+      const timelineComponent = assertDefined(component.timeline);
+      const emitEventSpy = jasmine.createSpy('emitEvent');
+      timelineComponent.setEmitEvent(emitEventSpy);
+
+      const trace = assertDefined(
+        component.allTraces.getTrace(TraceType.SURFACE_FLINGER),
+      );
+      spyOn(component.timelineData, 'findCurrentEntryFor')
+        .withArgs(trace)
+        .and.returnValue(
+          currentIndex !== undefined ? trace.getEntry(currentIndex) : undefined,
+        );
+
+      dom.findAndClick('playback-controls #play-playback-button');
+      const event = emitEventSpy.calls.mostRecent().args[0];
+      expect(event.currentTraceIndex).toEqual(expectedIndex);
+    }
   });
 
   function loadSfWmTraces(hostComponent = component, domHelper = dom) {
