@@ -26,7 +26,7 @@ import {
 } from 'messaging/winscope_event';
 import {EmitEvent} from 'messaging/winscope_event_emitter';
 import {Trace, TraceEntry} from 'trace_api/trace';
-import {TraceEntryFinder} from 'trace_api/trace_entry_finder';
+import {findCorrespondingEntry} from 'trace_api/trace_entry_finder';
 import {TRACE_INFO} from 'trace_api/trace_info';
 import {TraceType} from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
@@ -45,6 +45,7 @@ import {ViewerEvents} from './viewer_events';
 import {PlaybackPresenter} from './playback/playback_presenter';
 import {PlaybackState} from './playback/playback_state';
 import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {TraceGeometryData} from 'parsers/trace_geometry_data';
 
 export type NotifyHierarchyViewCallbackType<UiData> = (uiData: UiData) => void;
 
@@ -275,18 +276,6 @@ export abstract class AbstractHierarchyViewerPresenter<
         }
 
         switch (event.state) {
-          case PlaybackState.FORWARDS:
-          case PlaybackState.BACKWARDS:
-            if (this.playPlayback) {
-              await this.playPlayback(
-                this.trace,
-                assertDefined(event.currentTraceIndex),
-                event.state,
-                this.screenRecordingTrace,
-              );
-            }
-            return;
-
           case PlaybackState.PAUSED:
             if (this.pausePlayback) {
               await this.pausePlayback();
@@ -298,6 +287,29 @@ export abstract class AbstractHierarchyViewerPresenter<
       },
     );
     await event.visit(
+      WinscopeEventType.PLAYBACK_STATE_CHANGE_PROPAGATE,
+      async (event) => {
+        if (!this.trace) {
+          return;
+        }
+        if (!this.screenRecordingTrace) {
+          this.screenRecordingTrace = this.traces.getTrace(
+            TraceType.SCREEN_RECORDING,
+          );
+        }
+        if (this.playPlayback) {
+          this.uiData.isPlaybackInitializing = true;
+          this.refreshHierarchyViewerUiData();
+          await this.playPlayback(
+            assertDefined(event.currentTraceIndex),
+            event.state,
+            event.traceGeometryData,
+            this.screenRecordingTrace,
+          );
+        }
+      },
+    );
+    await event.visit(
       WinscopeEventType.PLAYBACK_STATE_CHANGE_HANDLED,
       async (event) => {
         if (event.stateToReflect === PlaybackState.PAUSED) {
@@ -305,6 +317,8 @@ export abstract class AbstractHierarchyViewerPresenter<
         } else {
           this.uiData.isPlaybackPlaying = true;
         }
+        this.uiData.isPlaybackInitializing = false;
+
         this.refreshHierarchyViewerUiData();
       },
     );
@@ -390,20 +404,21 @@ export abstract class AbstractHierarchyViewerPresenter<
     const hierarchyStartTime = Date.now();
 
     let entries: Array<TraceEntry<HierarchyTreeNode>> = [];
-    if (this.multiTraceType !== undefined) {
+    if (event.prefetchedEntry) {
+      entries = [event.prefetchedEntry as TraceEntry<HierarchyTreeNode>];
+    } else if (this.multiTraceType !== undefined) {
       entries = this.traces
         .getTraces(this.multiTraceType)
         .map((trace) => {
-          return TraceEntryFinder.findCorrespondingEntry(
-            trace,
-            event.position,
-          ) as TraceEntry<HierarchyTreeNode> | undefined;
+          return findCorrespondingEntry(trace, event.position) as
+            | TraceEntry<HierarchyTreeNode>
+            | undefined;
         })
         .filter((entry) => entry !== undefined) as Array<
         TraceEntry<HierarchyTreeNode>
       >;
     } else {
-      const entry = TraceEntryFinder.findCorrespondingEntry(
+      const entry = findCorrespondingEntry(
         assertDefined(this.trace),
         event.position,
       );
@@ -427,7 +442,10 @@ export abstract class AbstractHierarchyViewerPresenter<
 
     const propertiesOpts = this.propertiesPresenter.getUserOptions();
     const hasPreviousEntry = entries.some((e) => e.getIndex() > 0);
-    if (propertiesOpts['showDiff']?.isUnavailable !== undefined) {
+    if (
+      propertiesOpts['showDiff']?.isUnavailable !== undefined &&
+      !this.playbackPresenter?.isPlaying()
+    ) {
       propertiesOpts['showDiff'].isUnavailable = !hasPreviousEntry;
     }
 
@@ -509,14 +527,16 @@ export abstract class AbstractHierarchyViewerPresenter<
     this.uiData.hierarchyTrees = this.hierarchyPresenter.getAllFormattedTrees();
     this.uiData.hierarchyFilter = this.hierarchyPresenter.getTextFilter();
 
-    this.uiData.propertiesUserOptions =
-      this.propertiesPresenter.getUserOptions();
-    this.uiData.propertiesTree = this.propertiesPresenter.getFormattedTree();
-    this.uiData.highlightedProperty =
-      this.propertiesPresenter.getHighlightedProperty();
-    this.uiData.propertiesFilter = assertDefined(
-      this.propertiesPresenter.getTextFilter(),
-    );
+    if (!this.playbackPresenter || !this.playbackPresenter.isPlaying()) {
+      this.uiData.propertiesUserOptions =
+        this.propertiesPresenter.getUserOptions();
+      this.uiData.propertiesTree = this.propertiesPresenter.getFormattedTree();
+      this.uiData.highlightedProperty =
+        this.propertiesPresenter.getHighlightedProperty();
+      this.uiData.propertiesFilter = assertDefined(
+        this.propertiesPresenter.getTextFilter(),
+      );
+    }
 
     if (this.rectsPresenter) {
       this.uiData.rectsToDraw = this.rectsPresenter?.getRectsToDraw();
@@ -573,9 +593,9 @@ export abstract class AbstractHierarchyViewerPresenter<
   protected abstract refreshUIData(): void;
   protected initializeIfNeeded?(event: TracePositionUpdate): Promise<void>;
   protected playPlayback?(
-    trace: Trace<HierarchyTreeNode>,
     currentPosition: number,
     requestedState: PlaybackState,
+    traceGeometryData: TraceGeometryData,
     screenRecordingTrace: Trace<MediaBasedTraceEntry> | undefined,
   ): Promise<void>;
   protected pausePlayback?(): Promise<void>;

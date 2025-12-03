@@ -31,6 +31,7 @@ import {
   NoValidFiles,
 } from 'messaging/user_warnings';
 import {
+  ActiveSearchQueriesUpdate,
   ActiveTraceChanged,
   AppFilesCollected,
   AppFilesUploaded,
@@ -39,6 +40,7 @@ import {
   AppResetRequest,
   AppTraceViewRequest,
   AppTraceViewRequestHandled,
+  BookmarksChanged,
   BugreportFileSelected,
   BugreportFileSelectionRequest,
   DarkModeToggled,
@@ -66,6 +68,7 @@ import {
   PlaybackStateChangeRequest,
   PlaybackSpeedChange,
   PlaybackStateChangeHandled,
+  PlaybackStateChangePropagate,
 } from 'messaging/winscope_event';
 
 import {WinscopeEventEmitter} from 'messaging/winscope_event_emitter';
@@ -92,6 +95,9 @@ import {TimelineData} from './timeline_data';
 import {TracePipeline} from './trace_pipeline';
 import {TraceSearchInitializer} from './trace_search/trace_search_initializer';
 import {PlaybackState} from 'viewers/common/playback/playback_state';
+import {TraceGeometryData} from 'parsers/trace_geometry_data';
+import {Rect} from 'common/geometry/rect';
+import {TransformMatrix} from 'common/geometry/transform_matrix';
 
 describe('Mediator', () => {
   const TIMESTAMP_10 = makeRealTimestamp(10n);
@@ -862,14 +868,28 @@ describe('Mediator', () => {
     });
 
     it('propagates to the visible viewer matching the trace type', async () => {
+      const traceGeometryData = new TraceGeometryData(
+        new Map([[0n, new Rect(0, 0, 0, 0)]]),
+        new Map([[0n, new TransformMatrix(1, 1, 1, 1, 1, 1)]]),
+      );
       const event = new PlaybackStateChangeRequest(
         TraceType.SURFACE_FLINGER,
         PlaybackState.FORWARDS,
         0,
       );
+      spyOn(tracePipeline, 'getTraceGeometryData').and.returnValue(
+        traceGeometryData,
+      );
+
       await mediator.onWinscopeEvent(event);
 
-      expect(viewerStub0.onWinscopeEvent).toHaveBeenCalledOnceWith(event);
+      expect(viewerStub0.onWinscopeEvent).toHaveBeenCalledOnceWith(
+        new PlaybackStateChangePropagate(
+          PlaybackState.FORWARDS,
+          0,
+          traceGeometryData,
+        ),
+      );
       expect(viewerStub1.onWinscopeEvent).not.toHaveBeenCalled();
     });
 
@@ -926,6 +946,21 @@ describe('Mediator', () => {
       expect(viewerStub0.onWinscopeEvent).not.toHaveBeenCalled();
       expect(viewerStub1.onWinscopeEvent).not.toHaveBeenCalled();
     });
+  });
+
+  it('notifies app component of bookmarks changed', async () => {
+    const event = new BookmarksChanged([]);
+    await mediator.onWinscopeEvent(event);
+    expect(appComponent.onWinscopeEvent).toHaveBeenCalledOnceWith(event);
+  });
+
+  it('notifies app component of active search queries update and updates its internal state', async () => {
+    const queries = ['query1', 'query2'];
+    const event = new ActiveSearchQueriesUpdate(queries);
+    expect(mediator.getActiveSearchQueries()).toEqual([]);
+    await mediator.onWinscopeEvent(event);
+    expect(appComponent.onWinscopeEvent).toHaveBeenCalledOnceWith(event);
+    expect(mediator.getActiveSearchQueries()).toEqual(queries);
   });
 
   async function loadFiles(files = inputFiles) {

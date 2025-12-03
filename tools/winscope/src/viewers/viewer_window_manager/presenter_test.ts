@@ -20,7 +20,7 @@ import {Store} from 'common/store/store';
 import {TracePositionUpdate} from 'messaging/winscope_event';
 import {LegacyParserProvider} from 'test/unit/fixture_utils';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {makeEmptyTrace} from 'test/unit/trace_utils';
+import {makeEmptyTrace} from 'test/unit/trace_test_helpers';
 import {makeUiPropertyNode} from 'test/unit/ui_tree_node_utils';
 import {Trace} from 'trace_api/trace';
 import {TRACE_INFO} from 'trace_api/trace_info';
@@ -48,6 +48,7 @@ class PresenterWindowManagerTest extends AbstractHierarchyViewerPresenterTest<Ui
 
   override readonly shouldExecuteRectTests = true;
   override readonly shouldExecuteSimplifyNamesTest = true;
+  override readonly shouldExecutePlaybackTests = true;
   override readonly keepCalculatedPropertiesInChild = false;
   override readonly keepCalculatedPropertiesInRoot = false;
   override readonly expectedHierarchyOpts = {
@@ -201,7 +202,9 @@ the default for its data type.`,
   override executePropertiesChecksAfterPositionUpdate(uiData: UiData) {
     const propertiesTree = assertDefined(uiData.propertiesTree);
     expect(
-      assertDefined(propertiesTree.getChildByName('state')).formattedValue(),
+      assertDefined(
+        propertiesTree.getChildByName('activity')?.getChildByName('state'),
+      ).formattedValue(),
     ).toBe('STOPPED');
     expect(
       assertDefined(
@@ -220,13 +223,15 @@ the default for its data type.`,
 
   override executeSpecializedChecksForPropertiesFromRect(uiData: UiData) {
     const propertiesTree = assertDefined(uiData.propertiesTree);
-    expect(propertiesTree.getAllChildren().length).toBe(10);
+    expect(propertiesTree.getAllChildren()[0].getAllChildren().length).toBe(10);
   }
 
   override executePropertiesChecksAfterSecondPositionUpdate(uiData: UiData) {
     const propertiesTree = assertDefined(uiData.propertiesTree);
     expect(
-      assertDefined(propertiesTree.getChildByName('state')).formattedValue(),
+      assertDefined(
+        propertiesTree.getChildByName('activity')?.getChildByName('state'),
+      ).formattedValue(),
     ).toBe('RESUMED');
   }
 

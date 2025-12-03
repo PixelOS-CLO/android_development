@@ -38,6 +38,7 @@ import {PersistentStore} from 'common/store/persistent_store';
 import {TimeRange} from 'common/time/time';
 import {
   ActiveTraceChanged,
+  BookmarksChanged,
   ExpandedTimelineToggled,
   InitializeTraceSearchRequest,
   PlaybackSpeedChange,
@@ -54,7 +55,7 @@ import {
 import {checkTooltips, DOMTestHelper} from 'test/unit/dom_test_helpers';
 import {makeRealTimestamp, UTC_CONVERTER} from 'test/unit/time_test_helpers';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {makeEmptyTrace} from 'test/unit/trace_utils';
+import {makeEmptyTrace} from 'test/unit/trace_test_helpers';
 import {TracesBuilder} from 'test/unit/traces_builder';
 import {Trace} from 'trace_api/trace';
 import {TRACE_INFO} from 'trace_api/trace_info';
@@ -929,6 +930,9 @@ describe('TimelineComponent', () => {
   it('toggles bookmark of current position', () => {
     loadSfWmTraces();
     const timelineComponent = assertDefined(component.timeline);
+    const emitEventSpy = jasmine.createSpy('emitEvent');
+    timelineComponent.setEmitEvent(emitEventSpy);
+
     expect(timelineComponent.bookmarks).toEqual([]);
     expect(timelineComponent.currentPositionBookmarked()).toBeFalse();
 
@@ -936,10 +940,16 @@ describe('TimelineComponent', () => {
 
     expect(timelineComponent.bookmarks).toEqual([time100]);
     expect(timelineComponent.currentPositionBookmarked()).toBeTrue();
+    let event = emitEventSpy.calls.mostRecent().args[0];
+    expect(event).toBeInstanceOf(BookmarksChanged);
+    expect(event.bookmarks).toEqual([time100]);
 
     bookmarkIcon.click();
     expect(timelineComponent.bookmarks).toEqual([]);
     expect(timelineComponent.currentPositionBookmarked()).toBeFalse();
+    event = emitEventSpy.calls.mostRecent().args[0];
+    expect(event).toBeInstanceOf(BookmarksChanged);
+    expect(event.bookmarks).toEqual([]);
   });
 
   it('toggles same bookmark if click within range', () => {
@@ -979,12 +989,18 @@ describe('TimelineComponent', () => {
   it('removes all bookmarks', () => {
     loadSfWmTraces();
     const timelineComponent = assertDefined(component.timeline);
+    const emitEventSpy = jasmine.createSpy('emitEvent');
+    timelineComponent.setEmitEvent(emitEventSpy);
+
     timelineComponent.bookmarks = [time100, time101, time112];
     dom.detectChanges();
 
     openContextMenu();
     clickRemoveAllBookmarksOption();
     expect(timelineComponent.bookmarks).toEqual([]);
+    const event = emitEventSpy.calls.mostRecent().args[0];
+    expect(event).toBeInstanceOf(BookmarksChanged);
+    expect(event.bookmarks).toEqual([]);
   });
 
   it('updates active trace then trace position on mini timeline click', async () => {
@@ -1121,6 +1137,13 @@ describe('TimelineComponent', () => {
     beforeEach(() => {
       component.initialTabTraceType = TraceType.SURFACE_FLINGER;
       loadSfWmTraces();
+    });
+
+    it('disables timeline component on playback initialization', async () => {
+      const timelineComponent = assertDefined(component.timeline);
+      timelineComponent.playbackState = PlaybackState.PAUSED;
+      dom.keydownSpace();
+      expect(timelineComponent.isDisabled).toEqual(true);
     });
 
     it('starts playback on space click', async () => {

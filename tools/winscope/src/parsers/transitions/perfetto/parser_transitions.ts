@@ -48,7 +48,7 @@ import {
   PropertyFormatter,
   PropertyTreeNode,
 } from 'tree_node/property_tree_node';
-import {SetFormatters} from 'viewers/operations/set_formatters';
+import {SetFormatters} from 'parsers/set_formatters';
 
 /**
  * Parser for Transitions Perfetto traces.
@@ -306,7 +306,7 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
     ];
   }
 
-  private makeLazyPropertiesStrategy(argSetId: ColumnType) {
+  private makeLazyPropertiesStrategy(argSetId: ColumnType | null) {
     return async () => {
       const data = await queryArgs(this.traceProcessor, Number(argSetId));
       return new PropertyTreeBuilderFromProto()

@@ -27,7 +27,7 @@ import {
   extractFrames,
   extractTimestamps,
   makeEmptyTrace,
-} from 'test/unit/trace_utils';
+} from 'test/unit/trace_test_helpers';
 import {FrameMapBuilder} from './frame_map_builder';
 import {AbsoluteFrameIndex} from './index_types';
 import {Trace} from './trace';
@@ -1310,7 +1310,7 @@ describe('Trace', () => {
     expect(trace.isCorrupted()).toBeFalse();
     expect(trace.getCorruptedReason()).toBeUndefined();
 
-    expectAsync(trace.getEntry(0).getValue()).toBeRejected();
+    await expectAsync(trace.getEntry(0).getValue()).toBeRejected();
     try {
       await trace.getEntry(0).getValue();
     } catch (e) {

@@ -31,6 +31,9 @@ import {Parser} from 'trace_api/parser';
 import {TRACE_INFO} from 'trace_api/trace_info';
 import {TraceType} from 'trace_api/trace_type';
 import {TraceProcessor} from 'trace_processor/trace_processor';
+import {QueryResult, QueryResults} from 'trace_processor/query_result';
+import {RawDataQueryResult} from 'trace_processor/raw_data_query_result';
+import {RectsForTrace} from 'parsers/rect_extractor_result';
 
 export abstract class AbstractParser<T> implements Parser<T> {
   protected traceProcessor: TraceProcessor;
@@ -116,11 +119,22 @@ export abstract class AbstractParser<T> implements Parser<T> {
     return CoarseVersion.LATEST;
   }
 
+  getQueryResults(
+    entriesRange: EntriesRange,
+    queryRawData: boolean,
+  ): Promise<QueryResults<QueryResult | RawDataQueryResult>> {
+    throw NOT_IMPLEMENTED_ERROR;
+  }
+
   customQuery<Q extends CustomQueryType>(
     type: Q,
     entriesRange: EntriesRange,
     param?: CustomQueryParamTypeMap[Q],
   ): Promise<CustomQueryParserResultTypeMap[Q]> {
+    throw NOT_IMPLEMENTED_ERROR;
+  }
+
+  async getRectsMap(): Promise<RectsForTrace | undefined> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
@@ -144,7 +158,7 @@ export abstract class AbstractParser<T> implements Parser<T> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
-  getRangeOfEntries(entriesRange: EntriesRange): Promise<Array<T | undefined>> {
+  getRangeOfEntries(entriesRange: EntriesRange): Promise<T[]> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
@@ -194,6 +208,22 @@ export abstract class AbstractParser<T> implements Parser<T> {
 
   protected getStdLibModuleName(): string | undefined {
     return undefined;
+  }
+
+  protected async getEntryFromRange(index: number): Promise<T> {
+    const range: EntriesRange = {
+      start: index,
+      end: index + 1,
+    };
+    return this.getRangeOfEntries(range).then((trees) => {
+      const entry = trees[0];
+      if (entry === undefined) {
+        throw new Error(
+          `Entry at index ${index} not found or could not be parsed.`,
+        );
+      }
+      return entry;
+    });
   }
 
   protected abstract getTableName(): string;

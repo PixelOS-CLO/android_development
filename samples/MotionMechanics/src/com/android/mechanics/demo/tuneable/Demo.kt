@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.android.mechanics.debug.DebugMotionValueVisualization
 import com.android.mechanics.demo.staging.debug.DebugUi
+import com.android.mechanics.haptics.HapticsExperimentalApi
+import com.android.mechanics.haptics.SpringTensionHapticPlayerProvider
 import com.android.mechanics.spec.MotionSpec
 
 interface Demo<T> {
@@ -51,10 +53,14 @@ interface Demo<T> {
 
     @Composable fun rememberDefaultConfig(): T
 
-    @Composable fun ColumnScope.ConfigUi(config: T, onConfigChanged: (T) -> Unit)
-
     @Composable fun DemoUi(config: T, modifier: Modifier)
 }
+
+interface HasConfig<T> {
+    @Composable fun ColumnScope.ConfigUi(config: T, onConfigChanged: (T) -> Unit)
+}
+
+interface DemoWithConfig<T> : Demo<T>, HasConfig<T>
 
 interface HasMotionValueVisualization {
     val visualizationInputRange: ClosedFloatingPointRange<Float>
@@ -69,6 +75,7 @@ interface HasMotionValueVisualization {
         get() = 48.dp
 }
 
+@OptIn(HapticsExperimentalApi::class)
 @Composable
 fun <T> Demo<T>.ConfigurableDemo(modifier: Modifier = Modifier) {
     val defaultConfig = rememberDefaultConfig()
@@ -78,23 +85,26 @@ fun <T> Demo<T>.ConfigurableDemo(modifier: Modifier = Modifier) {
     var expressive by remember { mutableStateOf(true) }
     var showDebugger by remember { mutableStateOf(false) }
 
-    if (showConfigurationDialog) {
+    if (showConfigurationDialog && this@ConfigurableDemo is HasConfig<*>) {
         ConfigDialog(
             config,
             onConfigurationChange = { config = it },
             onDismissRequest = { showConfigurationDialog = false },
             defaultConfig = defaultConfig,
         ) { value, onValueChanged ->
+            this@ConfigurableDemo as HasConfig<T>
             ConfigUi(value, onValueChanged)
         }
     }
 
     Column(modifier = modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            TextButton(onClick = { showConfigurationDialog = true }) {
-                Icon(Icons.Default.Settings, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Config")
+            if (this@ConfigurableDemo is HasConfig<*>) {
+                TextButton(onClick = { showConfigurationDialog = true }) {
+                    Icon(Icons.Default.Settings, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Config")
+                }
             }
 
             TextButton(onClick = { expressive = !expressive }) {
@@ -109,7 +119,9 @@ fun <T> Demo<T>.ConfigurableDemo(modifier: Modifier = Modifier) {
         }
 
         val demoContent = remember {
-            movableContentOf { DemoUi(config, modifier = Modifier.fillMaxSize()) }
+            movableContentOf {
+                SpringTensionHapticPlayerProvider { DemoUi(config, modifier = Modifier) }
+            }
         }
 
         SectionContainer {

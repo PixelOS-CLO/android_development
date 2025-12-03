@@ -16,14 +16,15 @@
 
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
 import {UpdateTransitionParticipants} from './update_transition_participants';
+import {SetFormatters} from 'parsers/set_formatters';
 
 describe('UpdateTransitionParticipants', () => {
   let operation: UpdateTransitionParticipants;
 
   beforeEach(() => {
     const layerIdToName = new Map<number, string>([[2, 'testLayer']]);
-    const windowTokenToTitle = new Map<string, string>([
-      ['97b5518', 'testTitle'],
+    const windowTokenToTitle = new Map<number, string>([
+      [159077656, 'testTitle'],
     ]);
 
     operation = new UpdateTransitionParticipants(
@@ -60,6 +61,7 @@ describe('UpdateTransitionParticipants', () => {
 
   it('updates only windowId display name if neither layer id nor token in maps', () => {
     const transition = new HierarchyTreeBuilder()
+      .setRootNodeFormatter(new SetFormatters())
       .setId('TransitionsTraceEntry')
       .setName('transition')
       .setProperties({

@@ -65,6 +65,7 @@ import {
   TabbedViewSwitched,
   PlaybackStateChangeRequest,
   PlaybackSpeedChange,
+  BookmarksChanged,
 } from 'messaging/winscope_event';
 import {
   EmitEvent,
@@ -74,7 +75,12 @@ import {WinscopeEventListener} from 'messaging/winscope_event_listener';
 import {Trace} from 'trace_api/trace';
 import {TRACE_INFO} from 'trace_api/trace_info';
 import {TracePosition} from 'trace_api/trace_position';
-import {TraceType, TraceTypeUtils} from 'trace_api/trace_type';
+import {
+  TraceType,
+  compareByDisplayOrder,
+  isTraceTypeWithViewer,
+  supportsPlayback,
+} from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
 import {multlineTooltip} from 'viewers/components/styles/tooltip.styles';
 import {ExpandedTimelineComponent} from './expanded-timeline/expanded_timeline_component';
@@ -109,7 +115,7 @@ import {globalConfig} from 'common/global_config';
   template: `
     @if (isDisabled) {
       <div
-        class="disabled-message user-notification mat-body-1"> Timeline disabled due to ongoing search query </div>
+        class="disabled-message user-notification mat-body-1"> {{ disabledMessage }} </div>
     }
     <div [class.disabled-component]="isDisabled">
       @if (timelineData.hasMoreThanOneDistinctTimestamp()) {
@@ -589,6 +595,7 @@ export class TimelineComponent
   bookmarks: Timestamp[] = [];
   isDisabled = false;
   playbackState: PlaybackState = PlaybackState.PAUSED;
+  disabledMessage: string = 'Timeline disabled due to ongoing search query';
 
   private expanded = false;
   private emitEvent: EmitEvent = () => Promise.resolve();
@@ -629,8 +636,7 @@ export class TimelineComponent
     this.sortedTraces =
       this.allTraces
         ?.mapTrace((trace) => trace)
-        .sort((a, b) => TraceTypeUtils.compareByDisplayOrder(a.type, b.type)) ??
-      [];
+        .sort((a, b) => compareByDisplayOrder(a.type, b.type)) ?? [];
 
     const storedDeselectedTraces = this.getStoredDeselectedTraceTypes();
     this.selectedTraces = this.sortedTraces.filter((trace) => {
@@ -648,7 +654,7 @@ export class TimelineComponent
     const initialTraceToCropZoom = this.selectedTraces.find((trace) => {
       return (
         trace.type !== TraceType.SCREEN_RECORDING &&
-        TraceTypeUtils.isTraceTypeWithViewer(trace.type) &&
+        isTraceTypeWithViewer(trace.type) &&
         trace.lengthEntries > 0
       );
     });
@@ -717,9 +723,7 @@ export class TimelineComponent
     });
     await event.visit(WinscopeEventType.TRACE_ADD_REQUEST, async (event) => {
       this.sortedTraces.unshift(event.trace);
-      this.sortedTraces.sort((a, b) =>
-        TraceTypeUtils.compareByDisplayOrder(a.type, b.type),
-      );
+      this.sortedTraces.sort((a, b) => compareByDisplayOrder(a.type, b.type));
       const newSelection = [event.trace].concat(
         this.selectedTracesFormControl.value ?? [],
       );
@@ -754,7 +758,11 @@ export class TimelineComponent
     );
     await event.visit(
       WinscopeEventType.PLAYBACK_STATE_CHANGE_HANDLED,
-      async (event) => this.setPlaybackState(event.stateToReflect),
+      async (event) => {
+        this.setPlaybackState(event.stateToReflect);
+        this.setIsDisabled(false);
+        this.disabledMessage = 'Timeline disabled due to ongoing search query';
+      },
     );
     await event.visit(
       WinscopeEventType.TABBED_VIEW_SWITCHED,
@@ -849,24 +857,11 @@ export class TimelineComponent
     ) {
       return;
     }
-    if (event.key === KeyboardEventKey.MEDIA_TRACK_PREVIOUS) {
-      event.preventDefault();
-      if (this.playbackState === PlaybackState.FORWARDS) {
-        await this.onPlaybackStateChange(PlaybackState.BACKWARDS);
-      }
-      this.isProcessingKeyPress = false;
-    } else if (event.key === KeyboardEventKey.ARROW_LEFT) {
+    if (event.key === KeyboardEventKey.ARROW_LEFT) {
       event.preventDefault();
       this.isProcessingKeyPress = true;
       if (this.playbackState === PlaybackState.PAUSED) {
         await this.moveToPreviousEntry();
-      }
-      this.isProcessingKeyPress = false;
-    } else if (event.key === KeyboardEventKey.MEDIA_TRACK_NEXT) {
-      event.preventDefault();
-      this.isProcessingKeyPress = true;
-      if (this.playbackState === PlaybackState.BACKWARDS) {
-        await this.onPlaybackStateChange(PlaybackState.FORWARDS);
       }
       this.isProcessingKeyPress = false;
     } else if (event.key === KeyboardEventKey.ARROW_RIGHT) {
@@ -874,6 +869,25 @@ export class TimelineComponent
       this.isProcessingKeyPress = true;
       if (this.playbackState === PlaybackState.PAUSED) {
         await this.moveToNextEntry();
+      }
+      this.isProcessingKeyPress = false;
+    }
+
+    if (!this.traceSupportsPlayback()) {
+      return;
+    }
+
+    if (event.key === KeyboardEventKey.MEDIA_TRACK_PREVIOUS) {
+      event.preventDefault();
+      if (this.playbackState === PlaybackState.FORWARDS) {
+        await this.onPlaybackStateChange(PlaybackState.BACKWARDS);
+      }
+      this.isProcessingKeyPress = false;
+    } else if (event.key === KeyboardEventKey.MEDIA_TRACK_NEXT) {
+      event.preventDefault();
+      this.isProcessingKeyPress = true;
+      if (this.playbackState === PlaybackState.BACKWARDS) {
+        await this.onPlaybackStateChange(PlaybackState.FORWARDS);
       }
       this.isProcessingKeyPress = false;
     } else if (event.keyCode === KeyboardEventKeyCode.SPACE) {
@@ -948,6 +962,8 @@ export class TimelineComponent
     switch (state) {
       case PlaybackState.FORWARDS:
       case PlaybackState.BACKWARDS:
+        this.disabledMessage = 'UI disabled due to playback initialization';
+        this.setIsDisabled(true);
         this.emitEvent(
           new PlaybackStateChangeRequest(
             assertDefined(this.currentTabTraceType),
@@ -1109,11 +1125,13 @@ export class TimelineComponent
         ).makeTimestampFromNs(clickedNs),
       ]);
     }
+    this.emitEvent(new BookmarksChanged(this.bookmarks));
     Analytics.Navigation.logTimeBookmark();
   }
 
   removeAllBookmarks() {
     this.bookmarks = [];
+    this.emitEvent(new BookmarksChanged(this.bookmarks));
   }
 
   async onMiniTimelineTraceClicked(eventData: [Trace<object>, Timestamp]) {
@@ -1145,12 +1163,12 @@ export class TimelineComponent
   }
 
   private traceSupportsPlayback() {
-    if (!this.currentTabTraceType) {
+    if (this.currentTabTraceType === undefined) {
       return false;
     }
     if (globalConfig.MODE === 'PROD') return false;
     else {
-      return TraceTypeUtils.supportsPlayback(this.currentTabTraceType);
+      return supportsPlayback(this.currentTabTraceType);
     }
   }
 
@@ -1168,7 +1186,7 @@ export class TimelineComponent
   private getPlaybackStartingPosition() {
     const timelineData = assertDefined(this.timelineData);
 
-    if (!this.currentTabTraceType) {
+    if (this.currentTabTraceType === undefined) {
       return;
     }
 
@@ -1211,7 +1229,7 @@ export class TimelineComponent
   private getSelectedTracesSortedByDisplayOrder(): Array<Trace<object>> {
     return this.selectedTraces
       .slice()
-      .sort((a, b) => TraceTypeUtils.compareByDisplayOrder(a.type, b.type));
+      .sort((a, b) => compareByDisplayOrder(a.type, b.type));
   }
 
   private getStoredDeselectedTraceTypes(): TraceType[] {

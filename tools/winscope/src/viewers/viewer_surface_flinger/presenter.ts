@@ -30,7 +30,7 @@ import {EMPTY_OBJ_STRING, FixedStringFormatter} from 'trace/formatters';
 import {LayerFlag} from 'trace/surface_flinger/layer_flag';
 import {CustomQueryType} from 'trace_api/custom_query';
 import {Trace} from 'trace_api/trace';
-import {TraceEntryFinder} from 'trace_api/trace_entry_finder';
+import {findCorrespondingEntry} from 'trace_api/trace_entry_finder';
 import {TRACE_INFO} from 'trace_api/trace_info';
 import {TraceType} from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
@@ -68,6 +68,7 @@ import {UiData} from './ui_data';
 import {PlaybackPresenter} from 'viewers/common/playback/playback_presenter';
 import {PlaybackState} from 'viewers/common/playback/playback_state';
 import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {TraceGeometryData} from 'parsers/trace_geometry_data';
 
 export class Presenter extends AbstractHierarchyViewerPresenter<UiData> {
   static readonly DENYLIST_PROPERTY_NAMES = [
@@ -159,10 +160,12 @@ the default for its data type.`,
     undefined,
     ['a', 'type'],
   );
-  protected override playbackPresenter = new PlaybackPresenter((event) => {
-    this.hierarchyPresenter.setShowDiffAvailability(true);
-    return this.emitWinscopeEvent(event);
-  });
+  protected override playbackPresenter = new PlaybackPresenter(
+    (event) => {
+      return this.emitWinscopeEvent(event);
+    },
+    assertDefined(this.traces.getTrace(TraceType.SURFACE_FLINGER)),
+  );
   protected override multiTraceType = undefined;
 
   private viewCapturePackageNames: string[] | undefined;
@@ -261,14 +264,14 @@ the default for its data type.`,
   }
 
   protected override async playPlayback(
-    trace: Trace<HierarchyTreeNode>,
     currentPosition: number,
     requestedState: PlaybackState,
+    traceGeometryData: TraceGeometryData,
     screenRecordingTrace: Trace<MediaBasedTraceEntry> | undefined,
   ) {
     this.hierarchyPresenter.setShowDiffAvailability(false);
+    this.playbackPresenter.setTraceGeometryData(traceGeometryData);
     this.playbackPresenter.play(
-      trace,
       currentPosition,
       requestedState,
       screenRecordingTrace,
@@ -584,14 +587,18 @@ the default for its data type.`,
       return;
     }
     const wmEntry: HierarchyTreeNode | undefined =
-      await TraceEntryFinder.findCorrespondingEntry<HierarchyTreeNode>(
+      await findCorrespondingEntry<HierarchyTreeNode>(
         this.wmTrace,
         event.position,
       )?.getValue();
     if (wmEntry) {
-      this.wmFocusedDisplayId = wmEntry
-        .getEagerPropertyByName('focusedDisplayId')
-        ?.getValue();
+      this.wmFocusedDisplayId = Number(
+        assertBigInt(
+          wmEntry
+            .getEagerPropertyByName('focusedDisplayId')
+            ?.getValue<bigint>(),
+        ),
+      );
     }
   }
 }

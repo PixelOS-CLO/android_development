@@ -29,8 +29,9 @@ import {
 import {AbsoluteEntryIndex, EntriesRange} from 'trace_api/index_types';
 import {Parser} from 'trace_api/parser';
 import {TraceType} from 'trace_api/trace_type';
-import {QueryResult} from 'trace_processor/query_result';
+import {QueryResult, QueryResults} from 'trace_processor/query_result';
 import {TraceProcessorFactory} from 'trace_processor/trace_processor_factory';
+import {RawDataQueryResult} from 'trace_processor/raw_data_query_result';
 
 export class ParserSearch implements Parser<QueryResult> {
   private queryResult?: QueryResult;
@@ -74,9 +75,13 @@ export class ParserSearch implements Parser<QueryResult> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
-  getRangeOfEntries(
+  getRangeOfEntries(entriesRange: EntriesRange): Promise<QueryResult[]> {
+    throw NOT_IMPLEMENTED_ERROR;
+  }
+
+  getQueryResults(
     entriesRange: EntriesRange,
-  ): Promise<Array<QueryResult | undefined>> {
+  ): Promise<QueryResults<QueryResult | RawDataQueryResult>> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 

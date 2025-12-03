@@ -40,7 +40,10 @@ import {
 import {WinscopeEventListener} from 'messaging/winscope_event_listener';
 import {Trace} from 'trace_api/trace';
 import {TRACE_INFO} from 'trace_api/trace_info';
-import {TraceTypeUtils} from 'trace_api/trace_type';
+import {
+  isTraceTypeWithViewer,
+  getReasonForNoTraceVisualization,
+} from 'trace_api/trace_type';
 import {LoadProgressComponent} from './load_progress_component';
 
 /**
@@ -181,6 +184,11 @@ import {LoadProgressComponent} from './load_progress_component';
                       <mat-icon
                         class="warning-icon"
                         [matTooltip]="cannotVisualizeTraceTooltip(trace)">warning</mat-icon>
+                    }
+                    @if (isLegacyTrace(trace)) {
+                      <mat-icon
+                        class="warning-icon"
+                        [matTooltip]="legacyTraceWarningTooltip">warning</mat-icon>
                     }
                     @if (trace.isCorrupted()) {
                       <mat-icon
@@ -364,6 +372,11 @@ export class UploadTracesComponent
   warningMessages: string[] = [];
   discardLegacyTraces = false;
 
+  readonly legacyTraceWarningTooltip =
+    'This trace has a legacy format. ' +
+    'Unless "Discard legacy traces" is selected, this trace will be converted ' +
+    'to a Perfetto trace when you click "View traces".';
+
   @Input() tracePipeline: TracePipeline | undefined;
   @Input() storage: Store | undefined;
   @Output() filesUploaded = new EventEmitter<File[]>();
@@ -493,10 +506,7 @@ export class UploadTracesComponent
     return this.ngZone.run(() => {
       let hasFilesWithViewers = false;
       this.tracePipeline?.getTraces().forEachTrace((trace) => {
-        if (
-          !trace.isCorrupted() &&
-          TraceTypeUtils.isTraceTypeWithViewer(trace.type)
-        ) {
+        if (!trace.isCorrupted() && isTraceTypeWithViewer(trace.type)) {
           hasFilesWithViewers = true;
         }
       });
@@ -517,11 +527,15 @@ export class UploadTracesComponent
   }
 
   canVisualizeTrace(trace: Trace<object>): boolean {
-    return TraceTypeUtils.isTraceTypeWithViewer(trace.type);
+    return isTraceTypeWithViewer(trace.type);
+  }
+
+  isLegacyTrace(trace: Trace<object>): boolean {
+    return !trace.isPerfetto() && trace.getParser().canConvertToPerfetto();
   }
 
   cannotVisualizeTraceTooltip(trace: Trace<object>): string {
-    return TraceTypeUtils.getReasonForNoTraceVisualization(trace.type);
+    return getReasonForNoTraceVisualization(trace.type);
   }
 
   traceErrorTooltip(trace: Trace<object>): string {

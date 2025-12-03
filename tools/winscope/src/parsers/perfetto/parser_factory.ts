@@ -26,7 +26,7 @@ import {ParserInputMethodManagerService} from 'parsers/input_method/perfetto/par
 import {ParserInputMethodService} from 'parsers/input_method/perfetto/parser_input_method_service';
 import {ParserProtolog} from 'parsers/protolog/perfetto/parser_protolog';
 import {ParserSurfaceFlinger} from 'parsers/surface_flinger/perfetto/parser_surface_flinger';
-import {TraceGeometryData} from 'parsers/trace_geometry_data';
+import {TraceGeometryDataBuilder} from 'parsers/trace_geometry_data';
 import {ParserTransactions} from 'parsers/transactions/perfetto/parser_transactions';
 import {ParserTransitions} from 'parsers/transitions/perfetto/parser_transitions';
 import {ParserViewCapture} from 'parsers/view_capture/perfetto/parser_view_capture';
@@ -34,12 +34,14 @@ import {ParserWindowManager} from 'parsers/window_manager/perfetto/parser_window
 import {UserNotifier} from 'services/user_notifier';
 import {TraceFile} from 'trace/trace_file';
 import {Parser} from 'trace_api/parser';
-import {TraceProcessor} from 'trace_processor/trace_processor';
+import {TraceProcessorProxy} from 'trace_processor/trace_processor';
 import {TraceProcessorFactory} from 'trace_processor/trace_processor_factory';
+import {TraceGeometryData} from 'parsers/trace_geometry_data';
 
 interface ProcessedFile {
   parsers: Array<Parser<object>>;
   isPerfettoTrace: boolean;
+  traceGeometryData: TraceGeometryData | undefined;
 }
 
 export class ParserFactory {
@@ -71,7 +73,11 @@ export class ParserFactory {
       await this.loadFileInTp(traceFile.file, traceProcessor, progressListener);
     } catch (e) {
       console.error('Trace processor failed to parse data:', e);
-      return {parsers: [], isPerfettoTrace: false};
+      return {
+        parsers: [],
+        isPerfettoTrace: false,
+        traceGeometryData: undefined,
+      };
     }
     await traceProcessor.notifyEof();
 
@@ -81,8 +87,9 @@ export class ParserFactory {
     );
 
     await this.processGeometryTables(traceProcessor);
-    const traceGeometryData = new TraceGeometryData(traceProcessor);
-    await traceGeometryData.fetchAndBuild();
+    const traceGeometryData = await new TraceGeometryDataBuilder()
+      .setTraceProcessor(traceProcessor)
+      .build();
 
     const parsers: Array<Parser<object>> = [];
     let hasFoundParser = false;
@@ -126,13 +133,13 @@ export class ParserFactory {
         new InvalidPerfettoTrace(traceFile.getDescriptor(), errors),
       );
     }
-    return {parsers, isPerfettoTrace: true};
+    return {parsers, isPerfettoTrace: true, traceGeometryData};
   }
 
-  private async initializeTraceProcessor(): Promise<TraceProcessor> {
+  private async initializeTraceProcessor(): Promise<TraceProcessorProxy> {
     const traceProcessor = TraceProcessorFactory.getSingleInstance();
 
-    await traceProcessor.resetTraceProcessor({
+    await traceProcessor.reset({
       cropTrackEvents: false,
       ingestFtraceInRawTable: false,
       analyzeTraceProtoContent: false,
@@ -143,7 +150,7 @@ export class ParserFactory {
     return traceProcessor;
   }
 
-  private async processGeometryTables(traceProcessor: TraceProcessor) {
+  private async processGeometryTables(traceProcessor: TraceProcessorProxy) {
     await traceProcessor.query('INCLUDE PERFETTO MODULE android.winscope.rect');
     await traceProcessor.query(`CREATE PERFETTO TABLE winscope_rect AS
       SELECT
@@ -165,7 +172,7 @@ export class ParserFactory {
 
   private async loadFileInTp(
     file: File,
-    traceProcessor: TraceProcessor,
+    traceProcessor: TraceProcessorProxy,
     progressListener?: ProgressListener,
   ) {
     for (

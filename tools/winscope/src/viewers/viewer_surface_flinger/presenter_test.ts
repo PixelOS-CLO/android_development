@@ -20,19 +20,16 @@ import {Store} from 'common/store/store';
 import {
   TabbedViewSwitchRequest,
   TracePositionUpdate,
-  PlaybackStateChangeRequest,
-  PlaybackSpeedChange,
-  PlaybackStateChangeHandled,
 } from 'messaging/winscope_event';
 import {LegacyParserProvider} from 'test/unit/fixture_utils';
 import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {makeEmptyTrace} from 'test/unit/trace_utils';
-import {makeHierarchyNode} from 'test/unit/tree_node_test_helpers';
+import {makeEmptyTrace} from 'test/unit/trace_test_helpers';
 import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
 import {EMPTY_OBJ_STRING} from 'trace/formatters';
 import {CustomQueryType} from 'trace_api/custom_query';
 import {Trace} from 'trace_api/trace';
+import {SetFormatters} from 'parsers/set_formatters';
 import {TRACE_INFO} from 'trace_api/trace_info';
 import {TraceType} from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
@@ -49,8 +46,6 @@ import {ViewerEvents} from 'viewers/common/viewer_events';
 import {TraceRectType} from 'viewers/components/rects/rect_spec';
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';
-import {PlaybackPresenter} from 'viewers/common/playback/playback_presenter';
-import {PlaybackState} from 'viewers/common/playback/playback_state';
 
 class PresenterSurfaceFlingerTest extends AbstractHierarchyViewerPresenterTest<UiData> {
   private traceSf: Trace<HierarchyTreeNode> | undefined;
@@ -61,6 +56,7 @@ class PresenterSurfaceFlingerTest extends AbstractHierarchyViewerPresenterTest<U
 
   override readonly shouldExecuteRectTests = true;
   override readonly shouldExecuteSimplifyNamesTest = true;
+  override readonly shouldExecutePlaybackTests = true;
   override readonly keepCalculatedPropertiesInChild = false;
   override readonly keepCalculatedPropertiesInRoot = true;
   override readonly expectedHierarchyOpts = {
@@ -394,56 +390,6 @@ the default for its data type.`,
         expect(spy).toHaveBeenCalledOnceWith(TraceRectType.LAYERS);
       });
 
-      it('initializes playback when a PlaybackStart event is received', async () => {
-        const playbackPresenterSpy = spyOn(PlaybackPresenter.prototype, 'play');
-        const event = new PlaybackStateChangeRequest(
-          TraceType.SURFACE_FLINGER,
-          PlaybackState.FORWARDS,
-          0,
-        );
-        await presenter.onAppEvent(event);
-        expect(playbackPresenterSpy).toHaveBeenCalled();
-      });
-
-      it('changes uiData state on PlaybackHandled', async () => {
-        let event = new PlaybackStateChangeHandled(
-          PlaybackState.FORWARDS,
-          TraceType.SURFACE_FLINGER,
-        );
-        await presenter.onAppEvent(event);
-        expect(uiData.isPlaybackPlaying).toEqual(true);
-
-        event = new PlaybackStateChangeHandled(
-          PlaybackState.PAUSED,
-          TraceType.SURFACE_FLINGER,
-        );
-        await presenter.onAppEvent(event);
-        expect(uiData.isPlaybackPlaying).toEqual(false);
-      });
-
-      it('pauses playback when a PlaybackPause event is received', async () => {
-        const playbackPresenterSpy = spyOn(
-          PlaybackPresenter.prototype,
-          'pause',
-        );
-        const event = new PlaybackStateChangeRequest(
-          TraceType.SURFACE_FLINGER,
-          PlaybackState.PAUSED,
-        );
-        await presenter.onAppEvent(event);
-        expect(playbackPresenterSpy).toHaveBeenCalled();
-      });
-
-      it('changes playback speed when a PlaybackSpeedChange event is received', async () => {
-        const playbackPresenterSpy = spyOn(
-          PlaybackPresenter.prototype,
-          'changeSpeed',
-        );
-        const event = new PlaybackSpeedChange(TraceType.SURFACE_FLINGER, 2);
-        await presenter.onAppEvent(event);
-        expect(playbackPresenterSpy).toHaveBeenCalled();
-      });
-
       it('handles displays with no visible layers', async () => {
         await presenter?.onAppEvent(assertDefined(this.positionUpdate));
         expect(uiData?.displays?.length).toBe(5);
@@ -491,7 +437,7 @@ the default for its data type.`,
             new HierarchyTreeBuilder()
               .setId('WindowManagerState entry')
               .setName('root')
-              .setProperties({focusedDisplayId: 3})
+              .setProperties({focusedDisplayId: 3n})
               .build(),
           ])
           .build();
@@ -626,40 +572,6 @@ the default for its data type.`,
         expect(uiData.curatedProperties).toBeUndefined();
       });
 
-      it('sets showDiff button as unavailable during playback', async () => {
-        await presenter.onAppEvent(this.getPositionUpdate());
-        const selectedId = this.getSelectedTreeAfterPositionUpdate().id;
-        await presenter.onHighlightedIdChange(selectedId);
-
-        const playbackPresenter = PlaybackPresenter.prototype;
-        expect(playbackPresenter).toBeDefined();
-
-        const isPlayingSpy = spyOn(playbackPresenter, 'isPlaying');
-        isPlayingSpy.and.returnValue(true);
-
-        expect(
-          uiData.propertiesUserOptions?.['showDiff']?.isUnavailable,
-        ).toBeTrue();
-      });
-
-      it("doesn't update properties tree on position update if playback is playing", async () => {
-        await presenter.onAppEvent(this.getPositionUpdate());
-        const selectedId = this.getSelectedTreeAfterPositionUpdate().id;
-        await presenter.onHighlightedIdChange(selectedId);
-        expect(uiData.propertiesTree).toBeDefined();
-        const propsTreeBeforePlayback = uiData.propertiesTree;
-
-        const playbackPresenter = PlaybackPresenter.prototype;
-        expect(playbackPresenter).toBeDefined();
-
-        const isPlayingSpy = spyOn(playbackPresenter, 'isPlaying');
-
-        isPlayingSpy.and.returnValue(true);
-
-        await presenter.onAppEvent(this.getSecondPositionUpdate());
-        expect(uiData.propertiesTree).toEqual(propsTreeBeforePlayback);
-      });
-
       it('sets properties tree but no curated properties for recursive root node', async () => {
         await presenter.onAppEvent(this.getPositionUpdate());
         const hierarchyTree = assertDefined(uiData.hierarchyTrees?.[0]);
@@ -695,6 +607,7 @@ the default for its data type.`,
         });
 
         const tree = new HierarchyTreeBuilder()
+          .setRootNodeFormatter(new SetFormatters())
           .setId('LayerTraceEntry')
           .setName('root')
           .setChildren([
@@ -829,7 +742,12 @@ the default for its data type.`,
       ): Promise<[Presenter, Trace<HierarchyTreeNode>]> {
         const traceVc = new TraceBuilder<HierarchyTreeNode>()
           .setType(TraceType.VIEW_CAPTURE)
-          .setEntries([makeHierarchyNode({id: 'vc id', name: 'vc node'})])
+          .setEntries([
+            new HierarchyTreeBuilder()
+              .setId('vc id')
+              .setName('vc node')
+              .build(),
+          ])
           .setParserCustomQueryResult(CustomQueryType.VIEW_CAPTURE_METADATA, {
             packageName: 'com.android.car.carlauncher',
             windowName: 'not_used',
