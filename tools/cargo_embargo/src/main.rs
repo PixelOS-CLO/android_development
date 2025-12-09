@@ -269,7 +269,7 @@ fn find_android_rust_toolchain() -> Result<PathBuf> {
 
     let android_top = env::var("ANDROID_BUILD_TOP")
         .context("ANDROID_BUILD_TOP was not set. Did you forget to run envsetup.sh?")?;
-    let stable_rustfmt = [android_top.as_str(), "prebuilts", "rust", platform_rustfmt]
+    let stable_rustfmt = [android_top.as_str(), "prebuilts", "rust-toolchain", platform_rustfmt]
         .into_iter()
         .collect::<PathBuf>();
     let canonical_rustfmt = stable_rustfmt.canonicalize()?;
@@ -1199,7 +1199,8 @@ fn crate_to_bp_modules(
                 ExternType::ProcMacro => proc_macro_libs.push(extern_dep.lib_name.clone()),
             }
             if extern_dep.name != extern_dep.lib_name {
-                aliases.push(format!("{}:{}", extern_dep.lib_name, extern_dep.name));
+                let crate_name = extern_dep.name.replace("-", "_");
+                aliases.push(format!("{}:{}", extern_dep.lib_name, crate_name));
             }
         }
 
