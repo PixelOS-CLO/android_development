@@ -14,16 +14,28 @@
  * limitations under the License.
  */
 
-:host {
-  display: flex;
-  flex-direction: row;
+.time-button {
+  padding: 0px;
+  line-height: 20px;
+  text-align: left;
+  white-space: normal;
+  height: fit-content;
 }
 
-:host button {
-  padding-top: 12px;
+.window-button {
+  padding: 0px;
+  line-height: normal;
+  text-align: center;
+  white-space: normal;
+  min-width: fit-content;
+  width: fit-content;
+  height: fit-content;
 }
 
-.section-title {
-  padding-top: 14px;
-  margin-bottom: 14px;
+.inline button {
+  padding: 0px;
+  min-width: fit-content;
+  width: fit-content;
+  height: fit-content;
+  text-align: left;
 }

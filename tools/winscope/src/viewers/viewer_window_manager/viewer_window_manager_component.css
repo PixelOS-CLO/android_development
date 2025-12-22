@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-:host {
+@import url("../components/styles/viewer_card_style.css");
+
+.properties {
+  flex: 1;
   display: flex;
-  flex-direction: row;
-}
-
-:host button {
-  padding-top: 12px;
-}
-
-.section-title {
-  padding-top: 14px;
-  margin-bottom: 14px;
+  flex-direction: column;
+  overflow: auto;
+  position: relative;
 }
