@@ -417,7 +417,13 @@ $dark-theme: mat.m2-define-dark-theme(
 body {
   background-color: var(--background-color, transparent);
   color: var(--default-text-color, inherit);
+  --active-pointer-color: #1967D2;
+  --bookmark-color: #E88C65;
   --black-text-color: rgba(0, 0, 0, 0.87);
+  --chip-blue: #b4c8ef;
+  --guide-bar-color: #9AA0A6;
+  --neutral-gray-text-color: rgb(155, 155, 155);
+  --pinned-item-border-color: #FFC24B;
 }
 
 body:not(.dark-mode) {
@@ -485,6 +491,7 @@ body.dark-mode {
   --purple-text-color: #dbb4ff;
   --red-text-color: #f85252;
   --selected-element-color: #546481;
+  --search-background-color: #757055;
   --side-bar-color: #dedcdc;
   --slider-background-color: #8ab4f8;
   --slider-border-color: #e8f0fe;
