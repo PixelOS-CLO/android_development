@@ -28,6 +28,7 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {CommonModule} from '@angular/common';
 import {PlaybackState} from 'viewers/common/playback/playback_state';
+import {Analytics} from 'logging/analytics';
 
 @Component({
   selector: 'playback-controls',
@@ -45,7 +46,8 @@ import {PlaybackState} from 'viewers/common/playback/playback_state';
       <div class="controls">
         <button
           mat-icon-button
-          id="play_reverse_playback_button"
+          class="no-touch-target-button"
+          id="play-reverse-playback-button"
           matTooltip="Play backwards"
           (click)="changePlaybackState(PlaybackState.BACKWARDS)">
           <mat-icon class="force-icon-flip"
@@ -56,7 +58,8 @@ import {PlaybackState} from 'viewers/common/playback/playback_state';
         </button>
         <button
           mat-icon-button
-          id="pause_playback_button"
+          class="no-touch-target-button"
+          id="pause-playback-button"
           matTooltip="Pause"
           (click)="changePlaybackState(PlaybackState.PAUSED)"
           [disabled]="currentState === PlaybackState.PAUSED">
@@ -64,7 +67,8 @@ import {PlaybackState} from 'viewers/common/playback/playback_state';
         </button>
         <button
           mat-icon-button
-          id="play_playback_button"
+          class="no-touch-target-button"
+          id="play-playback-button"
           matTooltip="Play forwards"
           (click)="changePlaybackState(PlaybackState.FORWARDS)">
           <mat-icon [class.material-symbols-outlined]="currentState !== PlaybackState.FORWARDS"
@@ -142,11 +146,17 @@ export class PlaybackControlsComponent {
   changePlaybackState(newState: PlaybackState): void {
     if (this.currentState !== newState) {
       this.playbackStateChange.emit(newState);
+      if (newState !== PlaybackState.PAUSED) {
+        Analytics.Playback.logStartRequest(
+          newState === PlaybackState.FORWARDS ? 'forwards' : 'backwards',
+        );
+      }
     }
   }
 
   changeSpeed(event: MatSelectChange): void {
     this.selectedScale = event.value;
+    event.source.close();
     this.speedChange.emit(this.selectedScale);
   }
 }

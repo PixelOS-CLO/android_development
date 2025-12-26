@@ -17,15 +17,17 @@
 import {
   ActiveTraceChanged,
   ScreenRecordingChange,
-  WinscopeEvent,
-  WinscopeEventType,
-} from 'messaging/winscope_event';
+  TracePositionUpdate,
+} from 'trace/trace_events';
+import {WinscopeEvent} from 'messaging/winscope_event';
+import {ExpandedTimelineToggled} from 'app/components/timeline/timeline_events';
 import {EmitEvent} from 'messaging/winscope_event_emitter';
 import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
 import {Trace, TraceEntry} from 'trace_api/trace';
 import {findCorrespondingEntry} from 'trace_api/trace_entry_finder';
 import {ViewerEvents} from 'viewers/common/viewer_events';
 import {UiData} from './ui_data';
+import {TraceType} from 'trace_api/trace_type';
 
 export type NotifyHierarchyViewCallbackType<UiData> = (uiData: UiData) => void;
 
@@ -51,6 +53,10 @@ export class Presenter {
     this.emitWinscopeEvent = callback;
   }
 
+  onDestroy() {
+    // do nothing
+  }
+
   addEventListeners(htmlElement: HTMLElement) {
     htmlElement.addEventListener(
       ViewerEvents.OverlayDblClick,
@@ -59,38 +65,49 @@ export class Presenter {
       },
     );
     htmlElement.addEventListener(
-      ViewerEvents.OverlayScreenRecordingChange,
+      ViewerEvents.OverlayMediaBasedTraceChange,
       async (event) => {
-        this.onOverlayScreenRecordingChange((event as CustomEvent).detail);
+        if (this.traces.at(0)?.type === TraceType.SCREEN_RECORDING) {
+          this.onOverlayScreenRecordingChange((event as CustomEvent).detail);
+        }
       },
     );
   }
 
+  private async onTracePositionUpdate(event: TracePositionUpdate) {
+    const traceEntries = this.traces
+      .map((trace) => findCorrespondingEntry(trace, event.position))
+      .filter((entry) => entry !== undefined) as Array<
+      TraceEntry<MediaBasedTraceEntry>
+    >;
+    this.uiData.isFetchingEntries = true;
+    this.notifyViewCallback(this.uiData);
+    const entries: MediaBasedTraceEntry[] = await Promise.all(
+      traceEntries.map((entry) => {
+        return entry.getValue();
+      }),
+    );
+    this.uiData.isFetchingEntries = false;
+    this.uiData.currentTraceEntries = entries;
+    this.notifyViewCallback(this.uiData);
+  }
+
+  private async onExpandedTimelineToggled(event: ExpandedTimelineToggled) {
+    this.uiData.forceMinimize = event.isTimelineExpanded;
+    this.notifyViewCallback(this.uiData);
+  }
+
   async onAppEvent(event: WinscopeEvent) {
-    await event.visit(
-      WinscopeEventType.TRACE_POSITION_UPDATE,
-      async (event) => {
-        const traceEntries = this.traces
-          .map((trace) => findCorrespondingEntry(trace, event.position))
-          .filter((entry) => entry !== undefined) as Array<
-          TraceEntry<MediaBasedTraceEntry>
-        >;
-        const entries: MediaBasedTraceEntry[] = await Promise.all(
-          traceEntries.map((entry) => {
-            return entry.getValue();
-          }),
+    switch (event.constructor) {
+      case TracePositionUpdate:
+        return await this.onTracePositionUpdate(event as TracePositionUpdate);
+      case ExpandedTimelineToggled:
+        return await this.onExpandedTimelineToggled(
+          event as ExpandedTimelineToggled,
         );
-        this.uiData.currentTraceEntries = entries;
-        this.notifyViewCallback(this.uiData);
-      },
-    );
-    await event.visit(
-      WinscopeEventType.EXPANDED_TIMELINE_TOGGLED,
-      async (event) => {
-        this.uiData.forceMinimize = event.isTimelineExpanded;
-        this.notifyViewCallback(this.uiData);
-      },
-    );
+      default:
+      // do nothing
+    }
   }
 
   async onOverlayDblClick(index: number) {

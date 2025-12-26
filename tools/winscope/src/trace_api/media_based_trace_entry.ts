@@ -14,25 +14,74 @@
  * limitations under the License.
  */
 
+import {assertDefined} from 'common/assert';
+import {Size} from 'common/geometry/size';
+
 /**
  * Represents a single entry in a media-based trace, such as a video or image sequence.
- * Each entry contains media data (a video frame or an image) and the timestamp
- * within the video timeline. This is useful for synchronizing trace events with
- * visual media, allowing users to see what was happening on screen at a specific
- * point in the trace.
+ * Each entry contains media data for a video frame or an image.
  */
 export class MediaBasedTraceEntry {
   /**
-   * @param videoTimeSeconds The timestamp in seconds within the video timeline.
-   * @param videoData The raw media data as a Blob (e.g., a video frame or an image).
-   * @param isImage True if the media data is an image, false if it's part of a video.
+   * @param image The image bitmap to be visualized.
+   * @param videoRotationAngle The rotation angle for the video frame if provided.
    */
   constructor(
-    /** The timestamp in seconds within the video timeline. */
-    public videoTimeSeconds: number,
-    /** The raw media data as a Blob (e.g., a video frame or an image). */
-    public videoData: Blob,
-    /** True if the media data is an image, false if it's part of a video. */
-    public isImage = false,
+    /** Defined if the media data is a video. */
+    readonly image: ImageBitmap,
+    /** Gives rotation angle for video frame. */
+    private readonly videoRotationAngle = 0,
   ) {}
+
+  tryDrawOnCanvas(canvas: HTMLCanvasElement) {
+    const canvasDimensions = this.canvasDimensions(this.image);
+    canvas.width = canvasDimensions.width;
+    canvas.height = canvasDimensions.height;
+
+    const ctx = assertDefined(canvas.getContext('2d'));
+    ctx.rotate(this.rotationAngleRadians());
+    ctx.drawImage(
+      this.image,
+      this.xOffset(this.image),
+      this.yOffset(this.image),
+      this.image.width,
+      this.image.height,
+    );
+    ctx.resetTransform();
+  }
+
+  private canvasDimensions(image: ImageBitmap): Size {
+    if (this.shouldFlipDimensions()) {
+      return {
+        width: image.height,
+        height: image.width,
+      };
+    }
+    return {
+      width: image.width,
+      height: image.height,
+    };
+  }
+
+  private shouldFlipDimensions(): boolean {
+    return this.videoRotationAngle % 180 !== 0;
+  }
+
+  private yOffset(image: ImageBitmap): number {
+    if (this.videoRotationAngle === 90 || this.videoRotationAngle === 180) {
+      return -image.height;
+    }
+    return 0;
+  }
+
+  private xOffset(image: ImageBitmap): number {
+    if (this.videoRotationAngle === 180 || this.videoRotationAngle === 270) {
+      return -image.width;
+    }
+    return 0;
+  }
+
+  private rotationAngleRadians() {
+    return (this.videoRotationAngle * Math.PI) / 180;
+  }
 }

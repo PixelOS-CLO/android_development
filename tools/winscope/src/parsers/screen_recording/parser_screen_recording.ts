@@ -17,10 +17,9 @@
 import {searchSubarray} from 'common/typed_array';
 import {Timestamp} from 'common/time/time';
 import {ParserTimestampConverter} from 'common/time/timestamp_converter';
-import {MonotonicScreenRecording} from 'messaging/user_warnings';
+import {makeWarningMonotonicScreenRecording} from 'parsers/warnings';
 import {AbstractParser} from 'parsers/legacy/abstract_parser';
 import {UserNotifier} from 'services/user_notifier';
-import {timestampToVideoTimeSeconds} from 'trace/screen_recording_utils';
 import {TraceFile} from 'trace/trace_file';
 import {CoarseVersion} from 'trace_api/coarse_version';
 import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
@@ -34,7 +33,10 @@ import {
   parseIntFromBuffer,
   ScreenRecordingParser,
   WINSCOPE_MAGIC_STRING,
-} from './utils';
+} from './helpers';
+import {VideoFrameCache} from './video_frame_cache';
+import {createVideoFrameCache} from './video_frame_cache_factory';
+import {assertDefined} from 'common/assert';
 
 export class ParserScreenRecording extends AbstractParser<
   MediaBasedTraceEntry,
@@ -42,6 +44,7 @@ export class ParserScreenRecording extends AbstractParser<
 > {
   private realToBootTimeOffsetNs: bigint | undefined;
   private makeTimestampFromExactValue = false;
+  private videoFrameCache: VideoFrameCache | undefined;
 
   constructor(
     trace: TraceFile,
@@ -88,7 +91,22 @@ export class ParserScreenRecording extends AbstractParser<
     if (result.realToBootTimeOffsetNs === 0n) {
       this.makeTimestampFromExactValue = true;
     }
+
+    this.videoFrameCache = await createVideoFrameCache(videoData);
     return result.timestamps;
+  }
+
+  override async processDecodedEntry(
+    index: number,
+  ): Promise<MediaBasedTraceEntry> {
+    const {frame, rotationAngle} = await assertDefined(
+      this.videoFrameCache,
+    ).get(index);
+    return new MediaBasedTraceEntry(frame, rotationAngle);
+  }
+
+  onDestroy() {
+    this.videoFrameCache?.onDestroy();
   }
 
   protected override getTimestamp(decodedEntry: bigint): Timestamp {
@@ -98,25 +116,12 @@ export class ParserScreenRecording extends AbstractParser<
     return this.timestampConverter.makeTimestampFromBootTimeNs(decodedEntry);
   }
 
-  override processDecodedEntry(
-    index: number,
-    entry: bigint,
-  ): MediaBasedTraceEntry {
-    const videoTimeSeconds = timestampToVideoTimeSeconds(
-      this.decodedEntries[0],
-      entry,
-    );
-    const videoData = this.traceFile.file;
-    return new MediaBasedTraceEntry(videoTimeSeconds, videoData);
-  }
-
   private searchMagicString(videoData: Uint8Array): number | undefined {
-    let pos = searchSubarray(videoData, WINSCOPE_MAGIC_STRING);
+    const pos = searchSubarray(videoData, WINSCOPE_MAGIC_STRING);
     if (pos === undefined) {
       return undefined;
     }
-    pos += WINSCOPE_MAGIC_STRING.length;
-    return pos;
+    return pos + WINSCOPE_MAGIC_STRING.length;
   }
 
   private getParserForEmbeddedMetadata(
@@ -148,7 +153,7 @@ export class ParserScreenRecording extends AbstractParser<
       // If no device suspensions are involved, SYSTEM_TIME_MONOTONIC should
       // indeed correspond to SYSTEM_TIME_BOOTTIME and things will work as
       // expected.
-      UserNotifier.add(new MonotonicScreenRecording());
+      UserNotifier.add(makeWarningMonotonicScreenRecording());
     }
     return new ParserMetadataV1Or2(posTimeOffset);
   }

@@ -18,13 +18,12 @@ import {assertTrue} from 'common/assert';
 import {Sample} from 'mp4box';
 import {startsWithMagicNumber} from 'parsers/legacy/parsing_utils';
 import {
-  MP4FileOnReady,
   parseLongFromBuffer,
   ParserResult,
-  parseTimestampsFromMp4Track,
+  extractSamplesFromMp4Track,
   ScreenRecordingParser,
   WINSCOPE_MAGIC_STRING,
-} from './utils';
+} from './helpers';
 
 // Metadata v3 is written sample-by-sample. Each sample contains:
 // - Realtime-to-elapsed time offset in ns (8B little endian)
@@ -39,35 +38,31 @@ export class ParserMetadataV3 implements ScreenRecordingParser {
     // do not set boot time offset as it is more accurate to use the updated offsets
     // from each sample
 
-    const onReady: MP4FileOnReady = (info, mp4File, timestamps, resolve) => {
+    const samples = await extractSamplesFromMp4Track(videoData, (info) => {
       assertTrue(info.videoTracks.length === 1);
       assertTrue(info.metadataTracks.length === 1);
-      mp4File.onSamples = (id, _, samples) => {
-        if (id !== info.metadataTracks[0].id) {
-          throw new Error(`Unexpected track extracted: id ${id}`);
-        }
-        samples.forEach((sample: Sample) => {
-          let offset = 0;
-          if (startsWithMagicNumber(sample.data, WINSCOPE_MAGIC_STRING)) {
-            // magic string + version number (int)
-            offset = WINSCOPE_MAGIC_STRING.length + 4;
-          }
+      return info.metadataTracks[0];
+    });
 
-          let realToElapsedOffsetNs: bigint;
-          let elapsedTimeNs: bigint;
-          [offset, realToElapsedOffsetNs] = parseLongFromBuffer(
-            sample.data,
-            offset,
-          );
-          [offset, elapsedTimeNs] = parseLongFromBuffer(sample.data, offset);
-          timestamps.push(elapsedTimeNs + realToElapsedOffsetNs);
-        });
-        resolve();
-      };
-      mp4File.setExtractionOptions(info.metadataTracks[0].id);
-    };
+    const timestamps: Array<bigint> = [];
+    samples.forEach((sample: Sample) => {
+      let offset = 0;
+      if (startsWithMagicNumber(sample.data, WINSCOPE_MAGIC_STRING)) {
+        // magic string + version number (int)
+        offset = WINSCOPE_MAGIC_STRING.length + 4;
+      }
+
+      let realToElapsedOffsetNs: bigint;
+      let elapsedTimeNs: bigint;
+      [offset, realToElapsedOffsetNs] = parseLongFromBuffer(
+        sample.data,
+        offset,
+      );
+      [offset, elapsedTimeNs] = parseLongFromBuffer(sample.data, offset);
+      timestamps.push(elapsedTimeNs + realToElapsedOffsetNs);
+    });
     return {
-      timestamps: await parseTimestampsFromMp4Track(videoData, onReady),
+      timestamps,
       realToBootTimeOffsetNs: 0n,
     };
   }

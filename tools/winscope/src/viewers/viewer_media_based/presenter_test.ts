@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
+import {ExpandedTimelineToggled} from 'app/components/timeline/timeline_events';
 import {
   ActiveTraceChanged,
-  ExpandedTimelineToggled,
+  ScreenRecordingChange,
   TracePositionUpdate,
-} from 'messaging/winscope_event';
+} from 'trace/trace_events';
 import {makeRealTimestamp} from 'test/unit/time_test_helpers';
 import {TraceBuilder} from 'test/unit/trace_builder';
 import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
@@ -29,8 +30,12 @@ import {UiData} from './ui_data';
 
 describe('PresenterMediaBased', () => {
   const entries = [
-    new MediaBasedTraceEntry(10, new Blob(), false),
-    new MediaBasedTraceEntry(15, new Blob(), false),
+    new MediaBasedTraceEntry(
+      jasmine.createSpyObj<ImageBitmap>('image', ['close']),
+    ),
+    new MediaBasedTraceEntry(
+      jasmine.createSpyObj<ImageBitmap>('image', ['close']),
+    ),
   ];
   const timestamps = [makeRealTimestamp(10n), makeRealTimestamp(15n)];
   const trace1 = new TraceBuilder<MediaBasedTraceEntry>()
@@ -65,18 +70,41 @@ describe('PresenterMediaBased', () => {
     const element = document.createElement('div');
     presenter.addEventListeners(element);
 
-    const spy = spyOn(presenter, 'onOverlayDblClick');
+    let spy = spyOn(presenter, 'onOverlayDblClick');
     element.dispatchEvent(
       new CustomEvent(ViewerEvents.OverlayDblClick, {
         detail: 0,
       }),
     );
     expect(spy).toHaveBeenCalledWith(0);
+
+    spy = spyOn(presenter, 'onOverlayScreenRecordingChange');
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.OverlayMediaBasedTraceChange, {
+        detail: 0,
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith(0);
+
+    const screenshotPresenter = new Presenter([], (newData) => {
+      uiData = newData;
+    });
+    spy = spyOn(screenshotPresenter, 'onOverlayScreenRecordingChange');
+    screenshotPresenter.addEventListeners(element);
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.OverlayMediaBasedTraceChange, {
+        detail: 0,
+      }),
+    );
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it('processes trace position updates', async () => {
     const positionUpdate1 = TracePositionUpdate.fromTimestamp(timestamps[1]);
-    await presenter.onAppEvent(positionUpdate1);
+    const promise = presenter.onAppEvent(positionUpdate1);
+    expect(uiData.isFetchingEntries).toBeTrue();
+    await promise;
+    expect(uiData.isFetchingEntries).toBeFalse();
     expect(uiData.currentTraceEntries).toEqual([entries[1], entries[1]]);
 
     const positionUpdate0 = TracePositionUpdate.fromTimestamp(timestamps[0]);
@@ -101,5 +129,16 @@ describe('PresenterMediaBased', () => {
 
     await presenter.onOverlayDblClick(1);
     expect(spy).toHaveBeenCalledWith(new ActiveTraceChanged(trace2));
+  });
+
+  it('handles overlay trace change', async () => {
+    const spy = jasmine.createSpy();
+    presenter.setEmitEvent(spy);
+
+    await presenter.onOverlayScreenRecordingChange(2);
+    expect(spy).not.toHaveBeenCalled();
+
+    await presenter.onOverlayScreenRecordingChange(1);
+    expect(spy).toHaveBeenCalledWith(new ScreenRecordingChange(trace2));
   });
 });

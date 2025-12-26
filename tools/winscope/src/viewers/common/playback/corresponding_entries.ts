@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-import {TraceEntryEager} from 'trace_api/trace';
+import {TraceEntry, TraceEntryEager} from 'trace_api/trace';
 import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {Timestamp} from 'common/time/time';
 
 /**
  * Interface that associates screen recording entry to other trace entry
  */
 export declare interface CorrespondingEntries {
-  screenRecordingEntry:
-    | TraceEntryEager<MediaBasedTraceEntry, MediaBasedTraceEntry>
-    | undefined;
-  traceEntry: TraceEntryEager<HierarchyTreeNode, HierarchyTreeNode> | undefined;
+  screenRecording: TraceEntry<MediaBasedTraceEntry> | undefined;
+  trace: TraceEntryEager<HierarchyTreeNode, HierarchyTreeNode> | undefined;
+  seek: Timestamp;
 }

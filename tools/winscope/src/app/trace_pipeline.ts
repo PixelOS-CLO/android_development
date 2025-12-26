@@ -34,12 +34,14 @@ import {Analytics} from 'logging/analytics';
 import {ProgressListener} from 'messaging/progress_listener';
 import {UserWarning} from 'messaging/user_warning';
 import {
-  CorruptedArchive,
-  InvalidLegacyTrace,
-  InvalidPerfettoTrace,
-  NoValidFiles,
-  UnsupportedFileFormat,
-} from 'messaging/user_warnings';
+  makeWarningCorruptedArchive,
+  makeWarningNoValidFiles,
+  makeWarningUnsupportedFileFormat,
+} from './warnings';
+import {
+  makeWarningInvalidLegacyTrace,
+  makeWarningInvalidPerfettoTrace,
+} from 'parsers/warnings';
 import {WinscopeEvent} from 'messaging/winscope_event';
 import {
   EmitEvent,
@@ -78,6 +80,7 @@ import {FilesSource} from './files_source';
 import {LoadedParsers} from './loaded_parsers';
 import {TraceFileFilter} from './trace_file_filter';
 import {TraceGeometryData} from 'parsers/trace_geometry_data';
+import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
 
 /**
  * A pipeline that loads, parses and transforms traces.
@@ -124,7 +127,7 @@ export class TracePipeline
     try {
       const unzippedFiles = await this.unzipFiles(files, progressListener);
       if (unzippedFiles.length === 0) {
-        UserNotifier.add(new NoValidFiles());
+        UserNotifier.add(makeWarningNoValidFiles());
         return [];
       }
 
@@ -157,7 +160,7 @@ export class TracePipeline
       singlePerfettoTrace,
       FilesSource.APP,
       undefined,
-      new InvalidPerfettoTrace(singlePerfettoTrace.getDescriptor(), [
+      makeWarningInvalidPerfettoTrace(singlePerfettoTrace.getDescriptor(), [
         'failed to convert legacy parsers into perfetto trace',
       ]),
     );
@@ -250,15 +253,12 @@ export class TracePipeline
     return this.lostPerfettoPackets;
   }
 
-  async getScreenRecordingVideo(): Promise<undefined | Blob> {
-    const traces = this.getTraces();
-    const screenRecording =
-      traces.getTrace(TraceType.SCREEN_RECORDING) ??
-      traces.getTrace(TraceType.SCREENSHOT);
-    if (!screenRecording || screenRecording.lengthEntries === 0) {
+  getScreenRecordingTrace(): Trace<MediaBasedTraceEntry> | undefined {
+    const trace = this.getTraces().getTrace(TraceType.SCREEN_RECORDING);
+    if (!trace || trace.lengthEntries === 0) {
       return undefined;
     }
-    return (await screenRecording.getEntry(0).getValue()).videoData;
+    return trace;
   }
 
   async tryCreateSearchTrace(
@@ -276,6 +276,9 @@ export class TracePipeline
   }
 
   clear() {
+    this.traces.forEachTrace((trace) => {
+      trace.onDestroy();
+    });
     this.loadedParsers.clear();
     this.traces = new Traces();
     this.timestampConverter.clear();
@@ -319,7 +322,7 @@ export class TracePipeline
         file,
         source,
         progressListener,
-        new UnsupportedFileFormat(file.getDescriptor()),
+        makeWarningUnsupportedFileFormat(file.getDescriptor()),
       );
     };
 
@@ -452,7 +455,7 @@ export class TracePipeline
         return true;
       } catch (e) {
         UserNotifier.add(
-          new InvalidLegacyTrace(
+          makeWarningInvalidLegacyTrace(
             fileAndParser.file.getDescriptor(),
             `Failed to create timestamps: ${(e as Error).message}`,
           ),
@@ -537,11 +540,16 @@ export class TracePipeline
       return trace.getParser();
     });
 
-    return await LegacyToPerfettoConverter.convertToSinglePerfettoFile(
-      legacyParsers,
-      allParsers,
-      this.loadedParsers.getPerfettoFile(),
-    );
+    const converter = new LegacyToPerfettoConverter()
+      .setLegacyParsers(legacyParsers)
+      .setAllParsers(allParsers);
+
+    const perfettoFile = this.loadedParsers.getPerfettoFile();
+    if (perfettoFile) {
+      converter.setPerfettoFile(perfettoFile);
+    }
+
+    return await converter.convert();
   }
 
   private makeDownloadArchiveFilename(
@@ -605,7 +613,7 @@ export class TracePipeline
           unzippedFiles.push(...subTraceFiles);
           onSubProgressUpdate(100);
         } catch {
-          UserNotifier.add(new CorruptedArchive(file));
+          UserNotifier.add(makeWarningCorruptedArchive(file));
         }
       } else {
         unzippedFiles.push(new TraceFile(file, undefined));
