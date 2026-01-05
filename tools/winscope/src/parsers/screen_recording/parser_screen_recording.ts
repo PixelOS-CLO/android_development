@@ -16,14 +16,14 @@
 
 import {searchSubarray} from 'common/typed_array';
 import {Timestamp} from 'common/time/time';
-import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {makeWarningMonotonicScreenRecording} from 'parsers/warnings';
 import {AbstractParser} from 'parsers/legacy/abstract_parser';
 import {UserNotifier} from 'services/user_notifier';
-import {TraceFile} from 'trace/trace_file';
 import {CoarseVersion} from 'trace_api/coarse_version';
-import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
-import {TraceMetadata} from 'trace_api/trace_metadata';
+import {
+  MediaBasedTraceEntry,
+  VideoEntry,
+} from 'trace_api/media_based_trace_entry';
 import {TraceType} from 'trace_api/trace_type';
 import {ParserExternalMetadata} from './parser_external_metadata';
 import {ParserFilename} from './parser_filename';
@@ -34,9 +34,7 @@ import {
   ScreenRecordingParser,
   WINSCOPE_MAGIC_STRING,
 } from './helpers';
-import {VideoFrameCache} from './video_frame_cache';
-import {createVideoFrameCache} from './video_frame_cache_factory';
-import {assertDefined} from 'common/assert';
+import {timestampToVideoTimeSeconds} from 'trace/screen_recording/helpers';
 
 export class ParserScreenRecording extends AbstractParser<
   MediaBasedTraceEntry,
@@ -44,15 +42,6 @@ export class ParserScreenRecording extends AbstractParser<
 > {
   private realToBootTimeOffsetNs: bigint | undefined;
   private makeTimestampFromExactValue = false;
-  private videoFrameCache: VideoFrameCache | undefined;
-
-  constructor(
-    trace: TraceFile,
-    timestampConverter: ParserTimestampConverter,
-    metadata: TraceMetadata,
-  ) {
-    super(trace, timestampConverter, metadata);
-  }
 
   override getTraceType(): TraceType {
     return TraceType.SCREEN_RECORDING;
@@ -91,22 +80,16 @@ export class ParserScreenRecording extends AbstractParser<
     if (result.realToBootTimeOffsetNs === 0n) {
       this.makeTimestampFromExactValue = true;
     }
-
-    this.videoFrameCache = await createVideoFrameCache(videoData);
     return result.timestamps;
   }
 
   override async processDecodedEntry(
     index: number,
+    entry: bigint,
   ): Promise<MediaBasedTraceEntry> {
-    const {frame, rotationAngle} = await assertDefined(
-      this.videoFrameCache,
-    ).get(index);
-    return new MediaBasedTraceEntry(frame, rotationAngle);
-  }
-
-  onDestroy() {
-    this.videoFrameCache?.onDestroy();
+    const time = timestampToVideoTimeSeconds(this.decodedEntries[0], entry);
+    const videoData = this.traceFile.file;
+    return new VideoEntry(videoData, time);
   }
 
   protected override getTimestamp(decodedEntry: bigint): Timestamp {

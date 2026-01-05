@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import {getLogger, Logger} from 'compat/logging';
 import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
 import {HttpRequestHeaderType, HttpResponse} from 'common/http_request';
 import {utf8Decode} from 'common/string_helpers';
@@ -35,6 +36,7 @@ interface TraceWorker {
 }
 
 export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
+  private readonly encodedId: string;
   private isTracing = true;
   private keepTraceAliveWorkers: TraceWorker[] = [];
 
@@ -42,8 +44,10 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
     id: string,
     listener: AdbDeviceConnectionListener,
     private securityHeader: HttpRequestHeaderType,
+    logger: Logger = getLogger('WinscopeProxyDeviceConnection'),
   ) {
-    super(id, listener);
+    super(id, listener, logger);
+    this.encodedId = encodeURIComponent(id);
   }
 
   override onDestroy() {
@@ -60,7 +64,7 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
 
   override async runShellCommand(cmd: string): Promise<string> {
     return await postToProxy(
-      `${Endpoint.RUN_ADB_CMD}${this.id}/`,
+      `${Endpoint.RUN_ADB_CMD}${this.encodedId}/`,
       this.securityHeader,
       () => {}, // onSuccess - no-op
       (newState, errorText) => this.setState(newState, errorText),
@@ -71,7 +75,7 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
   override async pullFile(filepath: string): Promise<Uint8Array> {
     return await new Promise<Uint8Array>((resolve) => {
       getFromProxy(
-        `${Endpoint.FETCH}${this.id}/${filepath}`,
+        `${Endpoint.FETCH}${this.encodedId}/${filepath}`,
         this.securityHeader,
         (response) => {
           resolve(this.onSuccessFetchFile(response, filepath));
@@ -114,9 +118,9 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
 
   override async startTrace(target: TraceTarget) {
     this.isTracing = true;
-    console.debug(`Starting trace for ${target.traceName} on ${this.id}`);
+    this.logger.debug(`Starting trace for ${target.traceName} on ${this.id}`);
     await postToProxy(
-      `${Endpoint.START_TRACE}${this.id}/`,
+      `${Endpoint.START_TRACE}${this.encodedId}/`,
       this.securityHeader,
       (response: HttpResponse) => {
         this.keepTraceAlive(target.traceName);
@@ -128,14 +132,14 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
         stopCmd: target.stopCmd,
       },
     );
-    console.debug(`Started trace for ${target.traceName} on ${this.id}`);
+    this.logger.debug(`Started trace for ${target.traceName} on ${this.id}`);
   }
 
   override async endTrace(target: TraceTarget) {
     this.isTracing = false;
-    console.debug(`Ending trace for ${target.traceName} on ${this.id}`);
+    this.logger.debug(`Ending trace for ${target.traceName} on ${this.id}`);
     await postToProxy(
-      `${Endpoint.END_TRACE}${this.id}/`,
+      `${Endpoint.END_TRACE}${this.encodedId}/`,
       this.securityHeader,
       (response: HttpResponse) => {
         const errors = JSON.parse(response.body);
@@ -156,7 +160,7 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
       (newState, errorText) => this.setState(newState, errorText),
       {targetId: target.traceName},
     );
-    console.debug(`Ended trace for ${target.traceName}.`);
+    this.logger.debug(`Ended trace for ${target.traceName}.`);
   }
 
   protected override async updatePropertiesFromResponse(
@@ -187,12 +191,12 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
     }
 
     await getFromProxy(
-      `${Endpoint.STATUS}${this.id}/${targetName}`,
+      `${Endpoint.STATUS}${this.encodedId}/${targetName}`,
       this.securityHeader,
       async (request: HttpResponse) => {
         if (request.text !== 'True') {
           this.clearTraceAliveWorker(targetName);
-          console.warn(targetName + ' timed out');
+          this.logger.warn(targetName + ' timed out');
           await this.listener.onConnectionStateChange(
             ConnectionState.TRACE_TIMEOUT,
           );

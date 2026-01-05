@@ -22,9 +22,14 @@ import {makeWarningFailedToConvertLegacyTraces} from './warnings';
 import {UserNotifier} from 'services/user_notifier';
 // TODO(b/311642700): Not compatible with google3
 import {Writer} from 'protobufjs';
-// TODO(b/311642700): Perfetto import needs update for google3
-import {perfetto} from 'protos/perfetto/trace/static';
+import {
+  Trace,
+  TracePacket,
+  ITracePacket,
+  ClockSnapshot as PerfettoClockSnapshot,
+} from 'compat/perfetto';
 import {TraceFile} from 'trace/trace_file';
+import {getLogger, Logger} from 'compat/logging';
 import {Parser} from 'trace_api/parser';
 import {
   getParserWithLatestRealToBootTimeOffset,
@@ -47,6 +52,9 @@ export class LegacyToPerfettoConverter {
   private legacyParsers: Array<Parser<object>> = [];
   private allParsers: Array<Parser<object>> = [];
   private perfettoFile: TraceFile | undefined;
+  constructor(
+    private readonly logger: Logger = getLogger('LegacyToPerfettoConverter'),
+  ) {}
 
   setLegacyParsers(value: Array<Parser<object>>): this {
     this.legacyParsers = value;
@@ -64,11 +72,11 @@ export class LegacyToPerfettoConverter {
   }
 
   async convert(): Promise<TraceFile | undefined> {
-    let trace: perfetto.protos.Trace;
+    let trace: Trace;
     try {
       trace = await this.makePerfettoTrace();
     } catch (e) {
-      console.error(e);
+      this.logger.error((e as Error).message);
       UserNotifier.add(
         makeWarningFailedToConvertLegacyTraces((e as Error).message),
       ).notify();
@@ -131,11 +139,11 @@ export class LegacyToPerfettoConverter {
     );
   }
 
-  private async makePerfettoTrace(): Promise<perfetto.protos.Trace> {
-    let trace: perfetto.protos.Trace;
+  private async makePerfettoTrace(): Promise<Trace> {
+    let trace: Trace;
     if (!this.perfettoFile) {
       const clockSnapshots = this.makeClockSnapshots();
-      trace = perfetto.protos.Trace.create();
+      trace = new Trace();
       if (clockSnapshots.length === 0) {
         throw new Error('no parsers or Perfetto file provided');
       }
@@ -147,7 +155,7 @@ export class LegacyToPerfettoConverter {
       const fileBuffer = new Uint8Array(
         await this.perfettoFile.file.arrayBuffer(),
       );
-      trace = perfetto.protos.Trace.decode(fileBuffer);
+      trace = Trace.decode(fileBuffer);
     }
 
     return trace;
@@ -237,52 +245,51 @@ export class LegacyToPerfettoConverter {
 
   private makeTracePacketWithClockSnapshot(
     legacySnapshot: ClockSnapshot,
-  ): perfetto.protos.TracePacket {
-    const packet = perfetto.protos.TracePacket.create();
+  ): TracePacket {
+    const packet = new TracePacket();
     packet.trustedPacketSequenceId = 1;
 
-    const snapshot = perfetto.protos.ClockSnapshot.create();
+    const snapshot = new PerfettoClockSnapshot();
 
     const realtime = Long.fromString(legacySnapshot.realtime.toString());
 
-    const clockRealtimeCoarse = perfetto.protos.ClockSnapshot.Clock.create();
+    const clockRealtimeCoarse = new PerfettoClockSnapshot.Clock();
     clockRealtimeCoarse.clockId =
-      perfetto.protos.ClockSnapshot.Clock.BuiltinClocks.REALTIME_COARSE;
+      PerfettoClockSnapshot.Clock.BuiltinClocks.REALTIME_COARSE;
     clockRealtimeCoarse.timestamp = realtime;
     snapshot.clocks.push(clockRealtimeCoarse);
 
-    const clockRealtime = perfetto.protos.ClockSnapshot.Clock.create();
-    clockRealtime.clockId =
-      perfetto.protos.ClockSnapshot.Clock.BuiltinClocks.REALTIME;
+    const clockRealtime = new PerfettoClockSnapshot.Clock();
+    clockRealtime.clockId = PerfettoClockSnapshot.Clock.BuiltinClocks.REALTIME;
     clockRealtime.timestamp = realtime;
     snapshot.clocks.push(clockRealtime);
 
     if (legacySnapshot.boottime !== undefined) {
       const boottime = Long.fromString(legacySnapshot.boottime.toString());
-      const clockBoottime = perfetto.protos.ClockSnapshot.Clock.create();
+      const clockBoottime = new PerfettoClockSnapshot.Clock();
       clockBoottime.clockId =
-        perfetto.protos.ClockSnapshot.Clock.BuiltinClocks.BOOTTIME;
+        PerfettoClockSnapshot.Clock.BuiltinClocks.BOOTTIME;
       clockBoottime.timestamp = boottime;
       snapshot.clocks.push(clockBoottime);
     }
 
     if (legacySnapshot.monotonic !== undefined) {
       const monotonic = Long.fromString(legacySnapshot.monotonic.toString());
-      const clockMonotonic = perfetto.protos.ClockSnapshot.Clock.create();
+      const clockMonotonic = new PerfettoClockSnapshot.Clock();
       clockMonotonic.clockId =
-        perfetto.protos.ClockSnapshot.Clock.BuiltinClocks.MONOTONIC;
+        PerfettoClockSnapshot.Clock.BuiltinClocks.MONOTONIC;
       clockMonotonic.timestamp = monotonic;
       snapshot.clocks.push(clockMonotonic);
 
-      const clockMonotonicCoarse = perfetto.protos.ClockSnapshot.Clock.create();
+      const clockMonotonicCoarse = new PerfettoClockSnapshot.Clock();
       clockMonotonicCoarse.clockId =
-        perfetto.protos.ClockSnapshot.Clock.BuiltinClocks.MONOTONIC_COARSE;
+        PerfettoClockSnapshot.Clock.BuiltinClocks.MONOTONIC_COARSE;
       clockMonotonicCoarse.timestamp = monotonic;
       snapshot.clocks.push(clockMonotonicCoarse);
 
-      const clockMonotonicRaw = perfetto.protos.ClockSnapshot.Clock.create();
+      const clockMonotonicRaw = new PerfettoClockSnapshot.Clock();
       clockMonotonicRaw.clockId =
-        perfetto.protos.ClockSnapshot.Clock.BuiltinClocks.MONOTONIC_RAW;
+        PerfettoClockSnapshot.Clock.BuiltinClocks.MONOTONIC_RAW;
       clockMonotonicRaw.timestamp = monotonic;
       snapshot.clocks.push(clockMonotonicRaw);
     }
@@ -292,9 +299,7 @@ export class LegacyToPerfettoConverter {
     return packet;
   }
 
-  private makeTraceDataPackets(
-    trace: perfetto.protos.Trace,
-  ): perfetto.protos.TracePacket[] {
+  private makeTraceDataPackets(trace: Trace): TracePacket[] {
     const [largestUid, largestPid] = trace.packet.reduce(
       ([uid, pid], packet) => {
         return [
@@ -306,7 +311,7 @@ export class LegacyToPerfettoConverter {
     );
     let [trustedUid, trustedPid] = [largestUid + 1, largestPid + 1];
 
-    const packets: perfetto.protos.TracePacket[] = [];
+    const packets: TracePacket[] = [];
     let sequenceId =
       Math.max(
         ...trace.packet.map((packet) => packet.trustedPacketSequenceId ?? 0),
@@ -330,7 +335,7 @@ export class LegacyToPerfettoConverter {
         } catch (e) {
           // swallow
           if (e !== NOT_IMPLEMENTED_ERROR) {
-            console.error(e);
+            this.logger.error((e as Error).message);
           }
         }
       }
@@ -352,8 +357,8 @@ export class LegacyToPerfettoConverter {
 
   // TracePacket has field number 1 and wire type 2 (LEN = length-delimited).
 
-  private encodePacket(packet: perfetto.protos.ITracePacket): Uint8Array {
-    const encodedPacket = perfetto.protos.TracePacket.encode(packet).finish();
+  private encodePacket(packet: ITracePacket): Uint8Array {
+    const encodedPacket = TracePacket.encode(packet).finish();
     const prefix = this.createPacketPrefix(encodedPacket.byteLength);
     const packetWithPrefix = new Uint8Array(
       prefix.byteLength + encodedPacket.byteLength,
@@ -364,7 +369,7 @@ export class LegacyToPerfettoConverter {
   }
 
   private createPacketPrefix(packetLength: number): Uint8Array {
-    const writer = Writer.create();
+    const writer = new Writer();
     writer.uint32(LegacyToPerfettoConverter.FIELD_TAG);
     writer.uint32(packetLength);
     return writer.finish();

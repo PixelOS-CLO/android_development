@@ -33,6 +33,7 @@ import {
 import {ScreenRecordingChange, TracePositionUpdate} from 'trace/trace_events';
 import {WinscopeEvent} from 'messaging/winscope_event';
 import {EmitEvent} from 'messaging/winscope_event_emitter';
+import {getLogger, Logger} from 'compat/logging';
 import {Trace, TraceEntry} from 'trace_api/trace';
 import {findCorrespondingEntry} from 'trace_api/trace_entry_finder';
 import {TRACE_INFO} from 'trace_api/trace_info';
@@ -45,7 +46,11 @@ import {RectsPresenter} from 'viewers/common/rects_presenter';
 import {TextFilter} from 'viewers/common/text_filter';
 import {UiHierarchyTreeNode} from 'viewers/common/ui_hierarchy_tree_node';
 import {UserOption, UserOptions} from 'viewers/common/user_options';
-import {HierarchyPresenter, SelectedTree} from './hierarchy_presenter';
+import {
+  HierarchyPresenter,
+  HierarchyTraceEntry,
+  SelectedTree,
+} from './hierarchy_presenter';
 import {PresetHierarchy, TextFilterValues} from './preset_hierarchy';
 import {RectShowState} from './rect_show_state';
 import {UiDataHierarchy} from './ui_data_hierarchy';
@@ -70,6 +75,7 @@ export abstract class AbstractHierarchyViewerPresenter<
   protected abstract readonly multiTraceType?: TraceType;
   private highlightedItem = '';
   private screenRecordingTrace?: Trace<MediaBasedTraceEntry>;
+  protected readonly logger: Logger;
 
   constructor(
     private readonly trace: Trace<HierarchyTreeNode> | undefined,
@@ -78,6 +84,7 @@ export abstract class AbstractHierarchyViewerPresenter<
     private readonly notifyViewCallback: NotifyHierarchyViewCallbackType<UiData>,
     protected readonly uiData: UiData,
   ) {
+    this.logger = getLogger('AbstractHierarchyViewerPresenter');
     uiData.isDarkMode = storage.get('dark-mode') === 'true';
     this.copyUiDataAndNotifyView();
   }
@@ -369,7 +376,7 @@ export abstract class AbstractHierarchyViewerPresenter<
           event as ScreenRecordingChange,
         );
       default:
-      // do nothing
+        this.logger.trace('Not processing event ' + event.constructor.name);
     }
 
     await this.onViewerSpecificWinscopeEvent(event);
@@ -439,9 +446,9 @@ export abstract class AbstractHierarchyViewerPresenter<
   protected async applyTracePositionUpdate(event: TracePositionUpdate) {
     const hierarchyStartTime = Date.now();
 
-    let entries: Array<TraceEntry<HierarchyTreeNode>> = [];
-    if (event.prefetchedEntry) {
-      entries = [event.prefetchedEntry as TraceEntry<HierarchyTreeNode>];
+    let entries: HierarchyTraceEntry[] = [];
+    if (event.prefetchedEntries?.trace) {
+      entries = [event.prefetchedEntries.trace];
     } else if (this.multiTraceType !== undefined) {
       entries = this.traces
         .getTraces(this.multiTraceType)
@@ -450,9 +457,7 @@ export abstract class AbstractHierarchyViewerPresenter<
             | TraceEntry<HierarchyTreeNode>
             | undefined;
         })
-        .filter((entry) => entry !== undefined) as Array<
-        TraceEntry<HierarchyTreeNode>
-      >;
+        .filter((entry) => entry !== undefined);
     } else {
       const entry = findCorrespondingEntry(
         assertDefined(this.trace),
@@ -590,9 +595,7 @@ export abstract class AbstractHierarchyViewerPresenter<
     return this.highlightedItem;
   }
 
-  protected getEntryFormattedTimestamp(
-    entry: TraceEntry<HierarchyTreeNode>,
-  ): string {
+  protected getEntryFormattedTimestamp(entry: HierarchyTraceEntry): string {
     if (entry.getFullTrace().isDumpWithoutTimestamp()) {
       return 'Dump';
     }

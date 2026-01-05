@@ -20,25 +20,22 @@ import {
   assertDefined,
   assertString,
 } from 'common/assert';
-import {ParserTimestampConverter} from 'common/time/timestamp_converter';
 import {HierarchyTreeBuilderLog} from 'parsers/hierarchy_tree_builder_log';
 import {AddDefaults} from 'parsers/operations/add_defaults';
 import {AbstractParser} from 'parsers/perfetto/abstract_parser';
-import {FakeProtoTransformer} from 'parsers/perfetto/fake_proto_transformer';
 import {
   getDistinctValues,
   queryArgs,
   queryVsyncId,
-} from 'parsers/perfetto/utils';
+} from 'parsers/perfetto/query_helpers';
 import {PropertyTreeBuilderFromProto} from 'parsers/property_tree_builder_from_proto';
 import {PropertyTreeBuilderFromQueryRow} from 'parsers/property_tree_builder_from_query_row';
-import {perfetto} from 'protos/perfetto/trace/static';
+import {LayerState} from 'compat/winscope_protos';
 import {EnumFormatter, FixedStringFormatter} from 'trace/formatters';
 import {
   TAMPERED_TRACE_PACKET,
   TamperedProtoField,
 } from 'trace/proto_utils/tampered_message_type';
-import {TraceFile} from 'trace/trace_file';
 import {TransactionColumnType} from 'trace/transactions/transaction_column_type';
 import {TransactionType} from 'trace/transactions/transaction_type';
 import {
@@ -50,7 +47,6 @@ import {
 import {EntriesRange} from 'trace_api/index_types';
 import {TraceType} from 'trace_api/trace_type';
 import {RowIterator} from 'trace_processor/query_result';
-import {TraceProcessor} from 'trace_processor/trace_processor';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
 import {Operation} from 'tree_node/operation';
 import {PropertiesProvider} from 'tree_node/properties_provider';
@@ -60,6 +56,7 @@ import {
   PropertyTreeNode,
 } from 'tree_node/property_tree_node';
 import {SetFormatters} from 'parsers/set_formatters';
+import {PropertyTreeBuilderFromArgs} from 'parsers/property_tree_builder_from_args';
 
 export class ParserTransactions extends AbstractParser<HierarchyTreeNode> {
   private static readonly TransactionsTraceEntryField =
@@ -77,14 +74,6 @@ export class ParserTransactions extends AbstractParser<HierarchyTreeNode> {
   ];
 
   private flags: {[key: number]: string} | undefined;
-
-  constructor(
-    traceFile: TraceFile,
-    traceProcessor: TraceProcessor,
-    timestampConverter: ParserTimestampConverter,
-  ) {
-    super(traceFile, traceProcessor, timestampConverter);
-  }
 
   override getTraceType(): TraceType {
     return TraceType.TRANSACTIONS;
@@ -393,7 +382,7 @@ LEFT JOIN ranked_process_matches AS rpm
 
     if (argSetId !== undefined && field !== undefined) {
       const customFormatters = new Map<string, PropertyFormatter>([
-        ['flags', new EnumFormatter(perfetto.protos.LayerState.Flags)],
+        ['flags', new EnumFormatter(LayerState.Flags)],
       ]);
       const flagsId = eagerProperties.getChildByName('flagsId');
       if (flagsId !== undefined) {
@@ -406,16 +395,13 @@ LEFT JOIN ranked_process_matches AS rpm
       ];
 
       const lazyPropertiesStrategy = async () => {
-        let data = await queryArgs(this.traceProcessor, Number(argSetId));
-        const transformer = new FakeProtoTransformer(
-          assertDefined(field?.tamperedMessageType),
-        );
-        data = transformer.transform(data);
+        const argsData = await queryArgs(this.traceProcessor, Number(argSetId));
 
-        return new PropertyTreeBuilderFromProto()
-          .setData(data)
+        return new PropertyTreeBuilderFromArgs()
+          .setData(argsData.iter({}))
           .setRootId(index)
           .setRootName(assertDefined(field).name)
+          .setRootMessageType(assertDefined(field?.tamperedMessageType))
           .build();
       };
 

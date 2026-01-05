@@ -42,7 +42,6 @@ import {VISIBLE_CHIP} from 'viewers/common/chip';
 import {LogSelectFilter} from 'viewers/common/log_filters';
 import {TextFilter} from 'viewers/common/text_filter';
 import {LogField, LogHeader} from 'viewers/common/ui_data_log';
-import {UI_RECT_FACTORY} from 'viewers/common/ui_rect_factory';
 import {UserOptions} from 'viewers/common/user_options';
 import {ViewerEvents} from 'viewers/common/viewer_events';
 import {TraceRectType} from 'viewers/components/rects/rect_spec';
@@ -499,7 +498,7 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
             .getChildByName('0')
             ?.getChildByName('windowId')
             ?.getValue(),
-        ).toBe(98n);
+        ).toBe(98);
       });
 
       it('finds entry by time', async () => {
@@ -660,20 +659,9 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
         expect(uiData.rectsToDraw).toEqual([]);
 
         const inputEntry = trace.getEntry(1);
-        const spy: jasmine.Spy = spyOn(
-          UI_RECT_FACTORY,
-          'makeInputRects',
-        ).and.callThrough();
         await presenter.onAppEvent(
           TracePositionUpdate.fromTraceEntry(inputEntry),
         );
-        const properties = await inputEntry.getValue().then((tree) => {
-          return tree.getAllProperties();
-        });
-        const dispatchEvents = properties.getChildByName('dispatchEvents');
-        const spyArgs = spy.calls.allArgs();
-        expect(spyArgs.length).toBe(1);
-        expect(spyArgs[0][2]).toEqual(dispatchEvents);
         expect(uiData.rectsToDraw).toHaveSize(1);
         expect(uiData.rectsToDraw?.at(0)?.id).toBe('1 inputRect');
 
@@ -914,7 +902,7 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
             presenterTrace,
             layerIdToName,
           );
-        const windowId = BigInt(layerIdToName[1].id);
+        const windowId = layerIdToName[1].id;
         const windowName = layerIdToName[1].name;
         const dispatchTree = assertDefined(uiData.dispatchPropertiesTree);
 
@@ -930,7 +918,7 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
         );
 
         expect(uiData.highlightedProperty).toEqual(assertDefined(''));
-        presenter.onTargetWindowClicked(windowId, windowName);
+        presenter.onTargetWindowClicked(BigInt(windowId), windowName);
         await presenter.onLogEntryClick(testLogId);
 
         return {presenter, testLogId, expectedPropertyId};

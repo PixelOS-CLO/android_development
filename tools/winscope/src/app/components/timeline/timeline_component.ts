@@ -44,7 +44,7 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {DomSanitizer} from '@angular/platform-browser';
+import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
 import {TimelineData} from 'app/timeline_data';
 import {assertDefined} from 'common/assert';
 import {WinscopeEvent} from 'messaging/winscope_event';
@@ -76,6 +76,7 @@ import {
   PlaybackStateChangeRequest,
 } from 'app/components/timeline/playback_events';
 import {TabbedViewSwitched} from 'app/tabbed_view_events';
+import {getLogger} from 'compat/logging';
 import {
   EmitEvent,
   WinscopeEventEmitter,
@@ -91,7 +92,6 @@ import {
   supportsPlayback,
 } from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
-import {multlineTooltip} from 'viewers/components/styles/tooltip.styles';
 import {ExpandedTimelineComponent} from './expanded-timeline/expanded_timeline_component';
 import {
   HoverPositionUpdate,
@@ -101,6 +101,8 @@ import {UserTimestamp} from 'common/time/user_timestamp';
 import {PlaybackControlsComponent} from './playback_component';
 import {PlaybackState} from 'viewers/common/playback/playback_state';
 import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
+import {PlaybackPrefetchedEntries} from 'trace/playback_prefetched_entries';
 
 /**
  * A component for displaying the timeline view.
@@ -122,12 +124,15 @@ import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
     ClipboardModule,
     MatSelectModule,
     MatRippleModule,
+    MatProgressSpinnerModule,
     PlaybackControlsComponent,
   ],
   template: `
     @if (isDisabled) {
-      <div
-        class="disabled-message user-notification mat-body-1"> {{ disabledMessage }} </div>
+      <div class="disabled-message user-notification mat-body-1">
+        <div>{{ disabledMessage }}</div>
+        <mat-spinner [diameter]="20"></mat-spinner>
+      </div>
     }
     <div [class.disabled-component]="isDisabled">
       @if (timelineData.hasMoreThanOneDistinctTimestamp()) {
@@ -151,8 +156,13 @@ import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
           @let screenRecording = timelineData.getCurrentScreenRecordingTrace();
           @if (screenRecording !== undefined) {
             <div id="video-content">
-              @if (screenRecordingEntry !== undefined) {
-                <canvas id="videoCanvasElementTimeline"></canvas>
+              @if (frameCanvasEntry !== undefined) {
+                <canvas id="frameCanvasElementTimeline" #frameCanvasElementTimeline></canvas>
+              } @else if (videoUrl !== undefined && getVideoCurrentTime() !== undefined) {
+                <video
+                  id="video"
+                  [currentTime]="getVideoCurrentTime()"
+                  [src]="videoUrl"></video>
               } @else {
                 <div class="no-video-message">
                   <p>No screen recording frame to show.</p>
@@ -365,219 +375,7 @@ import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
       </div>
     </div>
   `,
-  styles: [
-    `
-      .navbar-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: end;
-        position: relative;
-        max-height: 20vh;
-        overflow: auto;
-      }
-      #toggle {
-        width: fit-content;
-        position: absolute;
-        top: -41px;
-        right: 0px;
-        z-index: 11;
-        border: 1px solid #3333;
-        border-bottom: 0px;
-        border-right: 0px;
-        border-top-left-radius: 6px;
-        border-top-right-radius: 6px;
-        background-color: var(--drawer-color);
-      }
-      .navbar {
-        display: flex;
-        width: 100%;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-      }
-      #expanded-nav {
-        display: flex;
-        flex-direction: row;
-        border-bottom: 1px solid #3333;
-        border-top: 1px solid #3333;
-        max-height: 60vh;
-        overflow: hidden;
-      }
-      #time-selector {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        border-radius: 10px;
-        margin-left: 0.5rem;
-        height: 116px;
-        width: 282px;
-        background-color: var(--drawer-block-primary);
-      }
-      #time-selector .mat-mdc-text-field-wrapper {
-        width: 100%;
-      }
-      #time-selector .mat-mdc-form-field-infix {
-        padding: 0;
-      }
-      #time-selector .mat-mdc-form-field-flex, #time-selector .field-suffix {
-        border-radius: 0;
-        padding: 0;
-        display: flex;
-        align-items: center;
-      }
-      .bookmark-icon {
-        cursor: pointer;
-      }
-      .time-selector-form {
-        display: flex;
-        flex-direction: column;
-        height: 60px;
-        width: 90%;
-        justify-content: center;
-        align-items: center;
-        gap: 8px;
-      }
-      .time-selector-form mat-form-field {
-        display: flex;
-        width: 100%;
-        font-size: 12px;
-      }
-      .time-selector-form input {
-        text-overflow: ellipsis;
-      }
-      .time-selector-form .time-difference {
-        padding-right: 2px;
-        white-space: nowrap;
-      }
-      #time-selector .time-controls {
-        border-radius: 10px;
-        margin: 0.5rem;
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        width: 90%;
-        background-color: var(--drawer-block-secondary);
-      }
-      .shown-selection .trace-icon {
-        padding-left: 4px;
-        padding-right: 4px;
-        padding-top: 2px;
-      }
-      #mini-timeline {
-        flex-grow: 1;
-        align-self: stretch;
-      }
-      #video-content {
-        position: relative;
-        min-width: 20rem;
-        max-width: 30vw;
-        height: calc(60vh - 4px);
-        align-self: stretch;
-        text-align: center;
-        border: 2px solid black;
-        display: flex;
-        align-items: center;
-      }
-      #videoCanvasElementTimeline {
-        max-width: 100%;
-        max-height: calc(60vh - 4px);
-      }
-      #expanded-timeline {
-        flex-grow: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-      }
-      #trace-selector .mat-mdc-form-field-infix {
-        width: 90px;
-        padding: 0 0 0 10px;
-      }
-      #trace-selector .shown-selection {
-        height: 116px;
-        border-radius: 10px;
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        align-content: flex-start;
-        background-color: var(--drawer-block-primary);
-      }
-      #trace-selector .filter-header {
-        padding-top: 4px;
-        display: flex;
-        align-items: center;
-        gap: 2px;
-      }
-      .shown-selection .trace-icons {
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;
-        align-content: flex-start;
-        width: 70%;
-      }
-      #trace-selector .mat-mdc-select-trigger {
-        height: unset;
-        flex-direction: column-reverse;
-      }
-      #trace-selector .mat-mdc-select-arrow-wrapper {
-        display: none;
-      }
-      #trace-selector .mat-mdc-text-field-wrapper {
-        padding: 0;
-      }
-      :has(>.select-traces-panel) {
-        max-height: unset !important;
-        font-family: 'Roboto', sans-serif;
-        position: relative;
-        bottom: 120px;
-      }
-      .select-traces-panel {
-        max-height: 60vh;
-        overflow-y: auto;
-        overflow-x: hidden;
-      }
-      .tip {
-        padding: 16px;
-        font-weight: 300;
-      }
-      .actions {
-        width: 100%;
-        padding: 1.5rem;
-        float: right;
-        display: flex;
-        justify-content: flex-end;
-      }
-      .no-video-message {
-        padding: 1rem;
-        font-family: 'Roboto', sans-serif;
-        width: 230px;
-      }
-      .no-timeline-msg {
-        padding: 1rem;
-        align-items: center;
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-      }
-      .disabled-message {
-        z-index: 10;
-        position: absolute;
-        top: 10%;
-        left: 50%;
-        opacity: 1;
-      }
-      .hover-timestamp {
-        border-radius: 4px;
-        color: var(--mdc-plain-tooltip-supporting-text-color);
-        background-color: var(--mdc-plain-tooltip-container-color);
-        position: fixed;
-        z-index: 12;
-        pointer-events: none;
-        padding: 4px 8px;
-        transform: translateX(-50%);
-      }
-    `,
-    multlineTooltip,
-  ],
+  styleUrls: ['timeline_component.css'],
 })
 export class TimelineComponent
   implements WinscopeEventEmitter, WinscopeEventListener
@@ -599,6 +397,12 @@ export class TimelineComponent
 
   @ViewChild('miniTimeline') miniTimeline: MiniTimelineComponent | undefined;
 
+  @ViewChild('frameCanvasElementTimeline') private canvasElement:
+    | ElementRef<HTMLCanvasElement>
+    | undefined;
+
+  currentScreenRecordingTrace: Trace<MediaBasedTraceEntry> | undefined;
+  videoUrl: SafeUrl | undefined;
   initialZoom: TimeRange | undefined = undefined;
   selectedTraces: Array<Trace<object>> = [];
   sortedTraces: Array<Trace<object>> = [];
@@ -628,7 +432,7 @@ export class TimelineComponent
   private isProcessingKeyPress = false;
   private currentTabTraceType: TraceType | undefined;
   private lastPlayState: PlaybackState | undefined;
-  private screenRecordingEntry: MediaBasedTraceEntry | undefined;
+  private frameCanvasEntry: MediaBasedTraceEntry | undefined;
   private hoverPosition: HoverPositionUpdate | undefined;
 
   constructor(
@@ -697,6 +501,15 @@ export class TimelineComponent
     this.emitEvent = callback;
   }
 
+  getVideoCurrentTime(): number | undefined {
+    const videoCurrTime = assertDefined(
+      this.timelineData,
+    ).searchCorrespondingScreenRecordingTimeSeconds(
+      this.getCurrentTracePosition(),
+    );
+    return videoCurrTime;
+  }
+
   getCurrentTracePosition(): TracePosition {
     if (this.seekTracePosition) {
       return this.seekTracePosition;
@@ -746,7 +559,9 @@ export class TimelineComponent
       case ScreenRecordingChange:
         return await this.onScreenRecordingChange();
       default:
-      // do nothing
+        getLogger('TimelineComponent').trace(
+          'Not processing event ' + event.constructor.name,
+        );
     }
   }
 
@@ -763,7 +578,7 @@ export class TimelineComponent
 
   async updatePosition(position: TracePosition) {
     assertDefined(this.timelineData).setPosition(position);
-    this.updateScreenRecordingVisualization();
+    await this.updateScreenRecordingVisualization();
     if (this.playbackState !== PlaybackState.PAUSED) {
       this.emitEvent(
         new PlaybackStateChangeRequest(
@@ -824,8 +639,8 @@ export class TimelineComponent
 
   @HostListener('window:resize', ['$event'])
   onResize(event: Event) {
-    if (this.screenRecordingEntry) {
-      this.renderFrame(this.screenRecordingEntry);
+    if (this.frameCanvasEntry) {
+      this.renderFrame(this.frameCanvasEntry);
     }
   }
 
@@ -1298,42 +1113,62 @@ export class TimelineComponent
     this.playbackState = stateToReflect;
   }
 
-  private async updateScreenRecordingVisualization() {
-    const trace = this.timelineData?.getCurrentScreenRecordingTrace();
-    if (!trace) {
-      this.screenRecordingEntry = undefined;
+  private async updateScreenRecordingVisualization(
+    prefetched?: PlaybackPrefetchedEntries,
+  ) {
+    if (prefetched?.screenRecording) {
+      this.videoUrl = undefined;
+      this.frameCanvasEntry = await prefetched.screenRecording.getValue();
+      this.renderFrame(this.frameCanvasEntry);
       return;
     }
-    const entry = (await this.timelineData
-      ?.findCurrentEntryFor(trace)
-      ?.getValue()) as MediaBasedTraceEntry;
-    if (!entry) {
-      this.screenRecordingEntry = undefined;
+
+    this.frameCanvasEntry = undefined;
+
+    const lastTrace = this.currentScreenRecordingTrace;
+    this.currentScreenRecordingTrace =
+      this.timelineData?.getCurrentScreenRecordingTrace();
+    if (!this.currentScreenRecordingTrace) {
       return;
     }
-    this.screenRecordingEntry = entry;
-    this.renderFrame(entry);
+
+    const srChanged = this.currentScreenRecordingTrace !== lastTrace;
+
+    if (srChanged || !this.videoUrl) {
+      const video = await this.currentScreenRecordingTrace
+        .getEntry(0)
+        .getValue();
+      if (video.frameData !== undefined) {
+        this.videoUrl = this.sanitizer.bypassSecurityTrustUrl(
+          URL.createObjectURL(video.frameData),
+        );
+        this.changeDetectorRef.detectChanges();
+      }
+      return;
+    }
   }
 
   private renderFrame(entry: MediaBasedTraceEntry) {
-    const canvas = document.querySelector<HTMLCanvasElement>(
-      '#videoCanvasElementTimeline',
-    );
-    if (!canvas) {
+    this.changeDetectorRef.detectChanges();
+    if (!this.canvasElement || entry.image === undefined) {
       return;
     }
-    const container = assertDefined(canvas.parentElement);
+    const container = assertDefined(
+      this.canvasElement.nativeElement.parentElement,
+    );
     const scaledWidth = entry.image.width / entry.image.height;
     container.style.minWidth = `min(320px, (calc(${scaledWidth} * 60vh))`;
-    entry.tryDrawOnCanvas(canvas);
+    entry.tryDrawOnCanvas(this.canvasElement.nativeElement);
   }
 
   private async onTracePositionUpdate(event: TracePositionUpdate) {
-    if (event.seekPos) {
-      this.seekTracePosition = event.seekPos;
+    if (event.prefetchedEntries?.seek !== undefined) {
+      this.seekTracePosition = TracePosition.fromTimestamp(
+        event.prefetchedEntries.seek,
+      );
     }
     this.updateTimeInputValuesToCurrentTimestamp();
-    this.updateScreenRecordingVisualization();
+    await this.updateScreenRecordingVisualization(event.prefetchedEntries);
   }
 
   private async onActiveTraceChanged(event: ActiveTraceChanged) {
@@ -1396,6 +1231,6 @@ export class TimelineComponent
   }
 
   private async onScreenRecordingChange() {
-    this.updateScreenRecordingVisualization();
+    await this.updateScreenRecordingVisualization();
   }
 }

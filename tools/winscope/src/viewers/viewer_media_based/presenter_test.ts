@@ -22,20 +22,24 @@ import {
 } from 'trace/trace_events';
 import {makeRealTimestamp} from 'test/unit/time_test_helpers';
 import {TraceBuilder} from 'test/unit/trace_builder';
-import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {
+  CanvasEntry,
+  MediaBasedTraceEntry,
+  VideoEntry,
+} from 'trace_api/media_based_trace_entry';
 import {TraceType} from 'trace_api/trace_type';
 import {ViewerEvents} from 'viewers/common/viewer_events';
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';
+import {TracePosition} from 'trace_api/trace_position';
+import {CustomTraceEntryLazy} from 'trace_api/trace';
+import {PlaybackStateChangeHandled} from 'app/components/timeline/playback_events';
+import {PlaybackState} from 'viewers/common/playback/playback_state';
 
 describe('PresenterMediaBased', () => {
   const entries = [
-    new MediaBasedTraceEntry(
-      jasmine.createSpyObj<ImageBitmap>('image', ['close']),
-    ),
-    new MediaBasedTraceEntry(
-      jasmine.createSpyObj<ImageBitmap>('image', ['close']),
-    ),
+    new VideoEntry(new Blob(), 0),
+    new VideoEntry(new Blob(), 1),
   ];
   const timestamps = [makeRealTimestamp(10n), makeRealTimestamp(15n)];
   const trace1 = new TraceBuilder<MediaBasedTraceEntry>()
@@ -50,6 +54,27 @@ describe('PresenterMediaBased', () => {
     .setEntries(entries)
     .setTimestamps(timestamps)
     .build();
+  const canvasEntry = new CanvasEntry(
+    jasmine.createSpyObj<ImageBitmap>('image', ['close']),
+  );
+  const prefetchedSrEntry = new CustomTraceEntryLazy(
+    trace1,
+    trace1.getParser(),
+    0,
+    timestamps[0],
+    undefined,
+    async () => canvasEntry,
+  );
+  const positionUpdateWithPrefetchedEntry = new TracePositionUpdate(
+    TracePosition.fromTimestamp(timestamps[0]),
+    undefined,
+    {
+      screenRecording: prefetchedSrEntry,
+      trace: undefined,
+      seek: prefetchedSrEntry.getTimestamp(),
+    },
+  );
+  const positionUpdate1 = TracePositionUpdate.fromTimestamp(timestamps[1]);
 
   const traces = [trace1, trace2];
 
@@ -99,8 +124,7 @@ describe('PresenterMediaBased', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('processes trace position updates', async () => {
-    const positionUpdate1 = TracePositionUpdate.fromTimestamp(timestamps[1]);
+  it('processes trace position updates without prefetched entry', async () => {
     const promise = presenter.onAppEvent(positionUpdate1);
     expect(uiData.isFetchingEntries).toBeTrue();
     await promise;
@@ -112,6 +136,27 @@ describe('PresenterMediaBased', () => {
     expect(uiData.currentTraceEntries).toEqual([entries[0], entries[0]]);
   });
 
+  it('processes trace position updates with prefetched entry', async () => {
+    await presenter.onAppEvent(positionUpdateWithPrefetchedEntry);
+    expect(uiData.currentTraceEntries).toEqual([canvasEntry, entries[0]]);
+  });
+
+  it('updates isInPlaybackMode on PlaybackStateChangeHandled event', async () => {
+    expect(uiData.isInPlaybackMode).toBeFalse();
+    await presenter.onAppEvent(
+      new PlaybackStateChangeHandled(PlaybackState.FORWARDS),
+    );
+    expect(uiData.isInPlaybackMode).toBeTrue();
+    await presenter.onAppEvent(
+      new PlaybackStateChangeHandled(PlaybackState.BACKWARDS),
+    );
+    expect(uiData.isInPlaybackMode).toBeTrue();
+    await presenter.onAppEvent(
+      new PlaybackStateChangeHandled(PlaybackState.PAUSED),
+    );
+    expect(uiData.isInPlaybackMode).toBeFalse();
+  });
+
   it('updates force minimize state on expanded timeline toggle', async () => {
     expect(uiData.forceMinimize).toBeFalse();
     await presenter.onAppEvent(new ExpandedTimelineToggled(true));
@@ -120,25 +165,53 @@ describe('PresenterMediaBased', () => {
     expect(uiData.forceMinimize).toBeFalse();
   });
 
-  it('handles overlay double click', async () => {
+  it('does not process trace position update if force minimize set', async () => {
+    await presenter.onAppEvent(new ExpandedTimelineToggled(true));
+    await presenter.onAppEvent(positionUpdate1);
+    expect(uiData.currentTraceEntries).toEqual([]);
+  });
+
+  it('does not update uiData entries in playback mode if no CanvasEntries present', async () => {
+    await presenter.onAppEvent(
+      new PlaybackStateChangeHandled(PlaybackState.FORWARDS),
+    );
+    await presenter.onAppEvent(positionUpdate1);
+    expect(uiData.currentTraceEntries).toEqual([]);
+  });
+
+  it('updates uiData entries in playback mode if no entries at all present', async () => {
+    await presenter.onAppEvent(
+      new PlaybackStateChangeHandled(PlaybackState.FORWARDS),
+    );
+    await presenter.onAppEvent(positionUpdateWithPrefetchedEntry);
+    expect(uiData.currentTraceEntries.length).toEqual(2);
+    await presenter.onAppEvent(
+      new TracePositionUpdate(
+        TracePosition.fromTimestamp(makeRealTimestamp(5n)),
+      ),
+    );
+    expect(uiData.currentTraceEntries).toEqual([]);
+  });
+
+  it('handles overlay double click', () => {
     const spy = jasmine.createSpy();
     presenter.setEmitEvent(spy);
 
-    await presenter.onOverlayDblClick(3);
+    presenter.onOverlayDblClick(3);
     expect(spy).not.toHaveBeenCalled();
 
-    await presenter.onOverlayDblClick(1);
+    presenter.onOverlayDblClick(1);
     expect(spy).toHaveBeenCalledWith(new ActiveTraceChanged(trace2));
   });
 
-  it('handles overlay trace change', async () => {
+  it('handles overlay trace change', () => {
     const spy = jasmine.createSpy();
     presenter.setEmitEvent(spy);
 
-    await presenter.onOverlayScreenRecordingChange(2);
+    presenter.onOverlayScreenRecordingChange(2);
     expect(spy).not.toHaveBeenCalled();
 
-    await presenter.onOverlayScreenRecordingChange(1);
+    presenter.onOverlayScreenRecordingChange(1);
     expect(spy).toHaveBeenCalledWith(new ScreenRecordingChange(trace2));
   });
 });

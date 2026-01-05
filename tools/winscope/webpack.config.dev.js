@@ -23,7 +23,7 @@ const configDev = {
   mode: 'development',
   entry: {
     polyfills: './src/polyfills.ts',
-    styles: ['./src/material-theme.scss', './src/styles.css'],
+    styles: ['./src/styles/material-theme.scss', './src/styles/styles.css'],
     app: './src/main_dev.ts',
   },
   devtool: 'source-map',
@@ -66,7 +66,7 @@ const configDev = {
         'deps_build/trace_processor/to_be_served/trace_processor.wasm',
         'deps_build/trace_processor/to_be_served/trace_processor_memory64.wasm',
         'deps_build/trace_processor/to_be_served/engine_bundle.js',
-        'src/parsers/screen_recording/video_frame_cache_worker.js',
+        'src/viewers/common/playback/video_frame_cache_worker.js',
         {from: 'src/adb/winscope_proxy.py', to: 'winscope_proxy.py'},
         {from: 'src/logo_light_mode.svg', to: 'logo_light_mode.svg'},
         {from: 'src/logo_dark_mode.svg', to: 'logo_dark_mode.svg'},

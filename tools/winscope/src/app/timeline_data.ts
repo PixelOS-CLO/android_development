@@ -29,7 +29,9 @@ import {
   isTraceTypeWithViewer,
 } from 'trace_api/trace_type';
 import {Traces} from 'trace_api/traces';
+import {getLogger, Logger} from 'compat/logging';
 import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {timestampToVideoTimeSeconds} from 'trace/screen_recording/helpers';
 
 /**
  * A container of all the timeline-related data.
@@ -55,6 +57,7 @@ export class TimelineData {
   // cached trace entries to avoid TP and object creation latencies each time transition timeline is redrawn
   private transitionEntries: Array<HierarchyTreeNode | undefined> = [];
   private timestampConverter: ComponentTimestampConverter | undefined;
+  constructor(private readonly logger: Logger = getLogger('TimelineData')) {}
 
   async initialize(
     traces: Traces,
@@ -137,7 +140,7 @@ export class TimelineData {
 
   setPosition(position: TracePosition | undefined) {
     if (!this.hasTimestamps()) {
-      console.warn(
+      this.logger.warn(
         'Attempted to set position on traces with no timestamps/entries...',
       );
       return;
@@ -259,6 +262,34 @@ export class TimelineData {
     this.currentScreenRecordingTrace = value;
   }
 
+  searchCorrespondingScreenRecordingTimeSeconds(
+    position: TracePosition,
+  ): number | undefined {
+    const trace = this.traces.getTrace(TraceType.SCREEN_RECORDING);
+    if (!trace) {
+      return undefined;
+    }
+
+    const firstTimestamp = trace.getEntry(0).getTimestamp();
+    let entry;
+    try {
+      entry = findCorrespondingEntry(trace, position);
+    } catch (e) {
+      console.warn(
+        `Could not find corresponding entry: ${(e as Error).message}`,
+      );
+      Analytics.Error.logFrameMapError((e as Error).message);
+    }
+    if (!entry) {
+      return undefined;
+    }
+
+    return timestampToVideoTimeSeconds(
+      firstTimestamp.getValueNs(),
+      entry.getTimestamp().getValueNs(),
+    );
+  }
+
   hasTimestamps(): boolean {
     return this.firstEntry !== undefined;
   }
@@ -319,7 +350,7 @@ export class TimelineData {
     try {
       entry = findCorrespondingEntry(trace, position);
     } catch (e) {
-      console.warn(
+      this.logger.warn(
         `Could not find corresponding entry: ${(e as Error).message}`,
       );
       Analytics.Error.logFrameMapError((e as Error).message);

@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-import {
-  binarySearchFirstGreater,
-  binarySearchFirstGreaterOrEqual,
-} from 'common/typed_array';
 import {assertDefined, assertTrue} from 'common/assert';
 import {NOT_IMPLEMENTED_ERROR} from 'common/errors';
 import {INVALID_TIME_NS, Timestamp} from 'common/time/time';
 import {UserTimestamp} from 'common/time/user_timestamp';
+import {
+  binarySearchFirstGreater,
+  binarySearchFirstGreaterOrEqual,
+} from 'common/typed_array';
+import {getLogger, Logger} from 'compat/logging';
+
 import {
   CustomQueryParamTypeMap,
   CustomQueryParserResultTypeMap,
@@ -117,6 +119,29 @@ export class TraceEntryLazy<T> extends TraceEntry<T> {
 }
 
 /**
+ * Represents a trace entry whose value is loaded lazily when requested.
+ * Used when the type of the entry does not match the full trace's value.
+ * @template T The type of the full trace entry's value.
+ * @template U The type of this specific lazy trace entry's value.
+ */
+export class CustomTraceEntryLazy<T, U> extends TraceEntry<T, Promise<U>> {
+  constructor(
+    fullTrace: Trace<T>,
+    parser: Parser<T>,
+    index: AbsoluteEntryIndex,
+    timestamp: Timestamp,
+    framesRange: FramesRange | undefined,
+    private readonly getCustomValue: () => Promise<U>,
+  ) {
+    super(fullTrace, parser, index, timestamp, framesRange);
+  }
+
+  override async getValue(): Promise<U> {
+    return this.getCustomValue();
+  }
+}
+
+/**
  * Represents a trace entry whose value is loaded eagerly upon creation.
  * The value is available immediately without requiring an asynchronous operation.
  * @template T The type of the full trace entry's value.
@@ -177,6 +202,7 @@ export class Trace<T> {
     descriptors: string[],
     fullTrace: Trace<T> | undefined,
     entriesRange: EntriesRange | undefined,
+    private readonly logger: Logger = getLogger('Trace'),
   ) {
     this.type = type;
     this.parser = parser;
@@ -248,7 +274,7 @@ export class Trace<T> {
       return await this.parser.getAllEntries();
     } catch (e) {
       if (e !== NOT_IMPLEMENTED_ERROR) {
-        console.error(e);
+        this.logger.error((e as Error).message);
       }
       return await Promise.all(this.mapEntry((entry) => entry.getValue()));
     }
