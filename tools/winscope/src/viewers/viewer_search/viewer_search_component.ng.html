@@ -26,7 +26,7 @@ limitations under the License.
   <div
     class="global-search"
     [class.collapsed]="sections.isSectionCollapsed(CollapsibleSectionType.GLOBAL_SEARCH)"
-    (click)="onGlobalSearchClick($event)"
+    (click)="onGlobalSearchClick()"
   >
     <div class="title-section" #globalSearchTitle>
       <collapsible-section-title
@@ -59,7 +59,7 @@ limitations under the License.
             [isSearchInitialized]="inputData.initialized"
             [executedQuery]="getExecutedQueryForSearchSection(section.uid)"
             [saveQueryField]="saveQueryField"
-            [lastTraceFailed]="inputData.lastTraceFailed ?? false"
+            [lastTraceFailed]="inputData.lastTraceFailed"
             [canAdd]="i === searchSections.length - 1"
             [label]="getQueryLabel(section.uid)"
             [saveQueryNameControl]="section.saveQueryNameControl"
@@ -144,17 +144,17 @@ limitations under the License.
           <div class="results-table">
             <log-view
               class="results-log-view"
-              [entries]="curr.result.entries"
-              [headers]="curr.result.headers"
-              [selectedIndex]="curr.result.selectedIndex"
-              [scrollToIndex]="curr.result.scrollToIndex"
-              [currentIndex]="curr.result.currentIndex"
+              [entries]="curr.result?.entries ?? []"
+              [headers]="curr.result?.headers ?? []"
+              [selectedIndex]="curr.result?.selectedIndex"
+              [scrollToIndex]="curr.result?.scrollToIndex"
+              [currentIndex]="curr.result?.currentIndex"
               [traceType]="TraceType.SEARCH"
               [showTraceEntryTimes]="false"
               [showCurrentTimeButton]="false"
               [padEntries]="false"
-              [isFetchingData]="curr.result.isFetchingData"
-              [checkScrollViewport]="curr.result.checkScrollViewport || checkScrollViewport === $index"
+              [isFetchingData]="curr.result?.isFetchingData ?? false"
+              [checkScrollViewport]="curr.result?.checkScrollViewport || checkScrollViewport === $index"
             ></log-view>
           </div>
         </div>
