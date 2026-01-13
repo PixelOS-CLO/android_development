@@ -16,7 +16,6 @@
 
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
-import {TimezoneInfo} from '@common/time/time';
 import {TimestampConverter} from '@common/time/timestamp_converter';
 import {CrossToolProtocol} from '@cross_tool/cross_tool_protocol';
 import {ProgressListener} from '@messaging/progress_listener';
@@ -25,7 +24,7 @@ import {UserWarning} from '@messaging/user_warning';
 import {
   makeWarningInvalidLegacyTrace,
   makeWarningInvalidPerfettoTrace,
-} from '@parsers/warnings';
+} from '@parsers/helpers/warnings';
 import {
   makeWarningNoValidFiles,
   makeWarningIncompleteFrameMapping,
@@ -87,6 +86,7 @@ import {WinscopeEventListenerStub} from '@messaging/winscope_event_listener_stub
 import {getFixtureFile} from '@test/unit/io_helpers';
 import {mixin} from '@test/unit/mixin_helpers';
 import {
+  ASIA_TIMEZONE_INFO,
   makeRealTimestamp,
   makeZeroTimestamp,
 } from '@test/unit/time_test_helpers';
@@ -104,7 +104,7 @@ import {TimelineData} from './timeline_data';
 import {TracePipeline} from './trace_pipeline';
 import {TraceSearchInitializer} from './trace_search/trace_search_initializer';
 import {PlaybackState} from '@viewers/common/playback/playback_state';
-import {TraceGeometryData} from '@parsers/trace_geometry_data';
+import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {Rect} from '@common/geometry/rect';
 import {TransformMatrix} from '@common/geometry/transform_matrix';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
@@ -249,7 +249,7 @@ describe('Mediator', () => {
       spyOn(timelineComponent, 'onWinscopeEvent'),
       spyOn(timelineData, 'initialize').and.callThrough(),
       spyOn(tracePipeline, 'onWinscopeEvent'),
-      spyOn(tracePipeline, 'convertLegacyTracesToPerfetto'),
+      spyOn(tracePipeline, 'convertLegacyTracesToPerfetto').and.callThrough(),
       spyOn(tracePipeline, 'discardLegacyTraces'),
       spyOn(traceViewComponent, 'onWinscopeEvent'),
       spyOn(uploadTracesComponent, 'onWinscopeEvent'),
@@ -337,7 +337,7 @@ describe('Mediator', () => {
     expect(
       userNotifierChecker.expectNotified([
         makeWarningInvalidLegacyTrace(
-          'no_entries_InputMethodClients.pb',
+          ['no_entries_InputMethodClients.pb'],
           'Trace is empty',
         ),
       ]),
@@ -479,11 +479,7 @@ describe('Mediator', () => {
   });
 
   it('propagates trace position update according to timezone', async () => {
-    const timezoneInfo: TimezoneInfo = {
-      timezone: 'Asia/Kolkata',
-      locale: 'en-US',
-    };
-    const converter = new TimestampConverter(timezoneInfo, 0n);
+    const converter = new TimestampConverter(ASIA_TIMEZONE_INFO, 0n);
     spyOn(tracePipeline, 'getTimestampConverter').and.returnValue(converter);
     await loadFiles();
     await loadTraceView();
@@ -590,7 +586,7 @@ describe('Mediator', () => {
 
   it('warns user if frame mapping fails', async () => {
     const errorMsg = 'frame mapping failed';
-    spyOn(tracePipeline, 'buildTraces').and.throwError(errorMsg);
+    spyOn(tracePipeline, 'buildFrameMapping').and.throwError(errorMsg);
     await mediator.onWinscopeEvent(new AppFilesUploaded([wmDumpFile]));
 
     resetSpyCalls();
@@ -645,28 +641,28 @@ describe('Mediator', () => {
       // load files but do not load trace view
       await loadFiles();
       expect(timelineComponent.onWinscopeEvent).not.toHaveBeenCalled();
-      const traceSf = assertDefined(
-        tracePipeline.getTraces().getTrace(TraceType.SURFACE_FLINGER),
-      );
 
       // keep timestamp for later
       await mediator.onWinscopeEvent(
-        new RemoteToolTimestampReceived(() =>
-          traceSf.getEntry(1).getTimestamp(),
-        ),
+        new RemoteToolTimestampReceived(() => {
+          return makeRealTimestamp(1659107089233029344n);
+        }),
       );
       expect(timelineComponent.onWinscopeEvent).not.toHaveBeenCalled();
 
       // keep timestamp for later (replace previous one)
       await mediator.onWinscopeEvent(
-        new RemoteToolTimestampReceived(() =>
-          traceSf.getEntry(2).getTimestamp(),
-        ),
+        new RemoteToolTimestampReceived(() => {
+          return makeRealTimestamp(1659107090005226366n);
+        }),
       );
       expect(timelineComponent.onWinscopeEvent).not.toHaveBeenCalled();
 
       // apply timestamp
       await loadTraceView();
+      const traceSf = assertDefined(
+        tracePipeline.getTraces().getTrace(TraceType.SURFACE_FLINGER),
+      );
 
       expect(timelineComponent.onWinscopeEvent).toHaveBeenCalledWith(
         makeExpectedTracePositionUpdate(
@@ -1046,20 +1042,13 @@ describe('Mediator', () => {
     userNotifierChecker.expectNone();
   }
 
-  function reassignViewerStubTrace(viewerStub: ViewerStub) {
-    const viewerStubTraces = viewerStub.getViews()[0].traces;
-    viewerStubTraces[0] = assertDefined(
-      tracePipeline.getTraces().getTrace(viewerStubTraces[0].type),
-    );
-  }
-
   async function loadTraceView(
     expectedViewers = viewers,
     viewersToReassignTraces = [viewerStub0, viewerStub1],
   ) {
     // Simulate "View traces" button click
     resetSpyCalls();
-    await mediator.onWinscopeEvent(new AppTraceViewRequest());
+    await mediator.onWinscopeEvent(new AppTraceViewRequest(false));
 
     checkLoadTraceViewEvents(uploadTracesComponent, expectedViewers);
     viewersToReassignTraces.forEach((viewer) =>
@@ -1077,6 +1066,13 @@ describe('Mediator', () => {
     );
     expect(viewerStub1.onWinscopeEvent).not.toHaveBeenCalled();
     userNotifierChecker.expectNotified([]);
+  }
+
+  function reassignViewerStubTrace(viewerStub: ViewerStub) {
+    const viewerStubTraces = viewerStub.getViews()[0].traces;
+    viewerStubTraces[0] = assertDefined(
+      tracePipeline.getTraces().getTrace(viewerStubTraces[0].type),
+    );
   }
 
   function checkLoadTraceViewEvents(

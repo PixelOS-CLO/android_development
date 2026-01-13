@@ -195,43 +195,42 @@ export class Mediator {
   private async onAppFilesUploaded(event: AppFilesUploaded) {
     this.currentProgressListener = this.uploadTracesComponent;
     await this.loadFiles(event.files, FilesSource.UPLOADED);
-
     UserNotifier.notify();
   }
 
   private async onAppFilesCollected(event: AppFilesCollected) {
     this.currentProgressListener = this.collectTracesComponent;
-    if (event.files.collected.length > 0) {
-      await this.loadFiles(event.files.collected, FilesSource.COLLECTED);
-      const traces = this.tracePipeline.getTraces();
-      if (traces.getSize() > 0) {
-        const failedTraces: string[] = [];
-        event.files.requested.forEach((requested: RequestedTraceTypes) => {
-          if (
-            !requested.types.some(
-              (type: TraceType) => traces.getTraces(type).length > 0,
-            )
-          ) {
-            failedTraces.push(requested.name);
-          }
-        });
-        if (failedTraces.length > 0) {
-          UserNotifier.add(makeWarningNoValidFiles(failedTraces));
-        }
-        await this.uploadTracesComponent?.onWinscopeEvent(
-          new AppTraceViewRequest(),
-        );
-        await this.loadViewers(FilesSource.COLLECTED, false);
-        await this.uploadTracesComponent?.onWinscopeEvent(
-          new AppTraceViewRequestHandled(),
-        );
-      } else {
-        this.currentProgressListener?.onOperationFinished(false);
-      }
-    } else {
-      UserNotifier.add(makeWarningNoValidFiles());
+
+    if (event.files.collected.length === 0) {
       this.currentProgressListener?.onOperationFinished(false);
+      UserNotifier.add(makeWarningNoValidFiles()).notify();
+      return;
     }
+
+    await this.loadFiles(event.files.collected, FilesSource.COLLECTED);
+    const loadedReaders = this.tracePipeline.getLoadedFileReaders();
+    if (loadedReaders.length === 0) {
+      this.currentProgressListener?.onOperationFinished(false);
+      UserNotifier.notify();
+      return;
+    }
+
+    const failedTraces: string[] = [];
+    event.files.requested.forEach((requested: RequestedTraceTypes) => {
+      if (!this.tracePipeline.hasLoadedRequestedType(requested.types)) {
+        failedTraces.push(requested.name);
+      }
+    });
+    if (failedTraces.length > 0) {
+      UserNotifier.add(makeWarningNoValidFiles(failedTraces));
+    }
+    await this.uploadTracesComponent?.onWinscopeEvent(
+      new AppTraceViewRequest(),
+    );
+    await this.loadViewers(FilesSource.COLLECTED, false);
+    await this.uploadTracesComponent?.onWinscopeEvent(
+      new AppTraceViewRequestHandled(),
+    );
     UserNotifier.notify();
   }
 
@@ -673,44 +672,50 @@ export class Mediator {
   }
 
   private async processRemoteFilesReceived(files: File[], source: FilesSource) {
-    await this.resetAppToInitialState();
     this.currentProgressListener = this.uploadTracesComponent;
     await this.loadFiles(files, source);
     UserNotifier.notify();
   }
 
   private async loadViewers(source: FilesSource, discardLegacyTraces: boolean) {
-    const e2eStartTimeMs = Date.now();
+    // timer#sleepMs() allows the UI to update before making the main thread very busy
     const timer = new Timer(10, 10);
+    const e2eStartTimeMs = Date.now();
+
+    this.tracePipeline.filterLoadedFilesWithoutVisualization();
 
     if (discardLegacyTraces) {
       this.tracePipeline.discardLegacyTraces();
     } else {
       this.currentProgressListener?.onProgressUpdate(
-        'Converting legacy traces to perfetto...',
+        'Converting legacy files to perfetto...',
         undefined,
       );
-      await timer.sleepMs(); // allow the UI to update before making the main thread very busy
+      await timer.sleepMs();
       await this.tracePipeline.convertLegacyTracesToPerfetto();
       this.currentProgressListener?.onOperationFinished(true);
     }
 
     this.currentProgressListener?.onProgressUpdate(
-      'Computing frame mapping...',
+      'Building traces...',
       undefined,
     );
-
-    await timer.sleepMs(); // allow the UI to update before making the main thread very busy
-
-    this.tracePipeline.filterTracesWithoutVisualization();
+    await timer.sleepMs();
+    this.tracePipeline.buildTraces();
     if (this.tracePipeline.getTraces().getSize() === 0) {
       this.currentProgressListener?.onOperationFinished(false);
       return;
     }
 
+    this.currentProgressListener?.onProgressUpdate(
+      'Building frame mapping...',
+      undefined,
+    );
+    await timer.sleepMs();
+
     try {
       const startTimeMs = Date.now();
-      await this.tracePipeline.buildTraces();
+      await this.tracePipeline.buildFrameMapping();
       Analytics.Loading.logFrameMapBuildTime(Date.now() - startTimeMs);
       Analytics.Memory.logUsage('frame_map_built');
       this.currentProgressListener?.onOperationFinished(true);
@@ -801,9 +806,6 @@ export class Mediator {
     const traceGeometryData = this.tracePipeline.getTraceGeometryData();
     const trace = this.screenRecordingTrace ?? eventTrace;
 
-    if (traceGeometryData === undefined) {
-      return;
-    }
     if (trace === undefined) {
       return;
     }
