@@ -1066,12 +1066,14 @@ describe('TimelineComponent', () => {
     const trace = makeEmptyTrace<HierarchyTreeNode>(TraceType.SEARCH);
 
     await timelineComponent.onWinscopeEvent(new TraceAddRequest(trace));
+    dom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(1);
     expect(timelineComponent.sortedTraces).not.toEqual(initialTraces);
     expect(timelineComponent.sortedTraces[0]).toEqual(trace);
     expectSelectedTraceTypes([TraceType.SEARCH, TraceType.SURFACE_FLINGER]);
 
     await timelineComponent.onWinscopeEvent(new TraceRemoveRequest(trace));
+    dom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(2);
     expect(timelineComponent.sortedTraces).toEqual(initialTraces);
     expectSelectedTraceTypes([TraceType.SURFACE_FLINGER]);
@@ -1406,20 +1408,22 @@ describe('TimelineComponent', () => {
       expect(spyPrevEntry).not.toHaveBeenCalled();
     });
 
-    it('prev and next button disabled on playback active', () => {
+    it('prev and next button disabled on playback active', async () => {
+      await updateActiveTrace(TraceType.WINDOW_MANAGER);
+      const prevEntryButton = dom.get(prevEntrySelector);
+      const nextEntryButton = dom.get(nextEntrySelector);
+      nextEntryButton.click();
+      prevEntryButton.checkDisabled(false);
+      nextEntryButton.checkDisabled(false);
+
       const timelineComponent = assertDefined(component.timeline);
       timelineComponent.playbackState = PlaybackState.FORWARDS;
       dom.detectChanges();
-
-      const prevEntryButton = dom.get(prevEntrySelector);
-      const nextEntryButton = dom.get(nextEntrySelector);
-
       prevEntryButton.checkDisabled(true);
       nextEntryButton.checkDisabled(true);
 
       timelineComponent.playbackState = PlaybackState.PAUSED;
       dom.detectChanges();
-
       prevEntryButton.checkDisabled(false);
       nextEntryButton.checkDisabled(false);
     });
