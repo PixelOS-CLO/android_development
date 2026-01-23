@@ -23,23 +23,23 @@ import {MatProgressBarModule} from '@angular/material/progress-bar';
 import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {FilesSource} from 'app/files_source';
-import {TracePipeline} from 'app/trace_pipeline';
-import {assertDefined} from 'common/assert';
-import {InMemoryStorage} from 'common/store/in_memory_storage';
-import {AppTraceViewRequest, AppTraceViewRequestHandled} from 'app/app_events';
-import {ShowTraceUploadWarning} from 'trace/trace_events';
-import {DOMTestHelper} from 'test/unit/dom_test_helpers';
-import {getFixtureFile} from 'test/unit/io_helpers';
-import {makeZeroTimestamp} from 'test/unit/time_test_helpers';
-import {TraceBuilder} from 'test/unit/trace_builder';
-import {Traces} from 'trace_api/traces';
+import {FilesSource} from '@app/files_source';
+import {TracePipeline} from '@app/trace_pipeline';
+import {assertDefined} from '@common/assert';
+import {InMemoryStorage} from '@common/store/in_memory_storage';
+import {AppTraceViewRequest, AppTraceViewRequestHandled} from '@app/app_events';
+import {ShowTraceUploadWarning} from '@trace/trace_events';
+import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {getFixtureFile} from '@test/unit/io_helpers';
+import {makeZeroTimestamp} from '@test/unit/time_test_helpers';
+import {TraceBuilder} from '@test/unit/trace_builder';
+import {Traces} from '@trace_api/traces';
 import {LoadProgressComponent} from './load_progress_component';
 import {UploadTracesComponent} from './upload_traces_component';
 import {
   getReasonForNoTraceVisualization,
   TraceType,
-} from 'trace_api/trace_type';
+} from '@trace_api/trace_type';
 
 describe('UploadTracesComponent', () => {
   const uploadSelector = '.upload-btn';
@@ -181,22 +181,26 @@ describe('UploadTracesComponent', () => {
   it('handles removal of the only uploaded trace', async () => {
     await loadFiles([validSfFile]);
 
-    const spy = spyOn(component, 'onOperationFinished');
+    const onOperationFinished = spyOn(component, 'onOperationFinished');
+    const clearAllTracesEmitted = spyOn(component.clearAllTraces, 'emit');
     dom.findAndClick(removeTraceSelector);
+
+    expect(dom.find('.uploaded-files')).toBeUndefined();
     expect(dom.find('.drop-info')).toBeDefined();
-    expect(spy).toHaveBeenCalled();
+    expect(onOperationFinished).toHaveBeenCalledTimes(1);
+    expect(clearAllTracesEmitted).toHaveBeenCalledTimes(1);
     expect(component.tracePipeline?.getTraces().getSize()).toBe(0);
   });
 
-  it('can remove all uploaded traces', async () => {
+  it('can clear all uploaded traces', async () => {
     await loadFiles([validSfFile, validWmFile]);
     expect(component.tracePipeline?.getTraces().getSize()).toBe(2);
 
-    const spy = spyOn(component, 'onOperationFinished');
+    const onOperationFinished = spyOn(component, 'onOperationFinished');
+    const clearAllTracesEmitted = spyOn(component.clearAllTraces, 'emit');
     dom.findAndClick(clearAllSelector);
-    expect(dom.find('.drop-info')).toBeDefined();
-    expect(spy).toHaveBeenCalled();
-    expect(component.tracePipeline?.getTraces().getSize()).toBe(0);
+    expect(onOperationFinished).toHaveBeenCalledTimes(1);
+    expect(clearAllTracesEmitted).toHaveBeenCalledTimes(1);
   });
 
   it('can emit view traces event', async () => {
@@ -472,9 +476,8 @@ describe('UploadTracesComponent', () => {
   });
 
   async function loadFiles(files: File[]) {
-    const tracePipeline = assertDefined(component.tracePipeline);
-    tracePipeline.clear();
-    await tracePipeline.loadFiles(files, FilesSource.TEST, undefined);
+    component.tracePipeline = new TracePipeline();
+    await component.tracePipeline.loadFiles(files, FilesSource.TEST, undefined);
     dom.detectChanges();
   }
 

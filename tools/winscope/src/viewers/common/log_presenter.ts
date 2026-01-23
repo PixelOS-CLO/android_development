@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-import {binarySearchFirstGreaterOrEqual} from 'common/typed_array';
-import {assertDefined} from 'common/assert';
-import {TraceEntry} from 'trace_api/trace';
-import {StringFilterPredicate} from 'viewers/common/string_filter_predicate';
-import {TextFilter} from 'viewers/common/text_filter';
+import {StringFilterPredicate} from '@common/string_filter_predicate';
+import {binarySearchFirstGreaterOrEqual} from '@common/typed_array';
+import {assertDefined} from '@common/assert';
+import {TraceEntry} from '@trace_api/trace';
+import {TextFilter} from '@viewers/common/text_filter';
 import {ColumnSpec, LogEntry, LogHeader} from './ui_data_log';
 
 export class LogPresenter<Entry extends LogEntry> {
@@ -26,7 +26,7 @@ export class LogPresenter<Entry extends LogEntry> {
   private filteredEntries: Entry[] = [];
   private headers: LogHeader[] = [];
   private filterPredicates = new Map<ColumnSpec, StringFilterPredicate>();
-  private currentEntry: TraceEntry<object> | undefined;
+  private currentEntry: TraceEntry<unknown> | undefined;
   private selectedIndex: number | undefined;
   private scrollToIndex: number | undefined;
   private currentIndex: number | undefined;
@@ -105,7 +105,7 @@ export class LogPresenter<Entry extends LogEntry> {
     }
   }
 
-  applyTracePositionUpdate(entry: TraceEntry<object> | undefined) {
+  applyTracePositionUpdate(entry: TraceEntry<unknown> | undefined) {
     this.currentEntry = entry;
     this.resetIndices();
   }

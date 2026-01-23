@@ -13,23 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {assertDefined} from 'common/assert';
-import {TIME_UNIT_TO_NANO} from 'common/time/time_units';
-import {LegacyParserProvider} from 'test/unit/fixture_utils';
+import {assertDefined} from '@common/assert';
+import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
+import {LegacyParserProvider} from '@test/unit/fixture_utils';
 import {
   makeRealTimestamp,
   timestampEqualityTester,
-} from 'test/unit/time_test_helpers';
-import {CoarseVersion} from 'trace_api/coarse_version';
+} from '@test/unit/time_test_helpers';
+import {CoarseVersion} from '@trace_api/coarse_version';
 import {
   MediaBasedTraceEntry,
   VideoEntry,
-} from 'trace_api/media_based_trace_entry';
-import {Parser} from 'trace_api/parser';
-import {TraceType} from 'trace_api/trace_type';
+} from '@trace/media_based/media_based_trace_entry';
+import {Parser} from '@trace_api/parser';
+import {TraceType} from '@trace_api/trace_type';
+import {spyOnThumbnailGenerator} from './test_helpers';
 
 describe('ParserScreenRecording', () => {
   let parser: Parser<MediaBasedTraceEntry>;
+
+  beforeAll(() => {
+    spyOnThumbnailGenerator();
+  });
 
   describe('metadata v2', () => {
     beforeAll(async () => {
@@ -73,6 +78,13 @@ describe('ParserScreenRecording', () => {
         expect(entry).toBeInstanceOf(VideoEntry);
         expect(Number(entry.videoTimeSeconds)).toBeCloseTo(1.371077, 0.001);
       }
+    });
+
+    it('generates thumbnail', async () => {
+      const entry0 = await parser.getEntry(0);
+      expect(entry0.thumbnail).toBeDefined();
+      const entry1 = await parser.getEntry(1);
+      expect(entry1.thumbnail).toEqual(entry0.thumbnail);
     });
   });
 
@@ -118,6 +130,13 @@ describe('ParserScreenRecording', () => {
         expect(entry).toBeInstanceOf(VideoEntry);
         expect(Number(entry.videoTimeSeconds)).toBeCloseTo(3.251884, 0.001);
       }
+    });
+
+    it('generates thumbnail', async () => {
+      const entry0 = await parser.getEntry(0);
+      expect(entry0.thumbnail).toBeDefined();
+      const entry1 = await parser.getEntry(1);
+      expect(entry1.thumbnail).toEqual(entry0.thumbnail);
     });
   });
 
@@ -176,6 +195,13 @@ describe('ParserScreenRecording', () => {
         expect(entry).toBeInstanceOf(VideoEntry);
         expect(Number(entry.videoTimeSeconds)).toBeCloseTo(4.192109, 0.001);
       }
+    });
+
+    it('generates thumbnail', async () => {
+      const entry0 = await parser.getEntry(0);
+      expect(entry0.thumbnail).toBeDefined();
+      const entry1 = await parser.getEntry(1);
+      expect(entry1.thumbnail).toEqual(entry0.thumbnail);
     });
   });
 
@@ -280,6 +306,13 @@ describe('ParserScreenRecording', () => {
           expect(entry).toBeInstanceOf(VideoEntry);
           expect(Number(entry.videoTimeSeconds)).toBeCloseTo(4.192109, 0.001);
         }
+      });
+
+      it('generates thumbnail', async () => {
+        const entry0 = await parser.getEntry(0);
+        expect(entry0.thumbnail).toBeDefined();
+        const entry1 = await parser.getEntry(1);
+        expect(entry1.thumbnail).toEqual(entry0.thumbnail);
       });
     }
 

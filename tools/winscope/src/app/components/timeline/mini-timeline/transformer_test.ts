@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import {TimeRange} from 'common/time/time';
-import {makeRealTimestamp, UTC_CONVERTER} from 'test/unit/time_test_helpers';
+import {TimeRange} from '@common/time/time';
+import {makeRealTimestamp, UTC_CONVERTER} from '@test/unit/time_test_helpers';
 import {Transformer} from './transformer';
 
 describe('Transformer', () => {
@@ -32,7 +32,7 @@ describe('Transformer', () => {
 
     const rangeStart = fromRange.startNs;
     const rangeEnd = fromRange.endNs;
-    const range = fromRange.endNs - fromRange.startNs;
+    const range = BigInt(fromRange.endNs - fromRange.startNs);
 
     expect(transformer.transform(fromRange.from)).toBe(toRange.from);
     expect(transformer.transform(fromRange.to)).toBe(toRange.to);
@@ -67,7 +67,7 @@ describe('Transformer', () => {
     const transformer = new Transformer(fromRange, toRange, UTC_CONVERTER);
 
     const rangeStart = fromRange.startNs;
-    const range = fromRange.endNs - fromRange.startNs;
+    const range = BigInt(fromRange.endNs - fromRange.startNs);
 
     expect(transformer.untransform(toRange.from).getValueNs()).toBe(
       fromRange.startNs,

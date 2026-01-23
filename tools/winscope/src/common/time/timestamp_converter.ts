@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {assertDefined, assertTrue} from 'common/assert';
+import {assertDefined, assertTrue} from '@common/assert';
 import {INVALID_TIME_NS, Timestamp, TimezoneInfo} from './time';
 import {TIME_UNIT_TO_NANO, TIME_UNITS} from './time_units';
 import {
@@ -66,11 +66,11 @@ export class TimestampConverter
     ComponentTimestampConverter,
     RemoteToolTimestampConverter
 {
-  private readonly utcOffset = new UTCOffset();
+  private createdTimestampType: TimestampType | undefined;
+  private utcOffset = new UTCOffset();
   private readonly realTimestampFormatter = new RealTimestampFormatter(
     this.utcOffset,
   );
-  private createdTimestampType: TimestampType | undefined;
 
   /**
    * @param timezoneInfo The timezone information to use.
@@ -283,7 +283,7 @@ export class TimestampConverter
     this.createdTimestampType = undefined;
     this.realToBootTimeOffsetNs = undefined;
     this.realToMonotonicTimeOffsetNs = undefined;
-    this.utcOffset.clear();
+    this.utcOffset = new UTCOffset();
   }
 
   canMakeRealTimestamps(): boolean {

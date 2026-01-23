@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-import {WinscopeEvent} from 'messaging/winscope_event';
+import {WinscopeEvent} from '@messaging/winscope_event';
 import {
   EmitEvent,
   WinscopeEventEmitter,
-} from 'messaging/winscope_event_emitter';
-import {WinscopeEventListener} from 'messaging/winscope_event_listener';
-import {Trace} from 'trace_api/trace';
+} from '@messaging/winscope_event_emitter';
+import {WinscopeEventListener} from '@messaging/winscope_event_listener';
+import {Trace} from '@trace_api/trace';
 
 export enum ViewType {
   TRACE_TAB,
@@ -31,7 +31,7 @@ export enum ViewType {
 export class View {
   constructor(
     public type: ViewType,
-    public traces: Array<Trace<object>>,
+    public traces: Array<Trace<unknown>>,
     public htmlElement: HTMLElement,
     public title: string,
   ) {}
@@ -41,6 +41,6 @@ export interface Viewer extends WinscopeEventListener, WinscopeEventEmitter {
   onWinscopeEvent(event: WinscopeEvent): Promise<void>;
   setEmitEvent(callback: EmitEvent): void;
   getViews(): View[];
-  getTraces(): Array<Trace<object>>;
+  getTraces(): Array<Trace<unknown>>;
   onDestroy(): void;
 }

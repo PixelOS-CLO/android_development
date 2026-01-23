@@ -26,12 +26,12 @@ import {
 } from '@angular/core';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {TimelineData} from 'app/timeline_data';
-import {assertDefined} from 'common/assert';
-import {Trace} from 'trace_api/trace';
-import {TRACE_INFO} from 'trace_api/trace_info';
-import {TracePosition} from 'trace_api/trace_position';
-import {TraceType, compareByDisplayOrder} from 'trace_api/trace_type';
+import {TimelineData} from '@app/timeline_data';
+import {assertDefined} from '@common/assert';
+import {Trace} from '@trace_api/trace';
+import {TRACE_INFO} from '@trace_api/trace_info';
+import {TracePosition} from '@trace_api/trace_position';
+import {TraceType, compareByDisplayOrder} from '@trace_api/trace_type';
 import {AbstractTimelineRowComponent} from './abstract_timeline_row_component';
 import {DefaultTimelineRowComponent} from './default_timeline_row_component';
 import {TransitionTimelineComponent} from './transition_timeline_component';
@@ -49,61 +49,14 @@ import {TransitionTimelineComponent} from './transition_timeline_component';
     TransitionTimelineComponent,
     DefaultTimelineRowComponent,
   ],
-  template: `
-    <div id="expanded-timeline-wrapper" #expandedTimelineWrapper>
-      @for (trace of getTracesSortedByDisplayOrder(); track trace) {
-        <div
-            class="timeline row">
-          <div class="icon-wrapper">
-            <mat-icon
-                class="icon"
-                [matTooltip]="TRACE_INFO[trace.type].name"
-                [style]="{color: TRACE_INFO[trace.type].color}">
-              {{ TRACE_INFO[trace.type].icon }}
-            </mat-icon>
-          </div>
-          @if (trace.type === TraceType.TRANSITION) {
-            <transition-timeline
-              [color]="TRACE_INFO[trace.type].color"
-              [trace]="trace"
-              [transitionEntries]="timelineData.getTransitionEntries()"
-              [selectedEntry]="timelineData.findCurrentEntryFor(trace)"
-              [selectionRange]="timelineData.getSelectionTimeRange()"
-              [fullRange]="timelineData.getFullTimeRange()"
-              [timestampConverter]="timelineData.getTimestampConverter()"
-              [isActive]="isActiveTrace(trace)"
-              (onTracePositionUpdate)="onTracePositionUpdate.emit($event)"
-              (onScrollEvent)="updateScroll($event)"
-              (onTraceClicked)="onTraceClicked.emit($event)"
-              (onMouseXRatioUpdate)="onMouseXRatioUpdate.emit($event)"
-              class="single-timeline">
-            </transition-timeline>
-          } @else {
-            <single-timeline
-              [color]="TRACE_INFO[trace.type].color"
-              [trace]="trace"
-              [selectedEntry]="timelineData.findCurrentEntryFor(trace)"
-              [selectionRange]="timelineData.getSelectionTimeRange()"
-              [timestampConverter]="timelineData.getTimestampConverter()"
-              [isActive]="isActiveTrace(trace)"
-              (onTracePositionUpdate)="onTracePositionUpdate.emit($event)"
-              (onScrollEvent)="updateScroll($event)"
-              (onTraceClicked)="onTraceClicked.emit($event)"
-              (onMouseXRatioUpdate)="onMouseXRatioUpdate.emit($event)"
-              class="single-timeline">
-            </single-timeline>
-          }
-        </div>
-      }
-    </div>
-  `,
+  templateUrl: './expanded_timeline_component.ng.html',
   styleUrls: ['expanded_timeline_component.css'],
 })
 export class ExpandedTimelineComponent {
   @Input() timelineData: TimelineData | undefined;
   @Output() readonly onTracePositionUpdate = new EventEmitter<TracePosition>();
   @Output() readonly onScrollEvent = new EventEmitter<WheelEvent>();
-  @Output() readonly onTraceClicked = new EventEmitter<Trace<object>>();
+  @Output() readonly onTraceClicked = new EventEmitter<Trace<unknown>>();
   @Output() readonly onMouseXRatioUpdate = new EventEmitter<
     number | undefined
   >();
@@ -122,7 +75,7 @@ export class ExpandedTimelineComponent {
     this.resizeCanvases();
   }
 
-  getTracesSortedByDisplayOrder(): Array<Trace<{}>> {
+  getTracesSortedByDisplayOrder(): Array<Trace<unknown>> {
     const traces = assertDefined(this.timelineData)
       .getTraces()
       .mapTrace((trace) => trace);
@@ -133,7 +86,7 @@ export class ExpandedTimelineComponent {
     this.onScrollEvent.emit(event);
   }
 
-  isActiveTrace(trace: Trace<object>) {
+  isActiveTrace(trace: Trace<unknown>) {
     return trace === this.timelineData?.getActiveTrace();
   }
 
@@ -143,9 +96,11 @@ export class ExpandedTimelineComponent {
     // each other, since if one timeline is still too big the container will stretch to that size.
     const timelines = [
       ...(this.transitionTimelines as QueryList<
-        AbstractTimelineRowComponent<{}>
+        AbstractTimelineRowComponent<unknown>
       >),
-      ...(this.singleTimelines as QueryList<AbstractTimelineRowComponent<{}>>),
+      ...(this.singleTimelines as QueryList<
+        AbstractTimelineRowComponent<unknown>
+      >),
     ];
     for (const timeline of timelines) {
       timeline.getCanvas().width = 0;

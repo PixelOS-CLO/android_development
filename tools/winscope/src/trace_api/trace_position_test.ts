@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {Timestamp, TimestampFormatter} from 'common/time/time';
-import {TraceBuilder} from 'test/unit/trace_builder';
+import {Timestamp, TimestampFormatter} from '@common/time/time';
+import {TraceBuilder} from '@test/unit/trace_builder';
 
 import {FramesRange} from './index_types';
 import {TraceEntry} from './trace';
@@ -80,7 +80,7 @@ describe('TracePosition', () => {
     function getMockTraceEntry(
       index: number,
       frames?: FramesRange,
-    ): TraceEntry<{}> {
+    ): TraceEntry<unknown> {
       const entry = mockSfTraceTwoEntries.getEntry(index);
       if (frames !== undefined) {
         spyOn(mockSfTraceTwoEntries, 'hasFrameInfo').and.returnValue(true);

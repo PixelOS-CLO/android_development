@@ -74,16 +74,16 @@ describe('Viewer Input Method Clients', () => {
     );
     expect(nodes.length).toBe(5);
     expect(await nodes[0].getText()).toContain(
-      'InputMethodClients - 2022-11-21, 18:05:14.970 - InsetsSourceConsumer#notifyAnimationFinished',
+      'InputMethodClientsTraceProto - 2022-11-21, 18:05:14.970 - InsetsSourceConsumer#notifyAnimationFinished',
     );
     expect(await nodes[1].getText()).toContain('253 - SfSubtree - Task=8#253');
     expect(await nodes[2].getText()).toContain(
-      '778 - Letterbox - left#778 HWC V',
+      '778 - Letterbox - left#778 HWCV',
     );
     expect(await nodes[3].getText()).toContain(
-      '786 - com.google.(...).ZeroStateSearchActivity#786 HWC V',
+      '786 - com.google.(...).ZeroStateSearchActivity#786 HWCV',
     );
-    expect(await nodes[4].getText()).toContain('765 - InputMethod#765 HWC V');
+    expect(await nodes[4].getText()).toContain('765 - InputMethod#765 HWCV');
   }
 
   async function checkInputMethodLayerProperties() {

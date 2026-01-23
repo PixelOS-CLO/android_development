@@ -14,23 +14,22 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert';
-import {TimeRange} from 'common/time/time';
+import {assertDefined} from '@common/assert';
+import {TimeRange} from '@common/time/time';
 import {makeWarningCannotParseAllTransitions} from './warnings';
-import {HierarchyTreeBuilder} from 'test/unit/hierarchy_tree_builder';
-import {ParserBuilder} from 'test/unit/parser_builder';
-import {makeRealTimestamp, UTC_CONVERTER} from 'test/unit/time_test_helpers';
-import {TraceBuilder} from 'test/unit/trace_builder';
-import {makeEmptyTrace} from 'test/unit/trace_test_helpers';
-import {TracesBuilder} from 'test/unit/traces_builder';
-import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {Trace} from 'trace_api/trace';
-import {TracePosition} from 'trace_api/trace_position';
-import {TraceType} from 'trace_api/trace_type';
-import {Traces} from 'trace_api/traces';
-import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+import {HierarchyTreeBuilder} from '@test/unit/hierarchy_tree_builder';
+import {ParserBuilder} from '@test/unit/parser_builder';
+import {makeRealTimestamp, UTC_CONVERTER} from '@test/unit/time_test_helpers';
+import {TraceBuilder} from '@test/unit/trace_builder';
+import {makeEmptyTrace} from '@test/unit/trace_test_helpers';
+import {TracesBuilder} from '@test/unit/traces_builder';
+import {UserNotifierChecker} from '@test/unit/user_notifier_checker';
+import {TracePosition} from '@trace_api/trace_position';
+import {TraceType} from '@trace_api/trace_type';
+import {Traces} from '@trace_api/traces';
+import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {TimelineData} from './timeline_data';
-import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
+import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 
 describe('TimelineData', () => {
   let timelineData: TimelineData;
@@ -43,25 +42,35 @@ describe('TimelineData', () => {
 
   const traces = new TracesBuilder()
     .setTimestamps(TraceType.PROTO_LOG, [timestamp9])
-    .setTimestamps(TraceType.EVENT_LOG, [timestamp9])
+    .setTimestamps(TraceType.CUJS, [timestamp9])
     .setTimestamps(TraceType.SURFACE_FLINGER, [timestamp10])
     .setTimestamps(TraceType.SCREEN_RECORDING, [timestamp5])
     .setTimestamps(TraceType.WINDOW_MANAGER, [timestamp11])
     .setTimestamps(TraceType.TRANSACTIONS, [])
     .build();
 
-  const traceSf = assertDefined(traces.getTrace(TraceType.SURFACE_FLINGER));
-  const traceWm = assertDefined(traces.getTrace(TraceType.WINDOW_MANAGER));
-  const traceSr = assertDefined(traces.getTrace(TraceType.SCREEN_RECORDING));
+  const traceSf = assertDefined(
+    traces.getTrace<HierarchyTreeNode>(TraceType.SURFACE_FLINGER),
+  );
+  const traceWm = assertDefined(
+    traces.getTrace<HierarchyTreeNode>(TraceType.WINDOW_MANAGER),
+  );
+  const traceSr = assertDefined(
+    traces.getTrace<HierarchyTreeNode>(TraceType.SCREEN_RECORDING),
+  );
   const traceSr2 = new TraceBuilder<MediaBasedTraceEntry>()
     .setEntries([])
     .build();
 
   const position10 = TracePosition.fromTraceEntry(
-    assertDefined(traces.getTrace(TraceType.SURFACE_FLINGER)).getEntry(0),
+    assertDefined(
+      traces.getTrace<HierarchyTreeNode>(TraceType.SURFACE_FLINGER),
+    ).getEntry(0),
   );
   const position11 = TracePosition.fromTraceEntry(
-    assertDefined(traces.getTrace(TraceType.WINDOW_MANAGER)).getEntry(0),
+    assertDefined(
+      traces.getTrace<HierarchyTreeNode>(TraceType.WINDOW_MANAGER),
+    ).getEntry(0),
   );
   const position1000 = TracePosition.fromTimestamp(makeRealTimestamp(1000n));
 
@@ -88,13 +97,22 @@ describe('TimelineData', () => {
     expect(timelineData.getCurrentScreenRecordingTrace()).toEqual(traceSr2);
   });
 
+  it('can only be initialized once', async () => {
+    timelineData.initialize(traces, undefined, UTC_CONVERTER);
+    await expectAsync(
+      timelineData.initialize(traces, undefined, UTC_CONVERTER),
+    ).toBeRejected();
+  });
+
   describe('dumps', () => {
     const traces = new TracesBuilder()
       .setTimestamps(TraceType.SURFACE_FLINGER, [timestamp10, timestamp11])
       .setTimestamps(TraceType.WINDOW_MANAGER, [timestamp0])
       .build();
 
-    const dumpWm = assertDefined(traces.getTrace(TraceType.WINDOW_MANAGER));
+    const dumpWm = assertDefined(
+      traces.getTrace<HierarchyTreeNode>(TraceType.WINDOW_MANAGER),
+    );
 
     it('drops trace if it is a dump (will not display in timeline UI)', () => {
       timelineData.initialize(traces, undefined, UTC_CONVERTER);
@@ -202,60 +220,56 @@ describe('TimelineData', () => {
     expect(success).toBeFalse();
   });
 
-  it('hasTimestamps()', () => {
-    expect(timelineData.hasTimestamps()).toBeFalse();
-
-    // no trace
-    {
+  describe('hasTimestamps()', () => {
+    it('false for no traces', () => {
+      expect(timelineData.hasTimestamps()).toBeFalse();
       const traces = new TracesBuilder().build();
       timelineData.initialize(traces, undefined, UTC_CONVERTER);
       expect(timelineData.hasTimestamps()).toBeFalse();
-    }
-    // trace without timestamps
-    {
+    });
+
+    it('false for trace without timestamps', () => {
       const traces = new TracesBuilder()
         .setTimestamps(TraceType.SURFACE_FLINGER, [])
         .build();
       timelineData.initialize(traces, undefined, UTC_CONVERTER);
       expect(timelineData.hasTimestamps()).toBeFalse();
-    }
-    // trace with timestamps
-    {
+    });
+
+    it('true for trace with timestamps', () => {
       const traces = new TracesBuilder()
         .setTimestamps(TraceType.SURFACE_FLINGER, [timestamp10])
         .build();
       timelineData.initialize(traces, undefined, UTC_CONVERTER);
       expect(timelineData.hasTimestamps()).toBeTrue();
-    }
+    });
   });
 
-  it('hasMoreThanOneDistinctTimestamp()', () => {
-    expect(timelineData.hasMoreThanOneDistinctTimestamp()).toBeFalse();
-
-    // no trace
-    {
+  describe('hasMoreThanOneDistinctTimestamp()', () => {
+    it('false for no traces', () => {
+      expect(timelineData.hasMoreThanOneDistinctTimestamp()).toBeFalse();
       const traces = new TracesBuilder().build();
       timelineData.initialize(traces, undefined, UTC_CONVERTER);
       expect(timelineData.hasMoreThanOneDistinctTimestamp()).toBeFalse();
-    }
-    // no distinct timestamps
-    {
+    });
+
+    it('false for traces with single distinct timestamp', () => {
       const traces = new TracesBuilder()
         .setTimestamps(TraceType.SURFACE_FLINGER, [timestamp10])
         .setTimestamps(TraceType.WINDOW_MANAGER, [timestamp10])
         .build();
       timelineData.initialize(traces, undefined, UTC_CONVERTER);
       expect(timelineData.hasMoreThanOneDistinctTimestamp()).toBeFalse();
-    }
-    // distinct timestamps
-    {
+    });
+
+    it('true for traces with multiple distinct timestamps', () => {
       const traces = new TracesBuilder()
         .setTimestamps(TraceType.SURFACE_FLINGER, [timestamp10])
         .setTimestamps(TraceType.WINDOW_MANAGER, [timestamp11])
         .build();
       timelineData.initialize(traces, undefined, UTC_CONVERTER);
       expect(timelineData.hasMoreThanOneDistinctTimestamp()).toBeTrue();
-    }
+    });
   });
 
   it('getCurrentPosition() returns same object if no change to range', () => {
@@ -348,7 +362,7 @@ describe('TimelineData', () => {
           .build(),
       )
       .build();
-    traces.addTrace(trace as Trace<{}>);
+    traces.addTrace(trace);
 
     await timelineData.initialize(traces, undefined, UTC_CONVERTER);
     userNotifierChecker.expectAdded([makeWarningCannotParseAllTransitions()]);

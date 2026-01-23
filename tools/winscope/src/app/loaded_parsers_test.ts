@@ -14,26 +14,26 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert';
-import {unzipFile} from 'common/io';
-import {TimeRange} from 'common/time/time';
-import {UserWarning} from 'messaging/user_warning';
+import {assertDefined} from '@common/assert';
+import {unzipFile} from '@common/io';
+import {TimeRange} from '@common/time/time';
+import {UserWarning} from '@messaging/user_warning';
 import {
   makeWarningTraceHasOldData,
   makeWarningTraceOverridden,
   makeWarningTraceHasElapsedTimestamps,
 } from './warnings';
-import {FileAndParser} from 'parsers/file_and_parser';
-import {FileAndParsers} from 'parsers/file_and_parsers';
-import {ParserBuilder} from 'test/unit/parser_builder';
+import {FileAndParser} from '@parsers/file_and_parser';
+import {FileAndParsers} from '@parsers/file_and_parsers';
+import {ParserBuilder} from '@test/unit/parser_builder';
 import {
   makeRealTimestamp,
   makeElapsedTimestamp,
-} from 'test/unit/time_test_helpers';
-import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {TraceFile} from 'trace/trace_file';
-import {Parser} from 'trace_api/parser';
-import {TraceType} from 'trace_api/trace_type';
+} from '@test/unit/time_test_helpers';
+import {UserNotifierChecker} from '@test/unit/user_notifier_checker';
+import {TraceFile} from '@trace/trace_file';
+import {Parser} from '@trace_api/parser';
+import {TraceType} from '@trace_api/trace_type';
 import {LoadedParsers} from './loaded_parsers';
 
 describe('LoadedParsers', () => {
@@ -117,10 +117,10 @@ describe('LoadedParsers', () => {
     ])
     .setDescriptors(['wm transitions'])
     .build();
-  const parserEventlog = new ParserBuilder<object>()
-    .setType(TraceType.EVENT_LOG)
+  const parserNoOffsets = new ParserBuilder<object>()
+    .setType(TraceType.CUJS)
     .setTimestamps(timestamps)
-    .setDescriptors(['eventlog'])
+    .setDescriptors(['cujs'])
     .setNoOffsets(true)
     .build();
   const parserScreenRecording = new ParserBuilder<object>()
@@ -198,8 +198,8 @@ describe('LoadedParsers', () => {
   });
 
   it('keeps real-time parsers without offset', () => {
-    loadParsers([parserSf0, parserEventlog], []);
-    expectLoadResult([parserSf0, parserEventlog], []);
+    loadParsers([parserSf0, parserNoOffsets], []);
+    expectLoadResult([parserSf0, parserNoOffsets], []);
   });
 
   describe('drops legacy parser with old data (dangling old trace file)', () => {
@@ -436,21 +436,6 @@ describe('LoadedParsers', () => {
     });
   });
 
-  it('filters eventlog parsers if perfetto cuj uploaded', () => {
-    loadParsers([parserEventlog], []);
-    expectLoadResult([parserEventlog], []);
-
-    const parserCuj = new ParserBuilder<object>()
-      .setType(TraceType.CUJS)
-      .setTimestamps(timestamps)
-      .setDescriptors(['cujs'])
-      .setNoOffsets(true)
-      .build();
-
-    loadParsers([parserEventlog], [parserCuj]);
-    expectLoadResult([parserCuj], []);
-  });
-
   it('can remove parsers', () => {
     loadParsers([parserSf0], [parserWm0]);
     expectLoadResult([parserSf0, parserWm0], []);
@@ -471,18 +456,6 @@ describe('LoadedParsers', () => {
 
     loadedParsers.removeByType(TraceType.SURFACE_FLINGER);
     expectLoadResult([], []);
-  });
-
-  it('can be cleared', async () => {
-    loadedParsers.clear();
-    loadParsers([parserSf0, parserWm0], []);
-    loadedParsers.clear();
-    expectLoadResult([], []);
-    await expectDownloadResult([]);
-
-    loadParsers([parserSf0, parserWm0], []);
-    expectLoadResult([parserSf0, parserWm0], []);
-    await expectDownloadResult(['sf/sf0.winscope', 'wm/wm0.winscope']);
   });
 
   it('can make zip archive of traces with appropriate directories and extensions', async () => {
@@ -557,8 +530,8 @@ describe('LoadedParsers', () => {
   });
 
   function loadParsers(
-    legacy: Array<Parser<object>>,
-    perfetto: Array<Parser<object>>,
+    legacy: Array<Parser<unknown>>,
+    perfetto: Array<Parser<unknown>>,
     legacyFiles?: File[],
   ) {
     const legacyFileAndParsers = legacy.map((parser, i) => {
@@ -578,7 +551,7 @@ describe('LoadedParsers', () => {
   }
 
   function expectLoadResult(
-    expectedParsers: Array<Parser<object>>,
+    expectedParsers: Array<Parser<unknown>>,
     expectedWarnings: UserWarning[],
   ) {
     const actualParsers = loadedParsers.getParsers();

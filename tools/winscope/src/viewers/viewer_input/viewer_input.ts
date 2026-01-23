@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert';
-import {Store} from 'common/store/store';
-import {Trace} from 'trace_api/trace';
-import {TraceType} from 'trace_api/trace_type';
-import {Traces} from 'trace_api/traces';
-import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
-import {AbstractViewer} from 'viewers/abstract_viewer';
+import {assertDefined} from '@common/assert';
+import {Store} from '@common/store/store';
+import {Trace} from '@trace_api/trace';
+import {TraceType} from '@trace_api/trace_type';
+import {Traces} from '@trace_api/traces';
+import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
+import {AbstractViewer} from '@viewers/abstract_viewer';
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';
 import {ViewerInputComponent} from './viewer_input_component';
@@ -29,7 +29,9 @@ export class ViewerInput extends AbstractViewer<HierarchyTreeNode> {
   static readonly DEPENDENCIES: TraceType[] = [TraceType.INPUT_EVENT_MERGED];
 
   constructor(traces: Traces, store: Store) {
-    const trace = assertDefined(traces.getTrace(TraceType.INPUT_EVENT_MERGED));
+    const trace = assertDefined(
+      traces.getTrace<HierarchyTreeNode>(TraceType.INPUT_EVENT_MERGED),
+    );
     super(trace, traces, 'viewer-input', store);
   }
 

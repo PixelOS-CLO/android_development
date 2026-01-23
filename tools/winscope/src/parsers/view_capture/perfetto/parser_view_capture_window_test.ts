@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {assertDefined} from 'common/assert';
-import {getPerfettoParser} from 'test/unit/fixture_utils';
+import {assertDefined} from '@common/assert';
+import {getPerfettoParser} from '@test/unit/fixture_utils';
 import {
   makeRealTimestamp,
   timestampEqualityTester,
-} from 'test/unit/time_test_helpers';
-import {CoarseVersion} from 'trace_api/coarse_version';
-import {CustomQueryType} from 'trace_api/custom_query';
-import {EntriesRange} from 'trace_api/index_types';
-import {Parser} from 'trace_api/parser';
-import {Trace} from 'trace_api/trace';
-import {TraceType} from 'trace_api/trace_type';
-import {HierarchyTreeNode} from 'tree_node/hierarchy_tree_node';
+} from '@test/unit/time_test_helpers';
+import {CoarseVersion} from '@trace_api/coarse_version';
+import {CustomQueryType} from '@trace_api/custom_query';
+import {EntriesRange} from '@trace_api/index_types';
+import {Parser} from '@trace_api/parser';
+import {Trace} from '@trace_api/trace';
+import {TraceType} from '@trace_api/trace_type';
+import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 
 describe('PerfettoParserViewCaptureWindow', () => {
   let parser: Parser<HierarchyTreeNode>;
@@ -70,12 +70,12 @@ describe('PerfettoParserViewCaptureWindow', () => {
     const root = await parser.getEntry(1);
     expect(root).toBeInstanceOf(HierarchyTreeNode);
     expect(root.name).toBe('com.android.internal.policy.DecorView@203589466');
-    expect(root.getRects()?.length).toBe(1);
+    expect(root.getRects().length).toBe(1);
 
     const children = root.getAllChildren();
     expect(children.length).toBe(1);
     expect(children[0].name).toBe('android.widget.LinearLayout@160251275');
-    expect(children[0].getRects()?.length).toBe(1);
+    expect(children[0].getRects().length).toBe(1);
   });
 
   it('sets property default values + formatters', async () => {

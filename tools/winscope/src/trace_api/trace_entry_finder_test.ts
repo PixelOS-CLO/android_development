@@ -17,16 +17,16 @@
 import {
   makeRealTimestamp,
   makeZeroTimestamp,
-} from 'test/unit/time_test_helpers';
-import {TraceBuilder} from 'test/unit/trace_builder';
-import {makeEmptyTrace} from 'test/unit/trace_test_helpers';
+} from '@test/unit/time_test_helpers';
+import {TraceBuilder} from '@test/unit/trace_builder';
+import {makeEmptyTrace} from '@test/unit/trace_test_helpers';
 
 import {findCorrespondingEntry} from './trace_entry_finder';
 import {TracePosition} from './trace_position';
 import {TraceType} from './trace_type';
 
 describe('TraceEntryFinder', () => {
-  const emptyTrace = makeEmptyTrace(TraceType.TEST_TRACE_STRING);
+  const emptyTrace = makeEmptyTrace<string>(TraceType.TEST_TRACE_STRING);
   const ts10 = makeRealTimestamp(10n);
   const ts14 = makeRealTimestamp(14n);
   const ts16 = makeRealTimestamp(16n);

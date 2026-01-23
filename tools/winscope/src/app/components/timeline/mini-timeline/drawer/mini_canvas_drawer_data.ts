@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-import {Transformer} from 'app/components/timeline/mini-timeline/transformer';
-import {Segment} from 'app/components/timeline/segment';
-import {TimeRange} from 'common/time/time';
-import {Trace} from 'trace_api/trace';
+import {Transformer} from '@app/components/timeline/mini-timeline/transformer';
+import {Segment} from '@app/components/timeline/segment';
+import {TimeRange} from '@common/time/time';
+import {Trace} from '@trace_api/trace';
 import {MiniTimelineDrawerOutput} from './mini_timeline_drawer_output';
 
 /**
  * A map of traces to their timeline data.
  */
-export type TimelineTraces = Map<Trace<object>, TimelineTrace>;
+export type TimelineTraces = Map<Trace<unknown>, TimelineTrace>;
 
 /**
  * Data for rendering a trace on the mini timeline.

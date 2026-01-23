@@ -14,22 +14,32 @@
  * limitations under the License.
  */
 
-import {searchSubarray} from 'common/typed_array';
-import {Timestamp} from 'common/time/time';
-import {TIME_UNIT_TO_NANO} from 'common/time/time_units';
-import {AbstractParser} from 'parsers/legacy/abstract_parser';
+import {searchSubarray} from '@common/typed_array';
+import {Timestamp} from '@common/time/time';
+import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
+import {AbstractParser} from '@parsers/legacy/abstract_parser';
 import {
   MediaBasedTraceEntry,
   VideoEntry,
-} from 'trace_api/media_based_trace_entry';
-import {TraceType} from 'trace_api/trace_type';
+} from '@trace/media_based/media_based_trace_entry';
+import {TraceType} from '@trace_api/trace_type';
 import {parseIntFromBuffer, parseLongFromBuffer} from './helpers';
-import {timestampToVideoTimeSeconds} from 'trace/screen_recording/helpers';
+import {timestampToVideoTimeSeconds} from '@trace/media_based/helpers';
+import {Thumbnail} from '@trace/media_based/thumbnail';
+import {ThumbnailGenerator} from './thumbnail_generator';
 
 export class ParserScreenRecordingLegacy extends AbstractParser<
   MediaBasedTraceEntry,
   bigint
 > {
+  private thumbnail: Thumbnail | undefined;
+  private thumbnailGenerator: ThumbnailGenerator | undefined;
+
+  onDestroy() {
+    this.thumbnail?.onDestroy();
+    this.thumbnailGenerator?.onDestroy();
+  }
+
   override getTraceType(): TraceType {
     return TraceType.SCREEN_RECORDING;
   }
@@ -49,7 +59,9 @@ export class ParserScreenRecordingLegacy extends AbstractParser<
   override async decodeTrace(videoData: Uint8Array): Promise<Array<bigint>> {
     const posCount = this.searchMagicString(videoData);
     const [posTimestamps, count] = parseIntFromBuffer(videoData, posCount);
-    return this.parseVideoData(videoData, posTimestamps, count);
+    const timestamps = this.parseVideoData(videoData, posTimestamps, count);
+    this.queueThumbnailGeneration(videoData);
+    return timestamps;
   }
 
   override async processDecodedEntry(
@@ -58,7 +70,7 @@ export class ParserScreenRecordingLegacy extends AbstractParser<
   ): Promise<MediaBasedTraceEntry> {
     const time = timestampToVideoTimeSeconds(this.decodedEntries[0], entry);
     const videoData = this.traceFile.file;
-    return new VideoEntry(videoData, time);
+    return new VideoEntry(videoData, time, this.thumbnail);
   }
 
   protected override getTimestamp(decodedEntry: bigint): Timestamp {
@@ -94,6 +106,17 @@ export class ParserScreenRecordingLegacy extends AbstractParser<
       timestamps.push(timestamp * BigInt(TIME_UNIT_TO_NANO.us));
     }
     return timestamps;
+  }
+
+  private queueThumbnailGeneration(videoData: Uint8Array) {
+    if (this.thumbnail) {
+      return;
+    }
+    this.thumbnailGenerator = new ThumbnailGenerator().setVideoData(videoData);
+    this.thumbnailGenerator.generate().then((thumbnail) => {
+      this.thumbnail = thumbnail;
+      this.thumbnailGenerator = undefined;
+    });
   }
 
   private static readonly MPEG4_MAGIC_NUMBER = [

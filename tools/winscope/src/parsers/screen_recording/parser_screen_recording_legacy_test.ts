@@ -14,21 +14,23 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert';
-import {LegacyParserProvider} from 'test/unit/fixture_utils';
-import {makeElapsedTimestamp} from 'test/unit/time_test_helpers';
-import {CoarseVersion} from 'trace_api/coarse_version';
+import {assertDefined} from '@common/assert';
+import {LegacyParserProvider} from '@test/unit/fixture_utils';
+import {makeElapsedTimestamp} from '@test/unit/time_test_helpers';
+import {CoarseVersion} from '@trace_api/coarse_version';
 import {
   MediaBasedTraceEntry,
   VideoEntry,
-} from 'trace_api/media_based_trace_entry';
-import {Parser} from 'trace_api/parser';
-import {TraceType} from 'trace_api/trace_type';
+} from '@trace/media_based/media_based_trace_entry';
+import {Parser} from '@trace_api/parser';
+import {TraceType} from '@trace_api/trace_type';
+import {spyOnThumbnailGenerator} from './test_helpers';
 
 describe('ParserScreenRecordingLegacy', () => {
   let parser: Parser<MediaBasedTraceEntry>;
 
   beforeAll(async () => {
+    spyOnThumbnailGenerator();
     parser = await new LegacyParserProvider()
       .addFile('traces/elapsed_timestamp/screen_recording.mp4')
       .getParser<MediaBasedTraceEntry>();
@@ -75,5 +77,12 @@ describe('ParserScreenRecordingLegacy', () => {
       expect(entry).toBeInstanceOf(VideoEntry);
       expect(Number(entry.videoTimeSeconds)).toBeCloseTo(2.37, 0.001);
     }
+  });
+
+  it('generates thumbnail', async () => {
+    const entry0 = await parser.getEntry(0);
+    expect(entry0.thumbnail).toBeDefined();
+    const entry1 = await parser.getEntry(1);
+    expect(entry1.thumbnail).toEqual(entry0.thumbnail);
   });
 });

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {UiRect} from 'viewers/components/rects/ui_rect';
+import {UiRect} from '@viewers/components/rects/ui_rect';
 import {RectShowState} from './rect_show_state';
 
 export class RectFilter {
@@ -77,9 +77,5 @@ export class RectFilter {
 
   updateRectShowState(id: string, newShowState: RectShowState) {
     this.forcedStates.set(this.convertToForcedStateKey(id), newShowState);
-  }
-
-  clear() {
-    this.forcedStates.clear();
   }
 }

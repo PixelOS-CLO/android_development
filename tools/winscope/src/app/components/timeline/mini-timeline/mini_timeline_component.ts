@@ -30,15 +30,15 @@ import {
 } from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
-import {TimelineData} from 'app/timeline_data';
-import {assertDefined} from 'common/assert';
-import {KeyboardEventCode} from 'common/dom';
-import {PersistentStore} from 'common/store/persistent_store';
-import {TimeRange, Timestamp} from 'common/time/time';
-import {Analytics} from 'logging/analytics';
-import {Trace} from 'trace_api/trace';
-import {TracePosition} from 'trace_api/trace_position';
-import {compareByDisplayOrder} from 'trace_api/trace_type';
+import {TimelineData} from '@app/timeline_data';
+import {assertDefined} from '@common/assert';
+import {KeyboardEventCode} from '@common/dom';
+import {PersistentStore} from '@common/store/persistent_store';
+import {TimeRange, Timestamp} from '@common/time/time';
+import {Analytics} from '@logging/analytics';
+import {Trace} from '@trace_api/trace';
+import {TracePosition} from '@trace_api/trace_position';
+import {compareByDisplayOrder} from '@trace_api/trace_type';
 import {MiniTimelineDrawer} from './drawer/mini_timeline_drawer';
 import {MiniTimelineDrawerImpl} from './drawer/mini_timeline_drawer_impl';
 import {MiniTimelineDrawerInput} from './drawer/mini_timeline_drawer_input';
@@ -58,54 +58,13 @@ import {Transformer} from './transformer';
     CdkMenuModule,
     SliderComponent,
   ],
-  template: `
-    <div class="mini-timeline-outer-wrapper" #outerWrapper>
-      <div class="zoom-buttons">
-        <button mat-icon-button id="zoom-in-btn" (click)="onZoomInButtonClick()">
-          <mat-icon>zoom_in</mat-icon>
-        </button>
-        <button mat-icon-button id="zoom-out-btn" (click)="onZoomOutButtonClick()">
-          <mat-icon>zoom_out</mat-icon>
-        </button>
-        <button mat-icon-button id="reset-zoom-btn" (click)="resetZoom()">
-          <mat-icon>refresh</mat-icon>
-        </button>
-      </div>
-      <div id="mini-timeline-wrapper" #miniTimelineWrapper>
-        <canvas
-          #canvas
-          id="mini-timeline-canvas"
-          (mousemove)="trackMousePos($event)"
-          (mouseleave)="onMouseLeave($event)"
-          (contextmenu)="recordClickPosition($event)"
-          [cdkContextMenuTriggerFor]="timeline_context_menu"
-          #menuTrigger="cdkContextMenuTriggerFor"></canvas>
-        <div class="zoom-control">
-          <slider
-            [fullRange]="timelineData.getFullTimeRange()"
-            [zoomRange]="timelineData.getZoomRange()"
-            [currentPosition]="currentTracePosition"
-            [timestampConverter]="timelineData.getTimestampConverter()"
-            (onZoomChanged)="onSliderZoomChanged($event)"></slider>
-        </div>
-      </div>
-    </div>
-
-    <ng-template #timeline_context_menu>
-      <div class="context-menu" cdkMenu #timelineMenu="cdkMenu">
-        <div class="context-menu-item-container">
-          <span class="context-menu-item" (click)="toggleBookmark()" cdkMenuItem> {{getToggleBookmarkText()}} </span>
-          <span class="context-menu-item" (click)="removeAllBookmarks()" cdkMenuItem>Remove all bookmarks</span>
-        </div>
-      </div>
-    </ng-template>
-  `,
+  templateUrl: './mini_timeline_component.ng.html',
   styleUrls: ['mini_timeline_component.css'],
 })
 export class MiniTimelineComponent {
   @Input() timelineData: TimelineData | undefined;
   @Input() currentTracePosition: TracePosition | undefined;
-  @Input() selectedTraces: Array<Trace<object>> | undefined;
+  @Input() selectedTraces: Array<Trace<unknown>> | undefined;
   @Input() initialZoom: TimeRange | undefined;
   @Input() expandedTimelineScrollEvent: WheelEvent | undefined;
   @Input() expandedTimelineMouseXRatio: number | undefined;
@@ -122,7 +81,7 @@ export class MiniTimelineComponent {
     rangeContainsBookmark: boolean;
   }>();
   @Output() readonly onTraceClicked = new EventEmitter<
-    [Trace<object>, Timestamp]
+    [Trace<unknown>, Timestamp]
   >();
   @Output() readonly onHoverPositionUpdate = new EventEmitter<
     HoverPositionUpdate | undefined
@@ -184,7 +143,7 @@ export class MiniTimelineComponent {
 
     const onClickCallback = (
       timestamp: Timestamp,
-      trace: Trace<object> | undefined,
+      trace: Trace<unknown> | undefined,
     ) => {
       if (trace) {
         this.onTraceClicked.emit([trace, timestamp]);
@@ -248,7 +207,7 @@ export class MiniTimelineComponent {
     this.drawer.draw();
   }
 
-  getTracesToShow(): Array<Trace<object>> {
+  getTracesToShow(): Array<Trace<unknown>> {
     return assertDefined(this.selectedTraces)
       .slice()
       .sort((a, b) => compareByDisplayOrder(a.type, b.type))
@@ -572,16 +531,22 @@ export class MiniTimelineComponent {
       assertDefined(this.drawer).getUsableRange(),
       assertDefined(timelineData.getTimestampConverter()),
     ).untransform(this.lastMousePosX);
+    const posX =
+      (this.miniTimelineWrapper?.nativeElement.offsetLeft ?? 0) +
+      this.lastMousePosX;
     this.onHoverPositionUpdate.emit({
-      posX:
-        (this.miniTimelineWrapper?.nativeElement.offsetLeft ?? 0) +
-        this.lastMousePosX,
-      tsValue: assertDefined(this.hoverTimestamp.format().split(' ').at(-1)),
+      posX,
+      xRatio:
+        this.lastMousePosX /
+        (this.miniTimelineWrapper?.nativeElement.clientWidth ??
+          this.lastMousePosX),
+      ts: this.hoverTimestamp,
     });
   }
 }
 
 export interface HoverPositionUpdate {
   posX: number;
-  tsValue: string;
+  xRatio: number;
+  ts: Timestamp;
 }

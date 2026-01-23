@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert';
-import {Store} from 'common/store/store';
-import {Timestamp} from 'common/time/time';
-import {Timer} from 'common/time/timer';
-import {CrossToolProtocol} from 'cross_tool/cross_tool_protocol';
-import {Analytics} from 'logging/analytics';
-import {ProgressListener} from 'messaging/progress_listener';
-import {UserWarning} from 'messaging/user_warning';
+import {assertDefined} from '@common/assert';
+import {Store} from '@common/store/store';
+import {Timestamp} from '@common/time/time';
+import {Timer} from '@common/time/timer';
+import {CrossToolProtocol} from '@cross_tool/cross_tool_protocol';
+import {Analytics} from '@logging/analytics';
+import {ProgressListener} from '@messaging/progress_listener';
+import {UserWarning} from '@messaging/user_warning';
 import {
   makeWarningNoValidFiles,
   makeWarningCannotVisualizeTraceEntry,
@@ -37,7 +37,7 @@ import {
   AppResetRequest,
   AppTraceViewRequest,
   AppTraceViewRequestHandled,
-} from 'app/app_events';
+} from '@app/app_events';
 import {
   ActiveSearchQueriesUpdate,
   BookmarksChanged,
@@ -47,14 +47,14 @@ import {
   FilterPresetApplyRequest,
   FilterPresetSaveRequest,
   NoTraceTargetsSelectedEvent,
-} from 'app/misc_events';
-import {ExpandedTimelineToggled} from 'app/components/timeline/timeline_events';
+} from '@app/misc_events';
+import {ExpandedTimelineToggled} from '@app/components/timeline/timeline_events';
 import {
   PlaybackSpeedChange,
   PlaybackStateChangeHandled,
   PlaybackStateChangePropagate,
   PlaybackStateChangeRequest,
-} from 'app/components/timeline/playback_events';
+} from '@app/components/timeline/playback_events';
 import {
   ActiveTraceChanged,
   InitializeTraceSearchRequest,
@@ -67,36 +67,36 @@ import {
   TraceSearchInitialized,
   TraceSearchRequest,
   ShowTraceUploadWarning,
-} from 'trace/trace_events';
-import {WinscopeEvent} from 'messaging/winscope_event';
+} from '@trace/trace_events';
+import {WinscopeEvent} from '@messaging/winscope_event';
 import {
   RemoteToolDownloadStart,
   RemoteToolFilesReceived,
   RemoteToolTimestampReceived,
-} from 'cross_tool/remote_tool_events';
-import {ViewersLoaded, ViewersUnloaded} from 'app/viewers_events';
+} from '@cross_tool/remote_tool_events';
+import {ViewersLoaded, ViewersUnloaded} from '@app/viewers_events';
 import {
   TabbedViewSwitched,
   TabbedViewSwitchRequest,
-} from 'app/tabbed_view_events';
-import {WinscopeEventEmitter} from 'messaging/winscope_event_emitter';
-import {WinscopeEventListener} from 'messaging/winscope_event_listener';
-import {getLogger, Logger} from 'compat/logging';
-import {UserNotifier} from 'services/user_notifier';
-import {Trace} from 'trace_api/trace';
-import {TRACE_INFO} from 'trace_api/trace_info';
-import {TracePosition} from 'trace_api/trace_position';
-import {TraceType} from 'trace_api/trace_type';
-import {RequestedTraceTypes} from 'trace_collection/adb_files';
-import {View, Viewer, ViewType} from 'viewers/viewer';
-import {ViewerFactory} from 'viewers/viewer_factory';
+} from '@app/tabbed_view_events';
+import {WinscopeEventEmitter} from '@messaging/winscope_event_emitter';
+import {WinscopeEventListener} from '@messaging/winscope_event_listener';
+import {getLogger, Logger} from '@compat/logging';
+import {UserNotifier} from '@services/user_notifier';
+import {Trace} from '@trace_api/trace';
+import {TRACE_INFO} from '@trace_api/trace_info';
+import {TracePosition} from '@trace_api/trace_position';
+import {TraceType} from '@trace_api/trace_type';
+import {RequestedTraceTypes} from '@trace_collection/adb_files';
+import {View, Viewer, ViewType} from '@viewers/viewer';
+import {ViewerFactory} from '@viewers/viewer_factory';
 import {FilesSource} from './files_source';
 import {TimelineData} from './timeline_data';
 import {TracePipeline} from './trace_pipeline';
 import {TraceSearchInitializer} from './trace_search/trace_search_initializer';
-import {PlaybackState} from 'viewers/common/playback/playback_state';
-import {MediaBasedTraceEntry} from 'trace_api/media_based_trace_entry';
-import {PlaybackPrefetchedEntries} from 'trace/playback_prefetched_entries';
+import {PlaybackState} from '@viewers/common/playback/playback_state';
+import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
+import {PlaybackPrefetchedEntries} from '@trace/playback_prefetched_entries';
 
 /**
  * Mediator class for communication between components
@@ -134,26 +134,23 @@ export class Mediator {
     storage: Store,
     private readonly logger: Logger = getLogger('Mediator'),
   ) {
-    this.tracePipeline = tracePipeline;
     this.timelineData = timelineData;
-    this.abtChromeExtensionProtocol = abtChromeExtensionProtocol;
-    this.crossToolProtocol = crossToolProtocol;
     this.appComponent = appComponent;
     this.storage = storage;
 
-    this.tracePipeline.setEmitEvent(async (event: WinscopeEvent) => {
-      await this.onWinscopeEvent(event);
-    });
+    this.tracePipeline = tracePipeline;
+    this.setEmitEvent(this.tracePipeline);
 
-    this.crossToolProtocol.setEmitEvent(async (event: WinscopeEvent) => {
-      await this.onWinscopeEvent(event);
-    });
+    this.crossToolProtocol = crossToolProtocol;
+    this.setEmitEvent(this.crossToolProtocol);
 
-    this.abtChromeExtensionProtocol.setEmitEvent(
-      async (event: WinscopeEvent) => {
-        await this.onWinscopeEvent(event);
-      },
-    );
+    this.abtChromeExtensionProtocol = abtChromeExtensionProtocol;
+    this.setEmitEvent(this.abtChromeExtensionProtocol);
+  }
+
+  setTracePipeline(value: TracePipeline) {
+    this.tracePipeline = value;
+    this.setEmitEvent(this.tracePipeline);
   }
 
   setUploadTracesComponent(
@@ -168,27 +165,27 @@ export class Mediator {
       | undefined,
   ) {
     this.collectTracesComponent = component;
-    this.collectTracesComponent?.setEmitEvent(async (event: WinscopeEvent) => {
-      await this.onWinscopeEvent(event);
-    });
+    if (this.collectTracesComponent) {
+      this.setEmitEvent(this.collectTracesComponent);
+    }
   }
 
   setTraceViewComponent(
     component: (WinscopeEventEmitter & WinscopeEventListener) | undefined,
   ) {
     this.traceViewComponent = component;
-    this.traceViewComponent?.setEmitEvent(async (event: WinscopeEvent) => {
-      await this.onWinscopeEvent(event);
-    });
+    if (this.traceViewComponent) {
+      this.setEmitEvent(this.traceViewComponent);
+    }
   }
 
   setTimelineComponent(
     component: (WinscopeEventEmitter & WinscopeEventListener) | undefined,
   ) {
     this.timelineComponent = component;
-    this.timelineComponent?.setEmitEvent(async (event: WinscopeEvent) => {
-      await this.onWinscopeEvent(event);
-    });
+    if (this.timelineComponent) {
+      this.setEmitEvent(this.timelineComponent);
+    }
   }
 
   private async onAppInitialized(event: WinscopeEvent) {
@@ -373,7 +370,7 @@ export class Mediator {
     const newSearchTrace = new TraceAddRequest(trace);
     await searchViewer?.onWinscopeEvent(newSearchTrace);
     if (trace.lengthEntries > 0 && !trace.isDumpWithoutTimestamp()) {
-      assertDefined(this.timelineData).getTraces().addTrace(trace);
+      this.timelineData.getTraces().addTrace(trace);
       await this.timelineComponent?.onWinscopeEvent(newSearchTrace);
     }
   }
@@ -748,11 +745,9 @@ export class Mediator {
       this.storage,
       this.tracePipeline.getTimestampConverter(),
     );
-    this.viewers.forEach((viewer) =>
-      viewer.setEmitEvent(async (event: WinscopeEvent) => {
-        await this.onWinscopeEvent(event);
-      }),
-    );
+    this.viewers.forEach((viewer) => {
+      this.setEmitEvent(viewer);
+    });
 
     // Set initial trace position as soon as UI is created
     const initialPosition = this.getInitialTracePosition();
@@ -825,7 +820,7 @@ export class Mediator {
       assertDefined(event.currentTraceIndex),
       traceGeometryData,
     );
-    this.timelineData.trySetActiveTrace(trace as Trace<object>);
+    this.timelineData.trySetActiveTrace(trace);
     await viewer.onWinscopeEvent(playbackStatePropagate);
   }
 
@@ -896,16 +891,9 @@ export class Mediator {
   }
 
   private async resetAppToInitialState() {
-    this.tracePipeline.clear();
-    this.timelineData.clear();
     this.viewers.forEach((viewer) => {
       viewer.onDestroy();
     });
-    this.viewers = [];
-    this.areViewersLoaded = false;
-    this.lastRemoteToolDeferredTimestampReceived = undefined;
-    this.focusedTabView = undefined;
-    this.initialTimelineTabTraceType = undefined;
     await this.appComponent.onWinscopeEvent(new ViewersUnloaded());
   }
 
@@ -922,5 +910,11 @@ export class Mediator {
     return this.viewers.find(
       (viewer) => viewer.getTraces().at(0)?.type === type,
     );
+  }
+
+  private setEmitEvent(emitter: WinscopeEventEmitter) {
+    emitter.setEmitEvent(async (event: WinscopeEvent) => {
+      await this.onWinscopeEvent(event);
+    });
   }
 }

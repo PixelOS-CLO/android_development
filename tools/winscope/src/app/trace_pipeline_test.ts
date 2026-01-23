@@ -14,29 +14,29 @@
  * limitations under the License.
  */
 
-import {assertDefined} from 'common/assert';
-import {createZipArchive, DOWNLOAD_FILENAME_REGEX, unzipFile} from 'common/io';
-import {ProgressListenerStub} from 'messaging/progress_listener_stub';
-import {UserWarning} from 'messaging/user_warning';
+import {assertDefined} from '@common/assert';
+import {createZipArchive, DOWNLOAD_FILENAME_REGEX, unzipFile} from '@common/io';
+import {ProgressListenerStub} from '@messaging/progress_listener_stub';
+import {UserWarning} from '@messaging/user_warning';
 import {
   makeWarningCorruptedArchive,
   makeWarningNoValidFiles,
   makeWarningUnsupportedFileFormat,
 } from './warnings';
-import {makeWarningInvalidPerfettoTrace} from 'parsers/warnings';
-import {BugreportFileSelected} from 'app/misc_events';
-import {LegacyToPerfettoConverter} from 'parsers/legacy_to_perfetto_converter';
-import {getFixtureFile} from 'test/unit/io_helpers';
+import {makeWarningInvalidPerfettoTrace} from '@parsers/warnings';
+import {BugreportFileSelected} from '@app/misc_events';
+import {LegacyToPerfettoConverter} from '@parsers/legacy_to_perfetto_converter';
+import {getFixtureFile} from '@test/unit/io_helpers';
 import {
   makeRealTimestampWithUTCOffset,
   timestampEqualityTester,
-} from 'test/unit/time_test_helpers';
-import {UserNotifierChecker} from 'test/unit/user_notifier_checker';
-import {TraceFile} from 'trace/trace_file';
-import {Parser} from 'trace_api/parser';
-import {TraceType} from 'trace_api/trace_type';
-import {QueryResult, RowIterator} from 'trace_processor/query_result';
-import {TraceProcessorProxy} from 'trace_processor/trace_processor';
+} from '@test/unit/time_test_helpers';
+import {UserNotifierChecker} from '@test/unit/user_notifier_checker';
+import {TraceFile} from '@trace/trace_file';
+import {Parser} from '@trace_api/parser';
+import {TraceType} from '@trace_api/trace_type';
+import {QueryResult, RowIterator} from '@trace_processor/query_result';
+import {TraceProcessorProxy} from '@trace_processor/trace_processor';
 import {FilesSource} from './files_source';
 import {TraceFileFilter} from './trace_file_filter';
 import {TracePipeline} from './trace_pipeline';
@@ -168,7 +168,7 @@ describe('TracePipeline', () => {
       new RegExp('SurfaceFlinger_'),
     );
 
-    tracePipeline.clear();
+    tracePipeline = new TracePipeline();
 
     await loadFiles([validSfFile, validWmFile], FilesSource.COLLECTED);
     await expectLoadResult(2, []);
@@ -346,8 +346,6 @@ describe('TracePipeline', () => {
     queryResultObj.numRows.and.returnValue(1);
     await loadFiles([perfettoFileProtolog]);
     expect(tracePipeline.lostPackets()).toBe(2);
-    tracePipeline.clear(); // resets lost packets on explicit clear call
-    expect(tracePipeline.lostPackets()).toBe(0);
   });
 
   it('is robust to mixed valid and invalid trace files', async () => {
@@ -491,16 +489,14 @@ describe('TracePipeline', () => {
     ]);
   });
 
-  it('can be cleared', async () => {
+  it('can be destroyed', async () => {
     await loadFiles([validSfFile, validWmFile]);
     await expectLoadResult(2, []);
-
     const spies = tracePipeline.getTraces().mapTrace((trace) => {
       return spyOn(trace, 'onDestroy');
     });
-    tracePipeline.clear();
+    tracePipeline.onDestroy();
     spies.forEach((spy) => expect(spy).toHaveBeenCalled());
-    expect(tracePipeline.getTraces().getSize()).toBe(0);
   });
 
   it('can filter traces without visualization', async () => {
@@ -560,7 +556,7 @@ describe('TracePipeline', () => {
   });
 
   describe('legacy to perfetto conversion', () => {
-    let parserSf: Parser<object>;
+    let parserSf: Parser<unknown>;
     let setLegacyParsersSpy: jasmine.Spy;
     let setAllParsersSpy: jasmine.Spy;
     let setPerfettoFileSpy: jasmine.Spy;
@@ -593,7 +589,7 @@ describe('TracePipeline', () => {
     });
 
     it('robust to no available legacy-to-perfetto conversions', async () => {
-      tracePipeline.clear();
+      tracePipeline = new TracePipeline();
       await loadFiles([screenshotFile]);
       await tracePipeline.convertLegacyTracesToPerfetto();
       expect(convertSpy).not.toHaveBeenCalled();
@@ -661,7 +657,7 @@ describe('TracePipeline', () => {
     });
 
     it('discards constituent files of converted transitions trace', async () => {
-      tracePipeline.clear();
+      tracePipeline = new TracePipeline();
       await loadFiles([wmTransitionFile, shellTransitionFile]);
       await tracePipeline.convertLegacyTracesToPerfetto();
       await expectDownloadResult(['combined_winscope_trace.perfetto-trace']);
@@ -673,7 +669,7 @@ describe('TracePipeline', () => {
       expect(trace?.isPerfetto()).toBeTrue();
     }
 
-    function getParser(type: TraceType): Parser<{}> {
+    function getParser(type: TraceType): Parser<unknown> {
       return assertDefined(
         tracePipeline.getTraces().getTrace(type)?.getParser(),
       );
@@ -707,7 +703,7 @@ describe('TracePipeline', () => {
   }
 
   async function checkTraceIsNotDiscarded(file: File, type: TraceType) {
-    tracePipeline.clear();
+    tracePipeline = new TracePipeline();
     await loadFiles([file]);
     tracePipeline.discardLegacyTraces();
     const traces = tracePipeline.getTraces();

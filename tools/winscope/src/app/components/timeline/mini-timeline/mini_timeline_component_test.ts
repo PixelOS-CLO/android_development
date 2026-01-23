@@ -29,18 +29,20 @@ import {
   BrowserAnimationsModule,
   NoopAnimationsModule,
 } from '@angular/platform-browser/animations';
-import {TimelineData} from 'app/timeline_data';
-import {assertDefined} from 'common/assert';
-import {KeyboardEventCode} from 'common/dom';
-import {TimeRange, Timestamp} from 'common/time/time';
-import {DOMTestHelper} from 'test/unit/dom_test_helpers';
-import {makeRealTimestamp, UTC_CONVERTER} from 'test/unit/time_test_helpers';
-import {TracesBuilder} from 'test/unit/traces_builder';
-import {Trace} from 'trace_api/trace';
-import {TracePosition} from 'trace_api/trace_position';
-import {TraceType} from 'trace_api/trace_type';
+import {TimelineData} from '@app/timeline_data';
+import {assertDefined} from '@common/assert';
+import {KeyboardEventCode} from '@common/dom';
+import {TimeRange, Timestamp} from '@common/time/time';
+import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {makeRealTimestamp, UTC_CONVERTER} from '@test/unit/time_test_helpers';
+import {TracesBuilder} from '@test/unit/traces_builder';
+import {Trace} from '@trace_api/trace';
+import {TracePosition} from '@trace_api/trace_position';
+import {TraceType} from '@trace_api/trace_type';
 import {MiniTimelineComponent} from './mini_timeline_component';
 import {SliderComponent} from './slider_component';
+import {Transformer} from './transformer';
+import {Traces} from '@trace_api/traces';
 
 describe('MiniTimelineComponent', () => {
   let component: TestHostComponent;
@@ -105,8 +107,7 @@ describe('MiniTimelineComponent', () => {
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
 
-    timelineData = new TimelineData();
-    await timelineData.initialize(traces, undefined, UTC_CONVERTER);
+    timelineData = await createAndInitializeTimelineData(traces);
     component.timelineData = timelineData;
     expect(timelineData.getCurrentPosition()).toBeDefined();
     component.currentTracePosition = timelineData.getCurrentPosition()!;
@@ -247,8 +248,8 @@ describe('MiniTimelineComponent', () => {
     expect(finalZoom).not.toBe(initialZoom);
   });
 
-  it('zooms in/out with buttons', () => {
-    initializeTraces();
+  it('zooms in/out with buttons', async () => {
+    await initializeTraces();
 
     const initialZoom = new TimeRange(timestamp700, timestamp810);
     const miniTimelineComponent = assertDefined(
@@ -267,8 +268,8 @@ describe('MiniTimelineComponent', () => {
     checkZoomDifference(zoomedOut, zoomedIn);
   });
 
-  it('cannot zoom out past full range', () => {
-    initializeTraces();
+  it('cannot zoom out past full range', async () => {
+    await initializeTraces();
 
     const initialZoom = new TimeRange(timestamp10, timestamp1000);
     assertDefined(component.miniTimelineComponent).onZoomChanged(initialZoom);
@@ -288,8 +289,8 @@ describe('MiniTimelineComponent', () => {
     expect(finalZoom.endNs).toEqual(initialZoom.endNs);
   });
 
-  it('zooms in/out with scroll wheel', () => {
-    initializeTraces();
+  it('zooms in/out with scroll wheel', async () => {
+    await initializeTraces();
     let initialZoom = new TimeRange(timestamp10, timestamp1000);
     const miniTimelineComponent = assertDefined(
       component.miniTimelineComponent,
@@ -313,8 +314,8 @@ describe('MiniTimelineComponent', () => {
     }
   });
 
-  it('applies expanded timeline scroll wheel event', () => {
-    initializeTraces();
+  it('applies expanded timeline scroll wheel event', async () => {
+    await initializeTraces();
 
     const initialZoom = new TimeRange(timestamp10, timestamp1000);
     assertDefined(component.miniTimelineComponent).onZoomChanged(initialZoom);
@@ -399,8 +400,8 @@ describe('MiniTimelineComponent', () => {
     expect(spy).toHaveBeenCalled();
   });
 
-  it('zooms in/out on KeyW/KeyS press', () => {
-    initializeTracesForWASDZoom();
+  it('zooms in/out on KeyW/KeyS press', async () => {
+    await initializeTracesForWASDZoom();
 
     const initialZoom = new TimeRange(timestamp1000, timestamp2000);
     component.initialZoom = initialZoom;
@@ -415,8 +416,8 @@ describe('MiniTimelineComponent', () => {
     checkZoomDifference(zoomedOut, zoomedIn);
   });
 
-  it('moves right/left on KeyD/KeyA press', () => {
-    initializeTracesForWASDZoom();
+  it('moves right/left on KeyD/KeyA press', async () => {
+    await initializeTracesForWASDZoom();
 
     const initialZoom = new TimeRange(timestamp1000, timestamp2000);
     component.initialZoom = initialZoom;
@@ -456,8 +457,8 @@ describe('MiniTimelineComponent', () => {
     expect(timelineData.getZoomRange()).toEqual(initialZoom);
   });
 
-  it('zooms in/out on mouse position if within current range', () => {
-    initializeTracesForWASDZoom();
+  it('zooms in/out on mouse position if within current range', async () => {
+    await initializeTracesForWASDZoom();
     const initialZoom = new TimeRange(timestamp1000, timestamp4000);
     component.initialZoom = initialZoom;
     component.currentTracePosition = TracePosition.fromTimestamp(timestamp2000);
@@ -487,8 +488,8 @@ describe('MiniTimelineComponent', () => {
     );
   });
 
-  it('zooms in/out on current position if within current range and mouse position not available', () => {
-    initializeTracesForWASDZoom();
+  it('zooms in/out on current position if within current range and mouse position not available', async () => {
+    await initializeTracesForWASDZoom();
     const initialZoom = new TimeRange(timestamp1000, timestamp4000);
     component.initialZoom = initialZoom;
     component.currentTracePosition = TracePosition.fromTimestamp(timestamp1750);
@@ -518,8 +519,8 @@ describe('MiniTimelineComponent', () => {
     );
   });
 
-  it('zooms in/out on current position after mouse leaves canvas', () => {
-    initializeTracesForWASDZoom();
+  it('zooms in/out on current position after mouse leaves canvas', async () => {
+    await initializeTracesForWASDZoom();
     const initialZoom = new TimeRange(timestamp1000, timestamp4000);
     component.initialZoom = initialZoom;
     component.currentTracePosition = TracePosition.fromTimestamp(timestamp1750);
@@ -557,8 +558,8 @@ describe('MiniTimelineComponent', () => {
     );
   });
 
-  it('zooms in/out on middle of slider bar if current position out of range and mouse position not available', () => {
-    initializeTracesForWASDZoom();
+  it('zooms in/out on middle of slider bar if current position out of range and mouse position not available', async () => {
+    await initializeTracesForWASDZoom();
     const initialZoom = new TimeRange(timestamp2000, timestamp4000);
     component.initialZoom = initialZoom;
     component.currentTracePosition = TracePosition.fromTimestamp(timestamp1750);
@@ -597,8 +598,8 @@ describe('MiniTimelineComponent', () => {
     );
   });
 
-  it('zooms in/out on mouse position from expanded timeline', () => {
-    initializeTracesForWASDZoom();
+  it('zooms in/out on mouse position from expanded timeline', async () => {
+    await initializeTracesForWASDZoom();
     const initialZoom = new TimeRange(timestamp1000, timestamp4000);
     component.initialZoom = initialZoom;
     dom.detectChanges();
@@ -627,8 +628,8 @@ describe('MiniTimelineComponent', () => {
     );
   });
 
-  it('draws hover timestamp for mouse position from expanded timeline', () => {
-    initializeTracesForWASDZoom();
+  it('draws hover timestamp for mouse position from expanded timeline', async () => {
+    await initializeTracesForWASDZoom();
     const initialZoom = new TimeRange(timestamp1000, timestamp4000);
     component.initialZoom = initialZoom;
     component.currentTracePosition = TracePosition.fromTimestamp(timestamp2000);
@@ -642,26 +643,32 @@ describe('MiniTimelineComponent', () => {
     expect(spy).toHaveBeenCalledOnceWith({x: ratio * drawer.getWidth(), y: 0});
   });
 
-  it('emits hover position update', () => {
-    initializeTracesForWASDZoom();
+  it('emits hover position update', async () => {
+    await initializeTracesForWASDZoom();
     const initialZoom = new TimeRange(timestamp1000, timestamp4000);
     component.initialZoom = initialZoom;
     component.currentTracePosition = TracePosition.fromTimestamp(timestamp2000);
     dom.detectChanges();
 
-    const miniTimelineComponent = assertDefined(
-      component.miniTimelineComponent,
+    const miniTimeline = assertDefined(component.miniTimelineComponent);
+    const miniTimelineElement = assertDefined(
+      miniTimeline.miniTimelineWrapper?.nativeElement,
     );
-    const offsetLeft = assertDefined(
-      miniTimelineComponent.miniTimelineWrapper?.nativeElement.offsetLeft,
-    );
-    const spy = spyOn(miniTimelineComponent.onHoverPositionUpdate, 'emit');
+    const spy = spyOn(miniTimeline.onHoverPositionUpdate, 'emit');
 
-    const offsetX = 5;
+    const xRatio = 0.1;
+    const offsetX = xRatio * miniTimelineElement.clientWidth;
+    const hoverTs = new Transformer(
+      timelineData.getZoomRange(),
+      assertDefined(miniTimeline.drawer).getUsableRange(),
+      assertDefined(timelineData.getTimestampConverter()),
+    ).untransform(offsetX);
+
     dispatchMouseMoveToCanvas(offsetX);
     expect(spy).toHaveBeenCalledOnceWith({
-      posX: offsetX + offsetLeft,
-      tsValue: '00:00:00.010',
+      posX: offsetX + miniTimelineElement.offsetLeft,
+      ts: hoverTs,
+      xRatio,
     });
 
     spy.calls.reset();
@@ -669,18 +676,22 @@ describe('MiniTimelineComponent', () => {
     expect(spy).toHaveBeenCalledOnceWith(undefined);
   });
 
-  function initializeTraces() {
-    const timelineData = assertDefined(component.timelineData);
+  async function createAndInitializeTimelineData(traces: Traces) {
+    timelineData = new TimelineData();
+    await timelineData.initialize(traces, undefined, UTC_CONVERTER);
+    return timelineData;
+  }
+
+  async function initializeTraces() {
     const traces = new TracesBuilder()
       .setTimestamps(TraceType.SURFACE_FLINGER, [timestamp10])
       .setTimestamps(TraceType.WINDOW_MANAGER, [timestamp1000])
       .build();
-
-    timelineData.initialize(traces, undefined, UTC_CONVERTER);
+    component.timelineData = await createAndInitializeTimelineData(traces);
     dom.detectChanges();
   }
 
-  function initializeTracesForWASDZoom() {
+  async function initializeTracesForWASDZoom() {
     const traces = new TracesBuilder()
       .setTimestamps(TraceType.SURFACE_FLINGER, [
         timestamp1000,
@@ -688,12 +699,7 @@ describe('MiniTimelineComponent', () => {
         timestamp4000,
       ])
       .build();
-
-    assertDefined(component.timelineData).initialize(
-      traces,
-      undefined,
-      UTC_CONVERTER,
-    );
+    component.timelineData = await createAndInitializeTimelineData(traces);
   }
 
   function checkZoomDifference(
@@ -842,7 +848,7 @@ describe('MiniTimelineComponent', () => {
   class TestHostComponent {
     timelineData = new TimelineData();
     currentTracePosition: TracePosition | undefined;
-    selectedTraces: Array<Trace<object>> = [];
+    selectedTraces: Array<Trace<unknown>> = [];
     initialZoom: TimeRange | undefined;
     expandedTimelineScrollEvent: WheelEvent | undefined;
     expandedTimelineMouseXRatio: number | undefined;
