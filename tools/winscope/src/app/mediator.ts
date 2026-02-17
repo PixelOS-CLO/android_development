@@ -17,7 +17,6 @@
 import {assertDefined} from '@common/assert';
 import {Store} from '@common/store/store';
 import {Timestamp} from '@common/time/time';
-import {Timer} from '@common/time/timer';
 import {CrossToolProtocol} from '@cross_tool/cross_tool_protocol';
 import {Analytics} from '@logging/analytics';
 import {ProgressListener} from '@messaging/progress_listener';
@@ -26,7 +25,6 @@ import {
   makeWarningNoValidFiles,
   makeWarningCannotVisualizeTraceEntry,
   makeWarningFailedToInitializeTimelineData,
-  makeWarningIncompleteFrameMapping,
   makeWarningNoTraceTargetsSelected,
 } from './warnings';
 import {
@@ -92,11 +90,13 @@ import {View, Viewer, ViewType} from '@viewers/viewer';
 import {ViewerFactory} from '@viewers/viewer_factory';
 import {FilesSource} from './files_source';
 import {TimelineData} from './timeline_data';
-import {TracePipeline} from './trace_pipeline';
+import {FileLoader} from './file_loader';
 import {TraceSearchInitializer} from './trace_search/trace_search_initializer';
 import {PlaybackState} from '@viewers/common/playback/playback_state';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {PlaybackPrefetchedEntries} from '@trace/playback_prefetched_entries';
+import {LoadedFileData} from './loaded_file_data';
+import {Timer} from '@common/time/timer';
 
 /**
  * Mediator class for communication between components
@@ -114,8 +114,8 @@ export class Mediator {
   private timelineComponent?: WinscopeEventEmitter & WinscopeEventListener;
   private appComponent: WinscopeEventListener;
   private storage: Store;
-
-  private tracePipeline: TracePipeline;
+  private loadedFileData: LoadedFileData;
+  private activeFileLoader: FileLoader | undefined;
   private timelineData: TimelineData;
   private viewers: Viewer[] = [];
   private focusedTabView: undefined | View;
@@ -126,7 +126,7 @@ export class Mediator {
   private activeSearchQueries: string[] = [];
 
   constructor(
-    tracePipeline: TracePipeline,
+    loadedFileData: LoadedFileData,
     timelineData: TimelineData,
     abtChromeExtensionProtocol: WinscopeEventEmitter & WinscopeEventListener,
     crossToolProtocol: CrossToolProtocol,
@@ -138,8 +138,7 @@ export class Mediator {
     this.appComponent = appComponent;
     this.storage = storage;
 
-    this.tracePipeline = tracePipeline;
-    this.setEmitEvent(this.tracePipeline);
+    this.loadedFileData = loadedFileData;
 
     this.crossToolProtocol = crossToolProtocol;
     this.setEmitEvent(this.crossToolProtocol);
@@ -148,9 +147,8 @@ export class Mediator {
     this.setEmitEvent(this.abtChromeExtensionProtocol);
   }
 
-  setTracePipeline(value: TracePipeline) {
-    this.tracePipeline = value;
-    this.setEmitEvent(this.tracePipeline);
+  setLoadedFileData(value: LoadedFileData) {
+    this.loadedFileData = value;
   }
 
   setUploadTracesComponent(
@@ -188,6 +186,14 @@ export class Mediator {
     }
   }
 
+  private createFileLoader() {
+    const fileLoader = new FileLoader(
+      this.loadedFileData.getTimestampConverter(),
+    );
+    this.setEmitEvent(fileLoader);
+    return fileLoader;
+  }
+
   private async onAppInitialized(event: WinscopeEvent) {
     this.abtChromeExtensionProtocol.onWinscopeEvent(event);
   }
@@ -195,43 +201,43 @@ export class Mediator {
   private async onAppFilesUploaded(event: AppFilesUploaded) {
     this.currentProgressListener = this.uploadTracesComponent;
     await this.loadFiles(event.files, FilesSource.UPLOADED);
-
+    this.currentProgressListener?.onOperationFinished(true);
     UserNotifier.notify();
   }
 
   private async onAppFilesCollected(event: AppFilesCollected) {
     this.currentProgressListener = this.collectTracesComponent;
-    if (event.files.collected.length > 0) {
-      await this.loadFiles(event.files.collected, FilesSource.COLLECTED);
-      const traces = this.tracePipeline.getTraces();
-      if (traces.getSize() > 0) {
-        const failedTraces: string[] = [];
-        event.files.requested.forEach((requested: RequestedTraceTypes) => {
-          if (
-            !requested.types.some(
-              (type: TraceType) => traces.getTraces(type).length > 0,
-            )
-          ) {
-            failedTraces.push(requested.name);
-          }
-        });
-        if (failedTraces.length > 0) {
-          UserNotifier.add(makeWarningNoValidFiles(failedTraces));
-        }
-        await this.uploadTracesComponent?.onWinscopeEvent(
-          new AppTraceViewRequest(),
-        );
-        await this.loadViewers(FilesSource.COLLECTED, false);
-        await this.uploadTracesComponent?.onWinscopeEvent(
-          new AppTraceViewRequestHandled(),
-        );
-      } else {
-        this.currentProgressListener?.onOperationFinished(false);
-      }
-    } else {
-      UserNotifier.add(makeWarningNoValidFiles());
+
+    if (event.files.collected.length === 0) {
       this.currentProgressListener?.onOperationFinished(false);
+      UserNotifier.add(makeWarningNoValidFiles()).notify();
+      return;
     }
+
+    await this.loadFiles(event.files.collected, FilesSource.COLLECTED);
+    const loadedReaders = this.loadedFileData.getLoadedFileReaders();
+    if (loadedReaders.length === 0) {
+      this.currentProgressListener?.onOperationFinished(false);
+      UserNotifier.notify();
+      return;
+    }
+
+    const failedTraces: string[] = [];
+    event.files.requested.forEach((requested: RequestedTraceTypes) => {
+      if (!this.loadedFileData.hasLoadedRequestedType(requested.types)) {
+        failedTraces.push(requested.name);
+      }
+    });
+    if (failedTraces.length > 0) {
+      UserNotifier.add(makeWarningNoValidFiles(failedTraces));
+    }
+    await this.uploadTracesComponent?.onWinscopeEvent(
+      new AppTraceViewRequest(),
+    );
+    await this.loadViewers(FilesSource.COLLECTED, false);
+    await this.uploadTracesComponent?.onWinscopeEvent(
+      new AppTraceViewRequestHandled(),
+    );
     UserNotifier.notify();
   }
 
@@ -240,12 +246,11 @@ export class Mediator {
   }
 
   private async onAppRefreshDumpsRequest(event: AppRefreshDumpsRequest) {
-    await this.resetAppToInitialState();
     await this.collectTracesComponent?.onWinscopeEvent(event);
   }
 
   private async onAppTraceViewRequest(event: AppTraceViewRequest) {
-    await this.loadViewers(FilesSource.UPLOADED, event.discardLegacyTraces);
+    await this.loadViewers(FilesSource.UPLOADED, event.discardLegacyFiles);
     UserNotifier.notify();
   }
 
@@ -361,7 +366,7 @@ export class Mediator {
     const searchViewer = this.viewers.find(
       (viewer) => viewer.getViews()[0].type === ViewType.GLOBAL_SEARCH,
     );
-    const trace = await this.tracePipeline.tryCreateSearchTrace(event.query);
+    const trace = await this.loadedFileData.tryCreateSearchTrace(event.query);
     this.timelineComponent?.onWinscopeEvent(new TraceSearchCompleted());
     if (!trace) {
       await searchViewer?.onWinscopeEvent(new TraceSearchFailed());
@@ -376,7 +381,7 @@ export class Mediator {
   }
 
   private async onTraceRemoveRequest(event: TraceRemoveRequest) {
-    this.tracePipeline.getTraces().deleteTrace(event.trace);
+    this.loadedFileData.getTraces().deleteTrace(event.trace);
     if (this.timelineData.hasTrace(event.trace)) {
       this.timelineData.getTraces().deleteTrace(event.trace);
       await this.timelineComponent?.onWinscopeEvent(event);
@@ -385,7 +390,7 @@ export class Mediator {
 
   private async onInitializeTraceSearchRequest(event: WinscopeEvent) {
     await this.timelineComponent?.onWinscopeEvent(event);
-    const traces = this.tracePipeline.getTraces();
+    const traces = this.loadedFileData.getTraces();
     const views = await TraceSearchInitializer.createSearchViews(traces);
     const searchViewer = this.viewers.find(
       (viewer) => viewer.getViews()[0].type === ViewType.GLOBAL_SEARCH,
@@ -396,7 +401,7 @@ export class Mediator {
   }
 
   private async onBugreportFileSelected(event: BugreportFileSelected) {
-    await this.tracePipeline.onWinscopeEvent(event);
+    await this.activeFileLoader?.onWinscopeEvent(event);
   }
 
   private async onBugreportFileSelectionRequest(
@@ -542,18 +547,21 @@ export class Mediator {
 
   private async loadFiles(files: File[], source: FilesSource) {
     const startTimeMs = Date.now();
-    const warnings = await this.tracePipeline.loadFiles(
+    this.activeFileLoader = this.createFileLoader();
+    const result = await this.activeFileLoader.load(
       files,
       source,
       this.currentProgressListener,
     );
+    this.activeFileLoader = undefined;
     Analytics.Loading.logLoadFilesTime(Date.now() - startTimeMs, source);
 
-    for (const warning of warnings) {
+    for (const warning of result.warnings) {
       await this.uploadTracesComponent?.onWinscopeEvent(
         new ShowTraceUploadWarning(warning.message),
       );
     }
+    this.loadedFileData.addFiles(result, source);
   }
 
   private async propagateTracePosition(
@@ -673,66 +681,42 @@ export class Mediator {
   }
 
   private async processRemoteFilesReceived(files: File[], source: FilesSource) {
-    await this.resetAppToInitialState();
     this.currentProgressListener = this.uploadTracesComponent;
     await this.loadFiles(files, source);
+    this.currentProgressListener?.onOperationFinished(true);
     UserNotifier.notify();
   }
 
-  private async loadViewers(source: FilesSource, discardLegacyTraces: boolean) {
+  private async loadViewers(source: FilesSource, discardLegacyFiles: boolean) {
     const e2eStartTimeMs = Date.now();
-    const timer = new Timer(10, 10);
 
-    if (discardLegacyTraces) {
-      this.tracePipeline.discardLegacyTraces();
-    } else {
-      this.currentProgressListener?.onProgressUpdate(
-        'Converting legacy traces to perfetto...',
-        undefined,
-      );
-      await timer.sleepMs(); // allow the UI to update before making the main thread very busy
-      await this.tracePipeline.convertLegacyTracesToPerfetto();
-      this.currentProgressListener?.onOperationFinished(true);
-    }
-
-    this.currentProgressListener?.onProgressUpdate(
-      'Computing frame mapping...',
-      undefined,
+    const success = await this.loadedFileData.buildTraces(
+      discardLegacyFiles,
+      this.currentProgressListener,
     );
-
-    await timer.sleepMs(); // allow the UI to update before making the main thread very busy
-
-    this.tracePipeline.filterTracesWithoutVisualization();
-    if (this.tracePipeline.getTraces().getSize() === 0) {
+    if (!success) {
       this.currentProgressListener?.onOperationFinished(false);
       return;
     }
 
-    try {
-      const startTimeMs = Date.now();
-      await this.tracePipeline.buildTraces();
-      Analytics.Loading.logFrameMapBuildTime(Date.now() - startTimeMs);
-      Analytics.Memory.logUsage('frame_map_built');
-      this.currentProgressListener?.onOperationFinished(true);
-    } catch (e) {
-      UserNotifier.add(makeWarningIncompleteFrameMapping((e as Error).message));
-      this.currentProgressListener?.onOperationFinished(false);
-    }
-
+    // timer#sleepMs() allows the UI to update before making the main thread very busy
+    await new Timer(10, 100).sleepMs();
     this.currentProgressListener?.onProgressUpdate(
       'Initializing UI...',
       undefined,
     );
 
-    // TODO: move this into the ProgressListener
-    // allow the UI to update before making the main thread very busy
-    await timer.sleepMs();
+    const traces = this.loadedFileData.getTraces();
+    const screenRecordingTrace = traces.getTrace<MediaBasedTraceEntry>(
+      TraceType.SCREEN_RECORDING,
+    );
+    const timestampConverter = this.loadedFileData.getTimestampConverter();
 
     try {
       await this.timelineData.initialize(
-        this.tracePipeline.getTraces(),
-        this.tracePipeline.getScreenRecordingTrace(),
-        this.tracePipeline.getTimestampConverter(),
+        traces,
+        screenRecordingTrace,
+        timestampConverter,
       );
     } catch {
       this.currentProgressListener?.onOperationFinished(false);
@@ -741,9 +725,9 @@ export class Mediator {
     }
 
     this.viewers = new ViewerFactory().createViewers(
-      this.tracePipeline.getTraces(),
+      traces,
       this.storage,
-      this.tracePipeline.getTimestampConverter(),
+      timestampConverter,
     );
     this.viewers.forEach((viewer) => {
       this.setEmitEvent(viewer);
@@ -792,18 +776,15 @@ export class Mediator {
       return;
     }
 
-    const traces = this.tracePipeline.getTraces();
+    const traces = this.loadedFileData.getTraces();
     if (!this.screenRecordingTrace) {
       this.screenRecordingTrace = traces.getTrace(TraceType.SCREEN_RECORDING);
     }
 
     const eventTrace = traces.getTrace(event.traceType);
-    const traceGeometryData = this.tracePipeline.getTraceGeometryData();
+    const traceGeometryData = this.loadedFileData.getTraceGeometryData();
     const trace = this.screenRecordingTrace ?? eventTrace;
 
-    if (traceGeometryData === undefined) {
-      return;
-    }
     if (trace === undefined) {
       return;
     }
@@ -871,7 +852,7 @@ export class Mediator {
     // TimelineData might not provide a TracePosition because all the loaded traces are
     // dumps with invalid timestamps (value zero). In this case let's create a TracePosition
     // out of any entry from the loaded traces (if available).
-    const firstEntries = this.tracePipeline
+    const firstEntries = this.loadedFileData
       .getTraces()
       .mapTrace((trace) => {
         if (trace.lengthEntries > 0) {

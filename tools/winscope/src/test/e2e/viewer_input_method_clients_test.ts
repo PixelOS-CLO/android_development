@@ -24,6 +24,7 @@ import {
   checkTimelineTraceSelector,
   checkWinscopeRealTimestamp,
   loadTraceAndCheckViewer,
+  scrollDown,
   selectItemInHierarchy,
   setTimeouts,
   WINSCOPE_URL,
@@ -39,7 +40,7 @@ describe('Viewer Input Method Clients', () => {
 
   it('processes trace from zip and navigates correctly', async () => {
     await loadTraceAndCheckViewer(
-      'archives/deployment_full_trace_phone.zip',
+      'archives/deployment_full_trace_phone_perfetto.zip',
       'IME Clients',
       viewerSelector,
     );
@@ -61,6 +62,10 @@ describe('Viewer Input Method Clients', () => {
     await clickInputMethodSurface();
     await checkInputMethodSurfaceProperties();
 
+    await scrollDown(
+      `${viewerSelector} .hierarchy-view .tree-scroll`,
+      `${viewerSelector} hierarchy-view [id="nodeInputMethod#765"]`,
+    );
     await selectItemInHierarchy(viewerSelector, 'InputMethod#765');
     await checkInputMethodLayerProperties();
 
@@ -78,12 +83,12 @@ describe('Viewer Input Method Clients', () => {
     );
     expect(await nodes[1].getText()).toContain('253 - SfSubtree - Task=8#253');
     expect(await nodes[2].getText()).toContain(
-      '778 - Letterbox - left#778 HWCV',
+      '778 - Letterbox - left#778HWCV',
     );
     expect(await nodes[3].getText()).toContain(
-      '786 - com.google.(...).ZeroStateSearchActivity#786 HWCV',
+      '786 - com.google.(...).ZeroStateSearchActivity#786HWCV',
     );
-    expect(await nodes[4].getText()).toContain('765 - InputMethod#765 HWCV');
+    expect(await nodes[4].getText()).toContain('765 - InputMethod#765HWCV');
   }
 
   async function checkInputMethodLayerProperties() {

@@ -26,7 +26,7 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {
   SearchQueryClickDetail,
   ViewerEvents,
@@ -123,15 +123,17 @@ describe('ActiveSearchComponent', () => {
     getSearchQueryButton().checkDisabled(false);
   });
 
-  it('clears query', () => {
+  it('clears query - canClear set', () => {
     expect(dom.find('.clear-button')).toBeUndefined();
     component.canClear = true;
     dom.detectChanges();
-    const clearButton = dom.get('.clear-button');
-    spyOn(component.clearQueryClick, 'emit');
-    clearButton.checkText('Clear');
-    clearButton.click();
-    expect(component.clearQueryClick.emit).toHaveBeenCalledTimes(1);
+    checkClearQueryEmitted();
+  });
+
+  it('clears query - query executed', () => {
+    component.executedQuery = testQuery;
+    dom.detectChanges();
+    checkClearQueryEmitted();
   });
 
   it('adds query', () => {
@@ -212,6 +214,14 @@ describe('ActiveSearchComponent', () => {
     const runningQueryMessage = dom.get('.running-query-message');
     runningQueryMessage.checkTextExact('timer Calculating results');
     expect(runningQueryMessage.find('mat-spinner')).toBeDefined();
+  }
+
+  function checkClearQueryEmitted() {
+    const clearButton = dom.get('.clear-button');
+    spyOn(component.clearQueryClick, 'emit');
+    clearButton.checkText('Clear');
+    clearButton.click();
+    expect(component.clearQueryClick.emit).toHaveBeenCalledTimes(1);
   }
 
   @Component({

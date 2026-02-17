@@ -123,6 +123,9 @@ enum Cmd {
 
         /// The crate version.
         version: String,
+
+        #[arg(long, default_value_t = false)]
+        allow_older: bool,
     },
     /// Initialize a new managed repo.
     Init {},
@@ -131,6 +134,8 @@ enum Cmd {
         #[command(flatten)]
         crates: CrateList,
     },
+    /// Count the number of update-based commits submitted
+    CountUpdates {},
 }
 
 #[derive(Args)]
@@ -203,10 +208,13 @@ fn main() -> Result<()> {
                 json,
             )
         }
-        Cmd::Update { crate_name, version } => managed_repo.update(crate_name, version),
+        Cmd::Update { crate_name, version, allow_older } => {
+            managed_repo.update(crate_name, version, allow_older)
+        }
         Cmd::Init {} => managed_repo.init(),
         Cmd::VerifyChecksum { crates } => {
             managed_repo.verify_checksums(crates.to_list(&managed_repo)?.into_iter())
         }
+        Cmd::CountUpdates {} => managed_repo.count_updates(),
     }
 }

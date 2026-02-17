@@ -22,643 +22,556 @@ import {
   TraceEntryEager,
   TraceEntryLazy,
 } from '@trace_api/trace';
-import {makeElapsedTimestamp} from '@test/unit/time_test_helpers';
-import {TraceBuilder} from '@test/unit/trace_builder';
+import {makeRealTimestamp} from '@common/time/test_helpers';
+import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {HierarchyTreeBuilder} from '@test/unit/hierarchy_tree_builder';
 import {TraceType} from '@trace_api/trace_type';
 import {Timer} from '@common/time/timer';
-import {makeEmptyTrace} from '@test/unit/trace_test_helpers';
+import {makeEmptyTrace} from '@test/unit/trace_api/trace_test_helpers';
 import {PlaybackStateChangeHandled} from '@app/components/timeline/playback_events';
 import {TracePositionUpdate} from '@trace/trace_events';
 import {PlaybackState} from './playback_state';
-import {QueryResult, QueryResults} from '@trace_processor/query_result';
-import {RawDataQueryResult} from '@trace_processor/raw_data_query_result';
-import {TraceGeometryData} from '@parsers/trace_geometry_data';
-import {Rect} from '@common/geometry/rect';
+
+import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {TransformMatrix} from '@common/geometry/transform_matrix';
-import {Parser} from '@trace_api/parser';
 import {
   MediaBasedTraceEntry,
   VideoEntry,
 } from '@trace/media_based/media_based_trace_entry';
 import {TracePosition} from '@trace_api/trace_position';
-import {TraceRectBuilder} from '@tree_node/trace_rect_builder';
 import {CornerRadii} from '@common/geometry/corner_radii';
 import {assertDefined} from '@common/assert';
-import {RectsForTrace} from '@tree_node/rect_extractor_result';
 import {VideoFrameCache} from './video_frame_cache';
+import {getPerfettoParser} from '@test/unit/fixture_utils';
+import {Parser} from '@trace_api/parser';
 
 describe('PlaybackPresenter', () => {
-  const timestamp0 = makeElapsedTimestamp(0n);
-  const timestamp2 = makeElapsedTimestamp(2n);
-  const timestamp3 = makeElapsedTimestamp(3n);
-  const timestamp4 = makeElapsedTimestamp(4n);
-  const timestamp5 = makeElapsedTimestamp(5n);
-  const timestamp6 = makeElapsedTimestamp(6n);
-  const blob = new Blob();
-  const screenRecordingTrace = new TraceBuilder<MediaBasedTraceEntry>()
-    .setType(TraceType.SCREEN_RECORDING)
-    .setEntries([
-      new VideoEntry(blob, 0),
-      new VideoEntry(blob, 1),
-      new VideoEntry(blob, 2),
-      new VideoEntry(blob, 3),
-      new VideoEntry(blob, 4),
-    ])
-    .setTimestamps([timestamp0, timestamp2, timestamp3, timestamp5, timestamp6])
-    .build();
-  const traceGeometryData = new TraceGeometryData(
-    new Map([[0n, new Rect(0, 0, 0, 0)]]),
-    new Map([[0n, new TransformMatrix(1, 1, 1, 1, 1, 1)]]),
-  );
+  describe('with small trace', () => {
+    const blob = new Blob();
+    const timestamp1 = makeRealTimestamp(1n);
+    let screenRecordingTrace: Trace<MediaBasedTraceEntry>;
 
-  let trace: Trace<HierarchyTreeNode>;
-  let presenter: PlaybackPresenter;
-  let emitEventSpy: jasmine.Spy<EmitEvent>;
-  let postMessageSpy: jasmine.Spy;
-  let cache: jasmine.SpyObj<VideoFrameCache>;
+    let parser: Parser<HierarchyTreeNode>;
+    let trace: Trace<HierarchyTreeNode>;
+    let traceGeometryData: TraceGeometryData;
+    let presenter: PlaybackPresenter;
+    let emitEventSpy: jasmine.Spy<EmitEvent>;
+    let cache: jasmine.SpyObj<VideoFrameCache>;
 
-  describe('play', () => {
-    describe('with no SR trace', async () => {
+    beforeAll(async () => {
+      const res = await getPerfettoParser(
+        TraceType.SURFACE_FLINGER,
+        'traces/perfetto/layers_trace.perfetto-trace',
+      );
+      parser = res.parser;
+      spyOn(parser, 'getLengthEntries').and.returnValue(5);
+      traceGeometryData = res.traceGeometryData;
+
+      const parserTimestamps = res.parser.getTimestamps();
+      const lastTs = parserTimestamps[parserTimestamps.length - 1].getValueNs();
+
+      screenRecordingTrace = new TraceBuilder<MediaBasedTraceEntry>()
+        .setType(TraceType.SCREEN_RECORDING)
+        .setEntries(Array.from({length: 7}, (_, i) => new VideoEntry(blob, i)))
+        .setTimestamps([
+          timestamp1,
+          ...parserTimestamps.slice(0, 4),
+          makeRealTimestamp(lastTs + 1n),
+          makeRealTimestamp(lastTs + 2n),
+        ])
+        .build();
+    });
+
+    describe('play', () => {
+      describe('with no SR trace', async () => {
+        beforeEach(() => {
+          setUpTestEnvironment();
+        });
+
+        afterEach(async () => {
+          await presenter.pause();
+          presenter.onDestroy();
+        });
+
+        it('starts playback', async () => {
+          await presenter.play(0, PlaybackState.FORWARDS, undefined);
+          expect(presenter.isPlaying()).toBeTrue();
+
+          await presenter.play(0, PlaybackState.BACKWARDS, undefined);
+          expect(presenter.isPlaying()).toBeTrue();
+        });
+
+        it('starts reverse playback at the last position if starting index is 0', async () => {
+          await presenter.play(0, PlaybackState.BACKWARDS, undefined);
+          const update = emitEventSpy.calls.argsFor(1)[0];
+          expect(
+            (update as TracePositionUpdate).position.entry?.getIndex(),
+          ).toEqual(4);
+        });
+
+        it('plays through all the entries in the trace', async () => {
+          await checkAllTraceEntriesPlayed(PlaybackState.FORWARDS);
+        });
+
+        it('in reverse plays through all the entries in the trace', async () => {
+          await checkAllTraceEntriesPlayed(PlaybackState.BACKWARDS);
+        });
+
+        it('plays from specific starting entry', async () => {
+          stopAtIndex(presenter, 3, emitEventSpy);
+          await presenter.play(1, PlaybackState.FORWARDS, undefined);
+          await waitStoppedPlaying(presenter);
+          const update = emitEventSpy.calls.argsFor(2)[0];
+          expect(
+            (update as TracePositionUpdate).position.entry?.getIndex(),
+          ).toEqual(2);
+        });
+
+        it('plays from specific starting entry in reverse', async () => {
+          await presenter.play(1, PlaybackState.BACKWARDS, undefined);
+          await waitStoppedPlaying(presenter);
+          const reverseUpdate = emitEventSpy.calls.argsFor(2)[0];
+          expect(
+            (reverseUpdate as TracePositionUpdate).position.entry?.getIndex(),
+          ).toEqual(0);
+        });
+
+        it('does not throw for an empty trace', async () => {
+          trace = makeEmptyTrace(TraceType.SURFACE_FLINGER);
+          presenter = new PlaybackPresenter(emitEventSpy, trace);
+          await presenter.play(0, PlaybackState.FORWARDS, undefined);
+          expect(emitEventSpy).not.toHaveBeenCalled();
+        });
+
+        it('does not play if the starting index is out of bounds', async () => {
+          await presenter.play(
+            trace.lengthEntries + 1,
+            PlaybackState.FORWARDS,
+            undefined,
+          );
+          expect(emitEventSpy).not.toHaveBeenCalled();
+        });
+
+        async function checkAllTraceEntriesPlayed(
+          stateToReflect: PlaybackState,
+        ) {
+          await presenter.play(0, stateToReflect, undefined);
+          await waitStoppedPlaying(presenter);
+          const allUpdates = emitEventSpy.calls.all();
+          const eagerUpdates = Array.from({length: 5}, (_, i) => {
+            return {traceIndex: i, srIndex: undefined, seekTrace: true};
+          });
+          checkAllEntriesPlayed(allUpdates, stateToReflect, eagerUpdates);
+          checkPrototypesAdded();
+        }
+
+        function checkPrototypesAdded() {
+          const positionUpdates = emitEventSpy.calls
+            .all()
+            .find(
+              (c) =>
+                c.args[0] instanceof TracePositionUpdate &&
+                c.args[0].prefetchedEntries?.trace !== undefined,
+            )?.args[0];
+          const tpu = assertDefined(
+            (positionUpdates as TracePositionUpdate).prefetchedEntries?.trace,
+          );
+
+          const res = tpu.getValue().findDfs((node) => {
+            return node.name === 'com.android.systemui.ImageWallpaper#76';
+          });
+          const nodeWithRects = assertDefined(res);
+          nodeWithRects
+            .getRects()
+            .concat(nodeWithRects.getSecondaryRects())
+            .forEach((rect) => {
+              if (rect.cornerRadii) {
+                expect(rect.cornerRadii).toBeInstanceOf(CornerRadii);
+              }
+              expect(rect.transform).toBeInstanceOf(TransformMatrix);
+            });
+
+          const secondTree = tpu.getValue();
+          expect(secondTree.getEagerPropertyByName('argSetId')).toBeDefined();
+          expect(
+            secondTree
+              .getChildByName('Display 0 name="Built-in Screen"#3')
+              ?.getEagerPropertyByName('isVisible'),
+          ).toBeDefined();
+        }
+      });
+
+      describe('with SR trace', async () => {
+        beforeEach(() => {
+          setUpTestEnvironment();
+          cache.get.and.returnValue(
+            Promise.resolve({
+              frame: jasmine.createSpyObj<ImageBitmap>('image', ['close']),
+              rotationAngle: 0,
+            }),
+          );
+        });
+
+        afterEach(async () => {
+          await presenter.pause();
+          presenter.onDestroy();
+        });
+
+        it('plays through all SR entries before/after trace', async () => {
+          await checkAllSrEntriesBeforeAndAfterTrace(PlaybackState.FORWARDS);
+        });
+
+        it('plays through all SR entries before/after trace in reverse', async () => {
+          await checkAllSrEntriesBeforeAndAfterTrace(PlaybackState.BACKWARDS);
+        });
+
+        it('plays through all trace entries before/after SR', async () => {
+          await checkAllTraceEntriesBeforeAndAfterSr(PlaybackState.FORWARDS);
+        });
+
+        it('plays through all trace entries before/after SR in reverse', async () => {
+          await checkAllTraceEntriesBeforeAndAfterSr(PlaybackState.BACKWARDS);
+        });
+
+        async function checkAllSrEntriesBeforeAndAfterTrace(
+          stateToReflect: PlaybackState,
+        ) {
+          await presenter.play(0, stateToReflect, screenRecordingTrace);
+          await waitStoppedPlaying(presenter);
+          const allUpdates = emitEventSpy.calls.all();
+          const eagerUpdates = [
+            {srIndex: 0, traceIndex: undefined, seekTrace: false},
+            {srIndex: 1, traceIndex: undefined, seekTrace: false},
+            {srIndex: 2, traceIndex: 0, seekTrace: true},
+            {srIndex: 3, traceIndex: 1, seekTrace: true},
+            {srIndex: 4, traceIndex: 2, seekTrace: true},
+            {srIndex: 5, traceIndex: 3, seekTrace: true},
+            {srIndex: 5, traceIndex: 4, seekTrace: true},
+            {srIndex: 6, traceIndex: 4, seekTrace: false},
+          ];
+          checkAllEntriesPlayed(allUpdates, stateToReflect, eagerUpdates);
+        }
+
+        async function checkAllTraceEntriesBeforeAndAfterSr(
+          stateToReflect: PlaybackState,
+        ) {
+          const srTrace = new TraceBuilder<MediaBasedTraceEntry>()
+            .setType(TraceType.SCREEN_RECORDING)
+            .setEntries(
+              Array.from({length: 2}, (_, i) => {
+                return new VideoEntry(blob, i);
+              }),
+            )
+            .setTimestamps(parser.getTimestamps().slice(0, 2))
+            .build();
+          await presenter.play(0, stateToReflect, srTrace);
+          await waitStoppedPlaying(presenter);
+          const allUpdates = emitEventSpy.calls.all();
+          const eagerUpdates = [
+            {srIndex: 0, traceIndex: undefined, seekTrace: false},
+            {srIndex: 1, traceIndex: 0, seekTrace: true},
+            {srIndex: 1, traceIndex: 1, seekTrace: true},
+            {srIndex: undefined, traceIndex: 2, seekTrace: true},
+            {srIndex: undefined, traceIndex: 3, seekTrace: true},
+            {srIndex: undefined, traceIndex: 4, seekTrace: true},
+          ];
+          checkAllEntriesPlayed(
+            allUpdates,
+            stateToReflect,
+            eagerUpdates,
+            srTrace,
+          );
+        }
+      });
+    });
+
+    describe('pause', () => {
       beforeEach(() => {
         setUpTestEnvironment();
       });
 
-      it('starts playback', async () => {
-        await presenter.play(0, PlaybackState.FORWARDS, undefined);
-        expect(presenter.isPlaying()).toBeTrue();
-
-        await presenter.play(0, PlaybackState.BACKWARDS, undefined);
-        expect(presenter.isPlaying()).toBeTrue();
+      afterEach(() => {
+        presenter.onDestroy();
       });
 
-      it('starts reverse playback at the last position if starting index is 0', async () => {
-        await presenter.play(0, PlaybackState.BACKWARDS, undefined);
-        const update = emitEventSpy.calls.argsFor(1)[0];
-        expect(
-          (update as TracePositionUpdate).position.entry?.getIndex(),
-        ).toEqual(2);
-      });
-
-      it('plays through all the entries in the trace', async () => {
-        await checkAllTraceEntriesPlayed(PlaybackState.FORWARDS);
-      });
-
-      it('in reverse plays through all the entries in the trace', async () => {
-        await checkAllTraceEntriesPlayed(PlaybackState.BACKWARDS);
-      });
-
-      it('plays from specific starting entry', async () => {
-        await presenter.play(1, PlaybackState.FORWARDS, undefined);
-        await new Timer(1000).wait(() => !presenter.isPlaying());
-        const update = emitEventSpy.calls.argsFor(2)[0];
-        expect(
-          (update as TracePositionUpdate).position.entry?.getIndex(),
-        ).toEqual(2);
-      });
-
-      it('plays from specific starting entry in reverse', async () => {
-        await presenter.play(1, PlaybackState.BACKWARDS, undefined);
-        await new Timer(1000).wait(() => !presenter.isPlaying());
-        const reverseUpdate = emitEventSpy.calls.argsFor(2)[0];
-        expect(
-          (reverseUpdate as TracePositionUpdate).position.entry?.getIndex(),
-        ).toEqual(0);
-      });
-
-      it('starts reverse playback at end of trace', async () => {
-        await presenter.play(1, PlaybackState.BACKWARDS, undefined);
-        await new Timer(1000).wait(() => !presenter.isPlaying());
-        const reverseUpdate = emitEventSpy.calls.all()[2].args[0];
-        expect(
-          (reverseUpdate as TracePositionUpdate).position.entry?.getIndex(),
-        ).toEqual(0);
-      });
-
-      it('does not throw for an empty trace', async () => {
-        trace = makeEmptyTrace(TraceType.SURFACE_FLINGER);
-        presenter = new PlaybackPresenter(emitEventSpy, trace);
-        await presenter.play(0, PlaybackState.FORWARDS, undefined);
-        expect(emitEventSpy).not.toHaveBeenCalled();
-      });
-
-      it('does not play if the starting index is out of bounds', async () => {
-        await presenter.play(
-          trace.lengthEntries + 1,
-          PlaybackState.FORWARDS,
-          undefined,
-        );
-        expect(emitEventSpy).not.toHaveBeenCalled();
-      });
-
-      it('handles worker returning empty buffer', async () => {
-        postMessageSpy.and.callFake(() => {
-          presenter['workerPromiseResolve']?.([]);
-        });
-        await presenter.play(0, PlaybackState.FORWARDS, undefined);
-        expect(emitEventSpy).not.toHaveBeenCalled();
+      it('initializes in a paused state', () => {
         expect(presenter.isPlaying()).toBeFalse();
       });
 
-      it('emits last updated entry as position update with lazy entry', async () => {
+      it('stops the playback loop and emits handled event', async () => {
         await presenter.play(0, PlaybackState.FORWARDS, undefined);
-        await new Timer(1000).wait(() => !presenter.isPlaying());
+        expect(presenter.isPlaying()).toBeTrue();
+        await presenter.pause();
+        expect(presenter.isPlaying()).toBeFalse();
         expect(emitEventSpy).toHaveBeenCalledWith(
-          new TracePositionUpdate(
-            TracePosition.fromTraceEntry(trace.getEntry(2)),
-            true,
-          ),
+          new PlaybackStateChangeHandled(PlaybackState.PAUSED, trace.type),
         );
       });
 
-      it('applies prototypes to entry values', async () => {
-        postMessageSpy.and.callFake((message) => {
-          const mockTrees = makeTrees(message);
-          const rect = new TraceRectBuilder()
-            .setX(1)
-            .setY(1)
-            .setWidth(200)
-            .setHeight(400)
-            .setId('1')
-            .setName('rect')
-            .setTransform(TransformMatrix.IDENTITY)
-            .setGroupId(0)
-            .setIsVisible(true)
-            .setIsDisplay(false)
-            .setDepth(0)
-            .setCornerRadii(new CornerRadii(0.1, 0.1, 0, 0))
-            .setIsSpy(false)
-            .build();
-          mockTrees[0].setRects([rect]);
-          mockTrees[0].setSecondaryRects([rect]);
-          mockTrees[1].addOrReplaceChild(
-            new HierarchyTreeBuilder()
-              .setId(`TreeChild`)
-              .setName(`NodeChild`)
-              .setProperties({prop1: true})
-              .build(),
-          );
+      it('has no effect when already paused', async () => {
+        expect(presenter.isPlaying()).toBeFalse();
+        await presenter.pause();
+        expect(emitEventSpy).not.toHaveBeenCalled();
+      });
 
-          presenter['workerPromiseResolve']?.(mockTrees);
-        });
-
+      it('does not emit handled event if flag set to false', async () => {
         await presenter.play(0, PlaybackState.FORWARDS, undefined);
-        await new Timer(1000).wait(() => !presenter.isPlaying());
-
-        const positionUpdates = emitEventSpy.calls
-          .all()
-          .filter(
-            (c) =>
-              c.args[0] instanceof TracePositionUpdate &&
-              c.args[0].prefetchedEntries?.trace !== undefined,
-          )
-          .map((c) => {
-            return assertDefined(
-              (c.args[0] as TracePositionUpdate).prefetchedEntries?.trace,
-            );
-          });
-
-        const firstTree = positionUpdates[0].getValue();
-        assertDefined(firstTree.getRects())
-          .concat(assertDefined(firstTree.getSecondaryRects()))
-          .forEach((rect) => {
-            expect(rect.transform).toBeInstanceOf(TransformMatrix);
-            expect(rect.cornerRadii).toBeInstanceOf(CornerRadii);
-          });
-
-        const secondTree = positionUpdates[1].getValue();
-        expect(secondTree.getEagerPropertyByName('prop1')).toBeDefined();
-        expect(
-          secondTree
-            .getChildByName('NodeChild')
-            ?.getEagerPropertyByName('prop1'),
-        ).toBeDefined();
-      });
-
-      async function checkAllTraceEntriesPlayed(stateToReflect: PlaybackState) {
-        await presenter.play(0, stateToReflect, undefined);
-        await new Timer(1000).wait(() => !presenter.isPlaying());
-        const allUpdates = emitEventSpy.calls.all();
-        const eagerUpdates = [
-          {traceIndex: 0, srIndex: undefined, seekTrace: true},
-          {traceIndex: 1, srIndex: undefined, seekTrace: true},
-          {traceIndex: 2, srIndex: undefined, seekTrace: true},
-        ];
-        checkAllEntriesPlayed(allUpdates, stateToReflect, eagerUpdates);
-      }
-    });
-
-    describe('with SR trace', async () => {
-      beforeEach(() => {
-        setUpTestEnvironment();
-        cache.get.and.returnValue(
-          Promise.resolve({
-            frame: jasmine.createSpyObj<ImageBitmap>('image', ['close']),
-            rotationAngle: 0,
-          }),
+        expect(presenter.isPlaying()).toBeTrue();
+        await presenter.pause(false);
+        expect(presenter.isPlaying()).toBeFalse();
+        expect(emitEventSpy).not.toHaveBeenCalledWith(
+          new PlaybackStateChangeHandled(PlaybackState.PAUSED, trace.type),
         );
       });
 
-      it('plays through all SR entries before/after trace', async () => {
-        await checkAllSrEntriesBeforeAndAfterTrace(PlaybackState.FORWARDS);
-      });
-
-      it('plays through all SR entries before/after trace in reverse', async () => {
-        await checkAllSrEntriesBeforeAndAfterTrace(PlaybackState.BACKWARDS);
-      });
-
-      it('plays through all trace entries before/after SR', async () => {
-        await checkAllTraceEntriesBeforeAndAfterSr(PlaybackState.FORWARDS);
-      });
-
-      it('plays through all trace entries before/after SR in reverse', async () => {
-        await checkAllTraceEntriesBeforeAndAfterSr(PlaybackState.BACKWARDS);
-      });
-
-      async function checkAllSrEntriesBeforeAndAfterTrace(
-        stateToReflect: PlaybackState,
-      ) {
-        await presenter.play(0, stateToReflect, screenRecordingTrace);
-        await new Timer(1000).wait(() => !presenter.isPlaying());
-        const allUpdates = emitEventSpy.calls.all();
-        const eagerUpdates = [
-          {srIndex: 0, traceIndex: undefined, seekTrace: false},
-          {srIndex: 1, traceIndex: undefined, seekTrace: false},
-          {srIndex: 2, traceIndex: 0, seekTrace: true},
-          {srIndex: 3, traceIndex: 1, seekTrace: true},
-          {srIndex: 3, traceIndex: 2, seekTrace: true},
-          {srIndex: 4, traceIndex: 2, seekTrace: false},
-        ];
-        checkAllEntriesPlayed(allUpdates, stateToReflect, eagerUpdates);
-      }
-
-      async function checkAllTraceEntriesBeforeAndAfterSr(
-        stateToReflect: PlaybackState,
-      ) {
-        const srTrace = new TraceBuilder<MediaBasedTraceEntry>()
-          .setType(TraceType.SCREEN_RECORDING)
-          .setEntries([new VideoEntry(blob, 0), new VideoEntry(blob, 1)])
-          .setTimestamps([timestamp2, timestamp3])
-          .build();
-        await presenter.play(0, stateToReflect, srTrace);
-        await new Timer(1000).wait(() => !presenter.isPlaying());
-        const allUpdates = emitEventSpy.calls.all();
-        const eagerUpdates = [
-          {srIndex: 0, traceIndex: undefined, seekTrace: false},
-          {srIndex: 1, traceIndex: 0, seekTrace: true},
-          {srIndex: 1, traceIndex: 1, seekTrace: true},
-          {srIndex: undefined, traceIndex: 2, seekTrace: true},
-        ];
-        checkAllEntriesPlayed(
-          allUpdates,
-          stateToReflect,
-          eagerUpdates,
-          srTrace,
-        );
-      }
-    });
-
-    describe('with large trace', () => {
-      let presenterLargeTrace: PlaybackPresenter;
-      let largeTrace: Trace<HierarchyTreeNode>;
-
-      beforeEach(() => {
-        setUpTestEnvironment();
-        initializePresenterAndLargeTrace(320);
-      });
-
-      it('handles large trace in forwards direction', async () => {
-        await handlesBufferBoundary(145, 155, PlaybackState.FORWARDS);
-        await handlesBufferBoundary(295, 305, PlaybackState.FORWARDS);
-        await handlesBufferBoundary(309, undefined, PlaybackState.FORWARDS);
-      });
-
-      it('handles large trace in backwards direction', async () => {
-        await handlesBufferBoundary(155, 145, PlaybackState.BACKWARDS);
-        await handlesBufferBoundary(305, 295, PlaybackState.BACKWARDS);
-        await handlesBufferBoundary(0, 309, PlaybackState.BACKWARDS);
-        await handlesBufferBoundary(10, undefined, PlaybackState.BACKWARDS);
-      });
-
-      function initializePresenterAndLargeTrace(length: number) {
-        let prevTs = 1n;
-        largeTrace = new TraceBuilder<HierarchyTreeNode>()
-          .setType(TraceType.SURFACE_FLINGER)
-          .setEntries(
-            Array.from({length}, () => {
-              return new HierarchyTreeBuilder()
-                .setId('Test Trace')
-                .setName('entry1')
-                .build();
-            }),
-          )
-          .setTimestamps(
-            Array.from({length}, () => {
-              prevTs += 1n;
-              return makeElapsedTimestamp(prevTs);
-            }),
-          )
-          .build();
-        setTraceSpies(largeTrace);
-        presenterLargeTrace = new PlaybackPresenter(
-          emitEventSpy,
-          largeTrace,
-          async (data) => {
-            return cache;
-          },
-        );
-        presenterLargeTrace.setTraceGeometryData(traceGeometryData);
-        spyOn(presenterLargeTrace['worker'], 'postMessage').and.callFake(
-          (message) => {
-            const mockTrees = makeTrees(message);
-            presenterLargeTrace['workerPromiseResolve']?.(mockTrees);
-          },
-        );
-      }
-
-      async function handlesBufferBoundary(
-        startIndex: number,
-        finishIndex: number | undefined,
-        state: PlaybackState,
-      ) {
-        emitEventSpy.calls.reset();
-        if (finishIndex !== undefined) {
-          emitEventSpy.and.callFake(async (event) => {
-            if (
-              event instanceof TracePositionUpdate &&
-              event.position.entry?.getIndex() === finishIndex
-            ) {
-              await presenterLargeTrace.pause(false);
-            }
-          });
-        }
-        await presenterLargeTrace.play(startIndex, state, undefined);
-        await new Timer(1000).wait(() => !presenterLargeTrace.isPlaying());
-
-        const allUpdates = emitEventSpy.calls
-          .all()
-          .map((c) => c.args[0])
-          .filter((event) => event instanceof TracePositionUpdate);
-        expect(allUpdates.length).toEqual(12); // 11 updates + 1 handled event
-        const lazyIndex =
-          finishIndex ?? (state === PlaybackState.FORWARDS ? 319 : 0);
-        expect(allUpdates[allUpdates.length - 1]).toEqual(
+      it('emits last updated entry as position update with lazy entry', async () => {
+        stopAtIndex(presenter, 1, emitEventSpy);
+        await presenter.play(0, PlaybackState.FORWARDS, undefined);
+        await waitStoppedPlaying(presenter);
+        expect(emitEventSpy.calls.mostRecent().args[0]).toEqual(
           new TracePositionUpdate(
-            TracePosition.fromTraceEntry(largeTrace.getEntry(lazyIndex)),
+            TracePosition.fromTraceEntry(trace.getEntry(1)),
             true,
           ),
         );
+      });
+    });
+
+    describe('speed change', () => {
+      it('increases speed', async () => {
+        const finish1 = await getExecutionTime(1);
+        const finish2 = await getExecutionTime(2);
+        expect(finish2).toBeLessThan(finish1);
+      });
+
+      it('decreases speed', async () => {
+        const finish1 = await getExecutionTime(1);
+        const finish2 = await getExecutionTime(0.25);
+        expect(finish2).toBeGreaterThan(finish1);
+      });
+
+      it('does not skip entries while playing through the trace', async () => {
+        setUpTestEnvironment();
+        presenter.changeSpeed(2);
+        await presenter.play(0, PlaybackState.FORWARDS, undefined);
+        await waitStoppedPlaying(presenter);
+        expect(emitEventSpy).toHaveBeenCalledTimes(8);
+        presenter.onDestroy();
+      });
+
+      async function getExecutionTime(speed: number): Promise<number> {
+        setUpTestEnvironment();
+        presenter.changeSpeed(speed);
+        const start = Date.now();
+        return new Promise<number>((resolve) => {
+          const spy = spyOn(presenter, 'pause');
+          spy.and.callFake(async (emitHandledEvent) => {
+            spy.and.callThrough();
+            await presenter.pause(emitHandledEvent);
+            presenter.onDestroy();
+            resolve(Date.now() - start);
+          });
+          presenter.play(0, PlaybackState.FORWARDS, undefined);
+        });
       }
     });
+
+    function checkAllEntriesPlayed(
+      allUpdates: ReadonlyArray<jasmine.CallInfo<EmitEvent>>,
+      stateToReflect: PlaybackState,
+      eagerUpdates: ExpectedEagerUpdate[],
+      srTrace = screenRecordingTrace,
+    ) {
+      // all updates:
+      // 1) PlaybackStateChangeHandled - play
+      // 2) eager TracePositionUpdates
+      // 3) PlaybackStateChangeHandled - pause
+      // 4) lazy TracePositionUpdate
+      expect(allUpdates.length).toEqual(eagerUpdates.length + 3);
+      const startEvent = allUpdates[0].args[0] as PlaybackStateChangeHandled;
+      expect(startEvent.stateToReflect).toEqual(stateToReflect);
+
+      if (stateToReflect === PlaybackState.BACKWARDS) {
+        eagerUpdates.reverse();
+      }
+
+      const checkTracePositionEntry = (i: number, j: number) => {
+        const exp = eagerUpdates[i];
+        const event = allUpdates[j].args[0] as TracePositionUpdate;
+        const entry = event.position.entry;
+        expect(entry?.getIndex()).toEqual(exp.srIndex ?? exp.traceIndex);
+        expect(entry?.getFullTrace()).toEqual(
+          exp.srIndex !== undefined ? srTrace : trace,
+        );
+        return {event, entry, exp};
+      };
+
+      const checkPrefetchedEntry = (
+        event: TracePositionUpdate,
+        exp: ExpectedEagerUpdate,
+      ) => {
+        const prefetchedEntry = event.prefetchedEntries?.trace;
+        expect(prefetchedEntry === undefined).toEqual(
+          exp.traceIndex === undefined,
+        );
+        if (prefetchedEntry && exp.traceIndex !== undefined) {
+          expect(prefetchedEntry.getIndex()).toEqual(exp.traceIndex);
+          expect(prefetchedEntry.getFullTrace()).toEqual(trace);
+        }
+      };
+
+      const checkSeekPos = (
+        event: TracePositionUpdate,
+        exp: ExpectedEagerUpdate,
+      ) => {
+        const seekPos = event.prefetchedEntries?.seek;
+        if (exp.seekTrace) {
+          if (exp.traceIndex === undefined) {
+            expect(seekPos).toBeUndefined();
+          } else {
+            const ts = trace.getEntry(exp.traceIndex).getTimestamp();
+            expect(seekPos).toEqual(ts);
+          }
+        } else {
+          if (exp.srIndex === undefined) {
+            expect(seekPos).toBeUndefined();
+          } else {
+            const ts = srTrace.getEntry(exp.srIndex).getTimestamp();
+            expect(seekPos).toEqual(ts);
+          }
+        }
+      };
+
+      for (let i = 1; i < eagerUpdates.length + 1; i++) {
+        const {event, entry, exp} = checkTracePositionEntry(i - 1, i);
+        expect(entry).toBeInstanceOf(
+          exp.srIndex !== undefined ? CustomTraceEntryLazy : TraceEntryEager,
+        );
+        checkPrefetchedEntry(event, exp);
+        checkSeekPos(event, exp);
+      }
+
+      const pauseEvent = allUpdates[allUpdates.length - 2]
+        .args[0] as PlaybackStateChangeHandled;
+      expect(pauseEvent.stateToReflect).toEqual(PlaybackState.PAUSED);
+
+      const {event, entry} = checkTracePositionEntry(
+        eagerUpdates.length - 1,
+        allUpdates.length - 1,
+      );
+      expect(entry).toBeInstanceOf(TraceEntryLazy);
+      expect(event.prefetchedEntries).toBeUndefined();
+    }
+
+    function setUpTestEnvironment() {
+      emitEventSpy = jasmine.createSpy('emitWinscopeEvent');
+      cache = jasmine.createSpyObj('cache', ['get', 'onDestroy']);
+      trace = Trace.fromParser(parser);
+      presenter = new PlaybackPresenter(emitEventSpy, trace, async () => cache);
+      presenter.setTraceGeometryData(traceGeometryData);
+    }
   });
 
-  describe('pause', () => {
+  xdescribe('with large trace', () => {
+    let geometryDataLargeTrace: TraceGeometryData;
+    let parserLargeTrace: Parser<HierarchyTreeNode>;
+    let emitEventSpyLargeTrace: jasmine.Spy<EmitEvent>;
+    let cacheLargeTrace: jasmine.SpyObj<VideoFrameCache>;
+    let largeTrace: Trace<HierarchyTreeNode>;
+    let presenterLargeTrace: PlaybackPresenter;
+
+    beforeAll(async () => {
+      const res = await getPerfettoParser(
+        TraceType.SURFACE_FLINGER,
+        'archives/deployment_full_trace_phone_perfetto.zip',
+        undefined,
+        'combined_winscope_trace.perfetto-trace',
+      );
+      geometryDataLargeTrace = res.traceGeometryData;
+      parserLargeTrace = res.parser;
+    });
+
     beforeEach(() => {
-      setUpTestEnvironment();
+      initializePresenterAndLargeTrace();
     });
 
-    it('initializes in a paused state', () => {
-      expect(presenter.isPlaying()).toBeFalse();
+    afterEach(() => {
+      presenterLargeTrace.onDestroy();
     });
-    it('stops the playback loop and emits handled event', async () => {
-      await presenter.play(0, PlaybackState.FORWARDS, undefined);
-      expect(presenter.isPlaying()).toBeTrue();
-      await presenter.pause();
-      expect(presenter.isPlaying()).toBeFalse();
-      expect(emitEventSpy).toHaveBeenCalledWith(
-        new PlaybackStateChangeHandled(PlaybackState.PAUSED, trace.type),
+
+    it('handles large trace in forwards direction', async () => {
+      await handlesBufferBoundary(45, 55, PlaybackState.FORWARDS);
+      await handlesBufferBoundary(145, 155, PlaybackState.FORWARDS);
+      await handlesBufferBoundary(257, undefined, PlaybackState.FORWARDS);
+    });
+
+    it('handles large trace in backwards direction', async () => {
+      await handlesBufferBoundary(55, 45, PlaybackState.BACKWARDS);
+      await handlesBufferBoundary(155, 145, PlaybackState.BACKWARDS);
+      await handlesBufferBoundary(0, 257, PlaybackState.BACKWARDS);
+      await handlesBufferBoundary(10, undefined, PlaybackState.BACKWARDS);
+    });
+
+    function initializePresenterAndLargeTrace() {
+      emitEventSpyLargeTrace = jasmine.createSpy('emitWinscopeEvent');
+      cacheLargeTrace = jasmine.createSpyObj('cache', ['get', 'onDestroy']);
+      largeTrace = Trace.fromParser(parserLargeTrace);
+      presenterLargeTrace = new PlaybackPresenter(
+        emitEventSpyLargeTrace,
+        largeTrace,
+        async () => cacheLargeTrace,
       );
-    });
+      presenterLargeTrace.setTraceGeometryData(geometryDataLargeTrace);
+    }
 
-    it('has no effect when already paused', async () => {
-      expect(presenter.isPlaying()).toBeFalse();
-      await presenter.pause();
-      expect(emitEventSpy).not.toHaveBeenCalled();
-    });
+    async function handlesBufferBoundary(
+      startIndex: number,
+      finishIndex: number | undefined,
+      state: PlaybackState,
+    ) {
+      emitEventSpyLargeTrace.calls.reset();
+      if (finishIndex !== undefined) {
+        stopAtIndex(presenterLargeTrace, finishIndex, emitEventSpyLargeTrace);
+      } else {
+        emitEventSpyLargeTrace.and.callThrough();
+      }
+      await presenterLargeTrace.play(startIndex, state, undefined);
+      await waitStoppedPlaying(presenterLargeTrace, 1000);
 
-    it('does not emit handled event if flag set to false', async () => {
-      await presenter.play(0, PlaybackState.FORWARDS, undefined);
-      expect(presenter.isPlaying()).toBeTrue();
-      await presenter.pause(false);
-      expect(presenter.isPlaying()).toBeFalse();
-      expect(emitEventSpy).not.toHaveBeenCalledWith(
-        new PlaybackStateChangeHandled(PlaybackState.PAUSED, trace.type),
-      );
-    });
-
-    it('emits last updated entry as position update with lazy entry', async () => {
-      emitEventSpy.and.callFake(async (event) => {
-        if (
-          event instanceof TracePositionUpdate &&
-          event.position.entry?.getIndex() === 1
-        ) {
-          await presenter.pause(false);
-        }
-      });
-      await presenter.play(0, PlaybackState.FORWARDS, undefined);
-      await new Timer(1000, 100).wait(() => {
-        return emitEventSpy.calls.all().length === 4;
-      });
-      expect(emitEventSpy.calls.mostRecent().args[0]).toEqual(
+      const allUpdates = emitEventSpyLargeTrace.calls
+        .all()
+        .map((c) => c.args[0])
+        .filter((event) => event instanceof TracePositionUpdate);
+      expect(allUpdates.length).toEqual(12); // 11 updates + 1 handled event
+      const lazyIndex =
+        finishIndex ?? (state === PlaybackState.FORWARDS ? 267 : 0);
+      expect(allUpdates[allUpdates.length - 1]).toEqual(
         new TracePositionUpdate(
-          TracePosition.fromTraceEntry(trace.getEntry(1)),
+          TracePosition.fromTraceEntry(largeTrace.getEntry(lazyIndex)),
           true,
         ),
       );
-    });
-  });
-
-  describe('speed change', () => {
-    beforeEach(() => {
-      setUpTestEnvironment();
-    });
-
-    it('increases speed', async () => {
-      const finish1 = await getExecutionTime();
-      presenter.changeSpeed(2);
-      const finish2 = await getExecutionTime();
-      expect(finish2).toBeLessThan(finish1);
-    });
-
-    it('decreases speed', async () => {
-      const finish1 = await getExecutionTime();
-      presenter.changeSpeed(0.25);
-      const finish2 = await getExecutionTime();
-      expect(finish2).toBeGreaterThan(finish1);
-    });
-
-    it('does not skip entries while playing through the trace', async () => {
-      presenter.changeSpeed(2);
-      await presenter.play(0, PlaybackState.FORWARDS, undefined);
-      await new Timer(1000).wait(() => !presenter.isPlaying());
-      expect(emitEventSpy).toHaveBeenCalledTimes(6);
-    });
-
-    async function getExecutionTime(): Promise<number> {
-      const start = Date.now();
-      await presenter.play(0, PlaybackState.FORWARDS, undefined);
-      await new Timer(1000, 20).wait(() => !presenter.isPlaying());
-      return Date.now() - start;
     }
   });
 
-  function checkAllEntriesPlayed(
-    allUpdates: ReadonlyArray<jasmine.CallInfo<EmitEvent>>,
-    stateToReflect: PlaybackState,
-    eagerUpdates: ExpectedEagerUpdate[],
-    srTrace = screenRecordingTrace,
+  function stopAtIndex(
+    p: PlaybackPresenter,
+    index: number,
+    emitSpy: jasmine.Spy<EmitEvent>,
   ) {
-    const startEvent = allUpdates[0].args[0] as PlaybackStateChangeHandled;
-    expect(startEvent.stateToReflect).toEqual(stateToReflect);
-
-    if (stateToReflect === PlaybackState.BACKWARDS) {
-      eagerUpdates.reverse();
-    }
-
-    const checkTracePositionEntry = (i: number, j: number) => {
-      const exp = eagerUpdates[i];
-      const event = allUpdates[j].args[0] as TracePositionUpdate;
-      const entry = event.position.entry;
-      expect(entry?.getIndex()).toEqual(exp.srIndex ?? exp.traceIndex);
-      expect(entry?.getFullTrace()).toEqual(
-        exp.srIndex !== undefined ? srTrace : trace,
-      );
-      return {event, entry, exp};
-    };
-
-    const checkPrefetchedEntry = (
-      event: TracePositionUpdate,
-      exp: ExpectedEagerUpdate,
-    ) => {
-      const prefetchedEntry = event.prefetchedEntries?.trace;
-      expect(prefetchedEntry === undefined).toEqual(
-        exp.traceIndex === undefined,
-      );
-      if (prefetchedEntry && exp.traceIndex !== undefined) {
-        expect(prefetchedEntry.getIndex()).toEqual(exp.traceIndex);
-        expect(prefetchedEntry.getFullTrace()).toEqual(trace);
+    emitSpy.and.callFake(async (event) => {
+      if (
+        event instanceof TracePositionUpdate &&
+        event.position.entry?.getIndex() === index
+      ) {
+        await p.pause(false);
       }
-    };
-
-    const checkSeekPos = (
-      event: TracePositionUpdate,
-      exp: ExpectedEagerUpdate,
-    ) => {
-      const seekPos = event.prefetchedEntries?.seek;
-      if (exp.seekTrace) {
-        if (exp.traceIndex === undefined) {
-          expect(seekPos).toBeUndefined();
-        } else {
-          const ts = trace.getEntry(exp.traceIndex).getTimestamp();
-          expect(seekPos).toEqual(ts);
-        }
-      } else {
-        if (exp.srIndex === undefined) {
-          expect(seekPos).toBeUndefined();
-        } else {
-          const ts = srTrace.getEntry(exp.srIndex).getTimestamp();
-          expect(seekPos).toEqual(ts);
-        }
-      }
-    };
-
-    for (let i = 1; i < eagerUpdates.length + 1; i++) {
-      const {event, entry, exp} = checkTracePositionEntry(i - 1, i);
-      expect(entry).toBeInstanceOf(
-        exp.srIndex !== undefined ? CustomTraceEntryLazy : TraceEntryEager,
-      );
-      checkPrefetchedEntry(event, exp);
-      checkSeekPos(event, exp);
-    }
-
-    const pauseEvent = allUpdates[allUpdates.length - 2]
-      .args[0] as PlaybackStateChangeHandled;
-    expect(pauseEvent.stateToReflect).toEqual(PlaybackState.PAUSED);
-
-    const {event, entry} = checkTracePositionEntry(
-      eagerUpdates.length - 1,
-      allUpdates.length - 1,
-    );
-    expect(entry).toBeInstanceOf(TraceEntryLazy);
-    expect(event.prefetchedEntries).toBeUndefined();
-  }
-
-  function setTraceSpies(traceToSpy: Trace<HierarchyTreeNode>) {
-    const mockParser = {
-      getRectsMap: async () => new Map(),
-    };
-    spyOn(traceToSpy, 'getParser').and.returnValue(
-      mockParser as Parser<HierarchyTreeNode>,
-    );
-    spyOn(traceToSpy, 'getQueryResults').and.callFake(async () => {
-      return Promise.resolve({
-        snapshotRange: new RawDataQueryResult(),
-        nodeRange: new RawDataQueryResult(),
-        allVisibleRects: undefined,
-        allSnapshots: undefined,
-      } as QueryResults<QueryResult | RawDataQueryResult>);
     });
   }
-
-  function makeTrees(message: WorkerMessage): HierarchyTreeNode[] {
-    const numEntries = message.end - message.start;
-    return Array.from({length: numEntries}).map((_, i) =>
-      new HierarchyTreeBuilder()
-        .setId(`Tree ${message.start + i}`)
-        .setName(`Node ${message.start + i}`)
-        .setProperties({prop1: true})
-        .build(),
-    );
-  }
-
-  function setUpTestEnvironment() {
-    emitEventSpy = jasmine.createSpy('emitWinscopeEvent');
-
-    trace = new TraceBuilder<HierarchyTreeNode>()
-      .setType(TraceType.SURFACE_FLINGER)
-      .setEntries([
-        new HierarchyTreeBuilder()
-          .setId('Test Trace')
-          .setName('entry1')
-          .build(),
-        new HierarchyTreeBuilder()
-          .setId('Test Trace2')
-          .setName('entry2')
-          .build(),
-        new HierarchyTreeBuilder()
-          .setId('Test Trace3')
-          .setName('entry3')
-          .build(),
-      ])
-      .setTimestamps([timestamp2, timestamp3, timestamp4])
-      .build();
-    setTraceSpies(trace);
-
-    cache = jasmine.createSpyObj('cache', ['get', 'onDestroy']);
-    presenter = new PlaybackPresenter(emitEventSpy, trace, async (data) => {
-      return cache;
-    });
-    presenter.setTraceGeometryData(traceGeometryData);
-
-    postMessageSpy = spyOn(presenter['worker'], 'postMessage').and.callFake(
-      (message) => {
-        const mockTrees = makeTrees(message);
-        presenter['workerPromiseResolve']?.(mockTrees);
-      },
-    );
+  async function waitStoppedPlaying(p: PlaybackPresenter, timeout = 1000) {
+    await new Timer(timeout, 50).wait(() => !p.isPlaying());
   }
 });
-
-interface WorkerMessage {
-  start: number;
-  end: number;
-  snapshotBatches: Uint8Array[] | undefined;
-  nodeBatches: Uint8Array[];
-  type: TraceType;
-  traceGeometryData: TraceGeometryData;
-  visibleRectsMap: RectsForTrace;
-}
 
 interface ExpectedEagerUpdate {
   srIndex?: number;

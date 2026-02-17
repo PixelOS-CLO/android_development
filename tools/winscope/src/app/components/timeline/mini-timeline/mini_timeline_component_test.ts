@@ -33,9 +33,9 @@ import {TimelineData} from '@app/timeline_data';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventCode} from '@common/dom';
 import {TimeRange, Timestamp} from '@common/time/time';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
-import {makeRealTimestamp, UTC_CONVERTER} from '@test/unit/time_test_helpers';
-import {TracesBuilder} from '@test/unit/traces_builder';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {makeRealTimestamp, UTC_CONVERTER} from '@common/time/test_helpers';
+import {TracesBuilder} from '@test/unit/trace_api/traces_builder';
 import {Trace} from '@trace_api/trace';
 import {TracePosition} from '@trace_api/trace_position';
 import {TraceType} from '@trace_api/trace_type';
@@ -462,6 +462,12 @@ describe('MiniTimelineComponent', () => {
     const initialZoom = new TimeRange(timestamp1000, timestamp4000);
     component.initialZoom = initialZoom;
     component.currentTracePosition = TracePosition.fromTimestamp(timestamp2000);
+    // fix width to timeline regardless of browser window size, so that test
+    // timestamps are correctly calibrated for usable range
+    dom.get('#mini-timeline-wrapper').getHTMLElement().style.minWidth =
+      '1000px';
+    dom.get('#mini-timeline-wrapper').getHTMLElement().style.maxWidth =
+      '1000px';
     dom.detectChanges();
     const drawer = assertDefined(component.miniTimelineComponent?.drawer);
     const usableRange = drawer.getUsableRange();

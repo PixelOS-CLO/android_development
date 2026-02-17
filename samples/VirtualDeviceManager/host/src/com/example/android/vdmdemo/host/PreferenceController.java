@@ -73,8 +73,7 @@ final class PreferenceController {
             new BoolRule(R.string.pref_enable_cross_device_clipboard, VANILLA_ICE_CREAM)
                     .withRequiredPermissions(ADD_TRUSTED_DISPLAY),
 
-            new BoolRule(R.string.pref_enable_custom_activity_policy, BAKLAVA,
-                    Flags::activityControlApi),
+            new BoolRule(R.string.pref_enable_custom_activity_policy, BAKLAVA),
 
             new StringRule(R.string.pref_camera_policy, VANILLA_ICE_CREAM)
                     .withDefaultValue(String.valueOf(0)),
@@ -136,11 +135,9 @@ final class PreferenceController {
             new BoolRule(R.string.pref_use_legacy_playback_state, UPSIDE_DOWN_CAKE)
                     .withDefaultValue(false),
 
-            new BoolRule(R.string.pref_duplicate_front_camera, BAKLAVA,
-                    Flags::externalVirtualCameras),
+            new BoolRule(R.string.pref_duplicate_front_camera, BAKLAVA),
 
-            new BoolRule(R.string.pref_duplicate_back_camera, BAKLAVA,
-                    Flags::externalVirtualCameras),
+            new BoolRule(R.string.pref_duplicate_back_camera, BAKLAVA),
 
             // Internal-only switches not exposed in the settings page.
             // All of these are booleans acting as switches, while the above ones may be any type.
@@ -157,11 +154,9 @@ final class PreferenceController {
             new InternalBoolRule(R.string.internal_pref_virtual_stylus_supported,
                     VANILLA_ICE_CREAM),
 
-            new InternalBoolRule(R.string.internal_pref_virtual_rotary_supported, BAKLAVA,
-                    Flags::virtualRotary),
+            new InternalBoolRule(R.string.internal_pref_virtual_rotary_supported, BAKLAVA),
 
-            new InternalBoolRule(R.string.internal_pref_display_rotation_supported, BAKLAVA,
-                    Flags::virtualDisplayRotationApi)
+            new InternalBoolRule(R.string.internal_pref_display_rotation_supported, BAKLAVA)
     );
     // LINT.ThenChange(/samples/VirtualDeviceManager/README.md:host_options)
 

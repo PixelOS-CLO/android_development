@@ -35,7 +35,7 @@ import {MatSliderModule} from '@angular/material/slider';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {CollapsedSectionsComponent} from '@viewers/components/collapsed_sections_component';
 import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
 import {LogComponent} from '@viewers/components/log_component';
@@ -77,6 +77,7 @@ export abstract class AbstractLogViewerComponentTest<
     describe('Log viewer component', () => {
       describe('common', () => {
         let dom: DOMTestHelper<T>;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         let viewport: CdkVirtualScrollViewport;
         let component: T;
 
@@ -286,7 +287,7 @@ export abstract class AbstractLogViewerComponentTest<
     const fixture = TestBed.createComponent<U>(typeofViewer);
     const component = fixture.componentInstance;
     const dom = new DOMTestHelper(fixture, fixture.nativeElement);
-    (component as any).inputData = initialUiData;
+    component.inputData = initialUiData;
     dom.detectChanges();
     const scrollElement = dom.get('.scroll').getHTMLElement();
     scrollElement.style.minHeight = '720px';

@@ -19,12 +19,11 @@ import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {MAT_SNACK_BAR_DATA, MatSnackBarRef} from '@angular/material/snack-bar';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {SnackBarComponent} from './snack_bar_component';
 
 describe('SnackBarComponent', () => {
   const messages = ['test message 1', 'test message 2'];
-  let component: SnackBarComponent;
   let dom: DOMTestHelper<SnackBarComponent>;
   let mockCopyText: jasmine.Spy;
   let mockSnackbarRef: jasmine.SpyObj<MatSnackBarRef<SnackBarComponent>>;
@@ -46,7 +45,6 @@ describe('SnackBarComponent', () => {
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(SnackBarComponent);
-    component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
     dom.detectChanges();
   });

@@ -18,9 +18,9 @@ import {MatButtonModule} from '@angular/material/button';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
 import {Timestamp} from '@common/time/time';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
-import {PropertyTreeBuilder} from '@test/unit/property_tree_builder';
-import {makeRealTimestamp} from '@test/unit/time_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
+import {makeRealTimestamp} from '@common/time/test_helpers';
 import {
   DEFAULT_PROPERTY_FORMATTER,
   FixedStringFormatter,

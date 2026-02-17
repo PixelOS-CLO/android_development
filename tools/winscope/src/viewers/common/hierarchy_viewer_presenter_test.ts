@@ -22,16 +22,16 @@ import {
 import {assertDefined} from '@common/assert';
 import {TransformMatrix} from '@common/geometry/transform_matrix';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
-import {SetFormatters} from '@parsers/set_formatters';
+import {SetFormatters} from '@parsers/helpers/set_formatters';
 import {TracePositionUpdate} from '@trace/trace_events';
-import {HierarchyTreeBuilder} from '@test/unit/hierarchy_tree_builder';
+import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
 import {MockPresenter} from '@test/unit/mock_hierarchy_viewer_presenter';
 import {
   makeElapsedTimestamp,
   makeRealTimestamp,
-} from '@test/unit/time_test_helpers';
-import {TraceBuilder} from '@test/unit/trace_builder';
-import {makeEmptyTrace} from '@test/unit/trace_test_helpers';
+} from '@common/time/test_helpers';
+import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
+import {makeEmptyTrace} from '@test/unit/trace_api/trace_test_helpers';
 import {
   makeUiHierarchyNode,
   treeNodeEqualityTester,
@@ -148,7 +148,7 @@ describe('AbstractHierarchyViewerPresenter', () => {
         TracePositionUpdate.fromTraceEntry(trace.getEntry(0)),
       );
       fail('error should be thrown for corrupted trace');
-    } catch (e) {
+    } catch (_) {
       expect(Object.keys(uiData.hierarchyUserOptions).length).toBeGreaterThan(
         0,
       );

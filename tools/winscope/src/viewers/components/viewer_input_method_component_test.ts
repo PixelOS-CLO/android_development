@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {AbstractHierarchyViewerComponentTest} from '@viewers/common/abstract_hierarchy_viewer_component_test';
 import {ImeAdditionalPropertiesComponent} from './ime_additional_properties_component';
 import {ViewerInputMethodComponent} from './viewer_input_method_component';
@@ -27,10 +27,8 @@ class ViewerInputMethodComponentTest extends AbstractHierarchyViewerComponentTes
   protected override executeSpecializedTests() {
     describe('Specialized tests', () => {
       let dom: DOMTestHelper<ViewerInputMethodComponent>;
-      let component: ViewerInputMethodComponent;
-
       beforeEach(async () => {
-        [dom, component] = await this.setUpTestEnvironment();
+        [dom] = await this.setUpTestEnvironment();
       });
 
       it('creates additional properties view', () => {

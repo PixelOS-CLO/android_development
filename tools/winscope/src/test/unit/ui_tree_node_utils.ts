@@ -15,14 +15,15 @@
  */
 
 import {TreeNode} from '@tree_node/tree_node';
-import {DiffNode} from '@viewers/common/diff_node';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
+import {UiTreeNode} from '@viewers/common/ui_tree_node';
 import {
   makeHierarchyNode,
   makePropertyNode,
   testTreeNodes as baseTestTreeNodes,
-} from './tree_node_test_helpers';
+} from './tree_node/tree_node_test_helpers';
+import {PropertyValue} from '@tree_node/property_tree_node';
 
 /**
  * Creates a UI hierarchy tree node for tests.
@@ -45,7 +46,7 @@ export function makeUiHierarchyNode(proto: object): UiHierarchyTreeNode {
 export function makeUiPropertyNode(
   rootId: string,
   name: string,
-  value: any,
+  value: PropertyValue | undefined,
 ): UiPropertyTreeNode {
   return UiPropertyTreeNode.from(makePropertyNode(rootId, name, value));
 }
@@ -68,8 +69,10 @@ export function treeNodeEqualityTester(
 }
 
 function testTreeNodes(node: TreeNode, expectedNode: TreeNode): boolean {
-  if ((node as DiffNode).getDiff && (expectedNode as DiffNode).getDiff) {
-    if ((node as DiffNode).getDiff() !== (expectedNode as DiffNode).getDiff()) {
+  if ((node as UiTreeNode).getDiff && (expectedNode as UiTreeNode).getDiff) {
+    if (
+      (node as UiTreeNode).getDiff() !== (expectedNode as UiTreeNode).getDiff()
+    ) {
       return false;
     }
   }

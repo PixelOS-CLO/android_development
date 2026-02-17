@@ -28,7 +28,7 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventCode} from '@common/dom';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {SelectWithFilterComponent} from './select_with_filter_component';
 
 describe('SelectWithFilterComponent', () => {
@@ -93,23 +93,33 @@ describe('SelectWithFilterComponent', () => {
     let options = getOptions();
     checkOptions(options, [0, 1, 2]);
 
+    // select '0'
     options[0].click();
+    await dom.whenStable();
     checkSelectValue(['0']);
 
+    // filter options to list just '2'
     const panel = dom.getMatSelectPanel();
     const input = panel.findAndDispatchInput(filterInputField, '2');
     options = getOptions();
+    await dom.whenStable();
     checkOptions(options, [2]);
 
+    // select '2'
     options[0].click();
+    await dom.whenStable();
     checkSelectValue(['2', '0'], ['0', '2']);
 
+    // remove filter on options
     input.dispatchInput('');
+    await dom.whenStable();
     options = getOptions();
     checkOptions(options, [0, 1, 2]);
     checkSelectValue(['2', '0'], ['0', '2']);
 
+    // select '1'
     options[1].click();
+    await dom.whenStable();
     checkSelectValue(['0', '1', '2']);
   });
 

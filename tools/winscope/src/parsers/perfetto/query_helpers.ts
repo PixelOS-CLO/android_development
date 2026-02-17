@@ -20,7 +20,7 @@ import {
   assertString,
   assertTrue,
 } from '@common/assert';
-import {makeWarningMissingVsyncId} from '@parsers/warnings';
+import {makeWarningMissingVsyncId} from '@parsers/helpers/warnings';
 import {UserNotifier} from '@services/user_notifier';
 import {AbsoluteEntryIndex, EntriesRange} from '@trace_api/index_types';
 import {QueryResult} from '@trace_processor/query_result';
@@ -73,7 +73,7 @@ export async function queryVsyncId(
     minRowId: number,
     maxRowId: number,
   ) => string = createDefaultVsyncIdQuery,
-): Promise<Array<bigint>> {
+): Promise<bigint[]> {
   let minRowId = Number.MAX_VALUE;
   let maxRowId = Number.MIN_VALUE;
   for (
@@ -90,7 +90,7 @@ export async function queryVsyncId(
   const sql = createVsyncIdQuery(tableName, minRowId, maxRowId);
   const result = await traceProcessor.query(sql);
 
-  const vsyncIdOrderedByRow: Array<bigint> = [];
+  const vsyncIdOrderedByRow: bigint[] = [];
   let curRowId = BigInt(minRowId);
   for (const it = result.iter({}); it.valid(); it.next()) {
     const id = assertBigInt(it.get('id'));
@@ -122,7 +122,7 @@ export async function queryVsyncId(
     UserNotifier.add(makeWarningMissingVsyncId(tableName));
   }
 
-  const vsyncIdOrderedByEntry: Array<bigint> = [];
+  const vsyncIdOrderedByEntry: bigint[] = [];
   for (
     let entryIndex = entriesRange.start;
     entryIndex < entriesRange.end;

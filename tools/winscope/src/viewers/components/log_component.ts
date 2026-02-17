@@ -50,6 +50,7 @@ import {
   LogField,
   LogFieldValue,
   LogHeader,
+  ClickableProperty,
 } from '@viewers/common/ui_data_log';
 import {VariableHeightScrollDirective} from '@viewers/common/variable_height_scroll_directive';
 import {
@@ -63,6 +64,12 @@ import {SearchBoxComponent} from '@viewers/components/search_box_component';
 import {SelectWithFilterComponent} from '@viewers/components/select_with_filter_component';
 import {assertDefined} from '@common/assert';
 import {UserTimestamp} from '@common/time/user_timestamp';
+import {
+  LogFilter,
+  LogSelectFilter,
+  LogTextFilter,
+} from '@viewers/common/log_filters';
+import {SelectionModel} from '@angular/cdk/collections';
 
 @Component({
   selector: 'log-view',
@@ -86,6 +93,8 @@ import {UserTimestamp} from '@common/time/user_timestamp';
 export class LogComponent {
   emptyFilterValue = '';
   private lastClickedTimestamp: Timestamp | undefined;
+
+  readonly selection = new SelectionModel<LogEntry>(false, []);
 
   @Input() title: string | undefined;
   @Input() selectedIndex: number | undefined;
@@ -172,6 +181,9 @@ export class LogComponent {
       // scroll previous index to top, so when previous index is partially
       // rendered the target index is still fully rendered
       this.scrollComponent?.scrollToIndex(Math.max(0, this.scrollToIndex - 1));
+
+      this.selection.clear();
+      this.selection.toggle(this.entries[this.scrollToIndex]);
     }
   }
 
@@ -181,7 +193,7 @@ export class LogComponent {
   }
 
   @HostListener('window:resize', ['$event'])
-  onResize(event: Event) {
+  onResize(_: Event) {
     this.updateTableMarginEnd();
     this.scrollComponent?.checkViewportSize();
   }
@@ -201,6 +213,9 @@ export class LogComponent {
   }
 
   onEntryClicked(index: number) {
+    const clickedEntry = assertDefined(this.entries[index]);
+    this.selection.clear();
+    this.selection.toggle(clickedEntry);
     this.emitEvent(ViewerEvents.LogEntryClick, index);
   }
 
@@ -212,12 +227,16 @@ export class LogComponent {
         ViewerEvents.TimestampClick,
         new TimestampClickDetail(firstEntry.traceEntry),
       );
+      this.selection.clear();
+      this.selection.toggle(firstEntry);
     }
   }
 
   onGoToCurrentEntryClick() {
     if (this.currentIndex !== undefined && this.scrollComponent) {
       this.scrollComponent.scrollToIndex(this.currentIndex);
+      this.selection.clear();
+      this.selection.toggle(this.entries[this.currentIndex]);
     }
   }
 
@@ -230,6 +249,8 @@ export class LogComponent {
         ViewerEvents.TimestampClick,
         new TimestampClickDetail(lastEntry.traceEntry),
       );
+      this.selection.clear();
+      this.selection.toggle(lastEntry);
     }
   }
 
@@ -283,7 +304,8 @@ export class LogComponent {
   }
 
   isSelectedEntry(index: number): boolean {
-    return index === this.selectedIndex;
+    const entry = assertDefined(this.entries[index]);
+    return this.selection.isSelected(entry);
   }
 
   isFixedSizeScrollViewport() {
@@ -318,5 +340,154 @@ export class LogComponent {
       detail: data,
     });
     this.elementRef.nativeElement.dispatchEvent(customEvent);
+  }
+
+  isLogSelectFilter(filter: LogFilter): filter is LogSelectFilter {
+    return filter instanceof LogSelectFilter;
+  }
+
+  isLogTextFilter(filter: LogFilter): filter is LogTextFilter {
+    return filter instanceof LogTextFilter;
+  }
+
+  @HostListener('document:copy', ['$event'])
+  onDocumentCopy(event: ClipboardEvent) {
+    const componentElement = this.elementRef.nativeElement;
+    const logComponentVisible = isElementVisible(componentElement);
+
+    if (!logComponentVisible) {
+      return;
+    }
+
+    if (this.traceType !== TraceType.PROTO_LOG) {
+      return;
+    }
+
+    const isCopyInsideLogComponent = componentElement.contains(
+      event.target as Node,
+    );
+    if (!isCopyInsideLogComponent) {
+      return;
+    }
+
+    const browserSelection = window.getSelection();
+    let entriesFromBrowserSelection: LogEntry[] = [];
+    let isTextSelection = false;
+
+    if (browserSelection && browserSelection.rangeCount > 0) {
+      const range = browserSelection.getRangeAt(0);
+
+      if (!range.collapsed) {
+        if (
+          componentElement.contains(range.startContainer) ||
+          componentElement.contains(range.endContainer) ||
+          range.intersectsNode(componentElement)
+        ) {
+          entriesFromBrowserSelection =
+            this.getEntriesFromBrowserSelection(range);
+
+          if (entriesFromBrowserSelection.length > 0) {
+            isTextSelection = true;
+          }
+        }
+      }
+    }
+
+    if (isTextSelection) {
+      this.performCustomCopy(event, entriesFromBrowserSelection);
+      return;
+    }
+
+    if (this.hasSelectedEntries()) {
+      this.performCustomCopy(event, this.getSelectedLogEntries());
+      return;
+    }
+  }
+
+  private hasSelectedEntries(): boolean {
+    return this.selection.hasValue();
+  }
+
+  private getEntriesFromBrowserSelection(range: Range): LogEntry[] {
+    const selectedEntries: LogEntry[] = [];
+    const entryElements =
+      this.elementRef.nativeElement.querySelectorAll('.entry');
+
+    entryElements.forEach((entryElement) => {
+      if (range.intersectsNode(entryElement)) {
+        const itemIdStr = entryElement.getAttribute('item-id');
+        if (itemIdStr !== null) {
+          const absoluteIndex = parseInt(itemIdStr, 10);
+          if (!isNaN(absoluteIndex) && this.entries[absoluteIndex]) {
+            selectedEntries.push(this.entries[absoluteIndex]);
+          }
+        }
+      }
+    });
+
+    return selectedEntries;
+  }
+
+  private performCustomCopy(event: ClipboardEvent, entriesToCopy: LogEntry[]) {
+    if (entriesToCopy.length === 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const clipboardText = this.formatEntriesForClipboard(entriesToCopy);
+
+    if (event.clipboardData) {
+      event.clipboardData.setData('text/plain', clipboardText);
+    }
+  }
+
+  private getSelectedLogEntries(): LogEntry[] {
+    return this.selection.selected;
+  }
+
+  private formatEntriesForClipboard(entries: LogEntry[]): string {
+    if (entries.length === 0) {
+      return '';
+    }
+
+    const formattedLines = entries.map((entry) => {
+      const timestamp = this.formatTimestamp(entry.traceEntry.getTimestamp());
+
+      const fieldValues = entry.fields.map((field) => {
+        const value = field.value;
+        let stringValue: string;
+
+        if (value === null || value === undefined) {
+          stringValue = ' ';
+        } else if (Array.isArray(value)) {
+          stringValue = value
+            .map((item) => {
+              if (
+                typeof item === 'object' &&
+                item !== null &&
+                'propertyValue' in item
+              ) {
+                return String((item as ClickableProperty).propertyValue);
+              }
+              return String(item ?? '');
+            })
+            .join(', ');
+        } else if (value instanceof Timestamp) {
+          stringValue = this.formatTimestamp(value);
+        } else {
+          stringValue = String(value);
+        }
+
+        return stringValue.replace(/\n/g, '\t');
+      });
+
+      const allColumns = [timestamp, ...fieldValues];
+
+      return allColumns.join('\t');
+    });
+
+    return formattedLines.join('\n');
   }
 }

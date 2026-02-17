@@ -15,8 +15,8 @@
  */
 
 import {CdkVirtualScrollViewport} from '@angular/cdk/scrolling';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
-import {TraceBuilder} from '@test/unit/trace_builder';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {TraceEntry} from '@trace_api/trace';
 import {TraceType} from '@trace_api/trace_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
@@ -24,7 +24,8 @@ import {AbstractLogViewerComponentTest} from '@viewers/common/abstract_log_viewe
 import {LogEntry, LogHeader} from '@viewers/common/ui_data_log';
 import {CujEntry, UiData} from './ui_data';
 import {ViewerJankCujsComponent} from './viewer_jank_cujs_component';
-import {LegacyParserProvider} from '@test/unit/fixture_utils';
+import {Parser} from '@trace_api/parser';
+import {NonPerfettoParserProvider} from '@test/unit/fixture_utils';
 
 class ViewerJankCujsComponentTest extends AbstractLogViewerComponentTest<ViewerJankCujsComponent> {
   protected override readonly testProperties = false;
@@ -45,9 +46,9 @@ class ViewerJankCujsComponentTest extends AbstractLogViewerComponentTest<ViewerJ
       ViewerJankCujsComponent,
     ]
   > {
-    const parser = await new LegacyParserProvider()
+    const parser = (await new NonPerfettoParserProvider()
       .addFile('traces/elapsed_and_real_timestamp/eventlog.winscope')
-      .getParser<HierarchyTreeNode>();
+      .get()) as Parser<HierarchyTreeNode>;
 
     const trace = new TraceBuilder<HierarchyTreeNode>()
       .setParser(parser)

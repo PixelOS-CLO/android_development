@@ -47,7 +47,7 @@ import {
 } from './viewer_events';
 import {flattenNodesToRows} from './ui_tree_node_helpers';
 import {UiPropertyTreeNode} from './ui_property_tree_node';
-import {UiTreeNodeRow} from './ui_tree_node_row';
+import {FlattenedTreeRow} from './flattened_tree_row';
 
 export type NotifyLogViewCallbackType<UiData> = (uiData: UiData) => void;
 export type FilterOptionSorter = (a: string, b: string) => number;
@@ -105,11 +105,11 @@ export abstract class AbstractLogViewerPresenter<
     });
     htmlElement.addEventListener(
       ViewerEvents.ArrowDownPress,
-      async (event) => await this.onArrowDownPress(),
+      async (_) => await this.onArrowDownPress(),
     );
     htmlElement.addEventListener(
       ViewerEvents.ArrowUpPress,
-      async (event) => await this.onArrowUpPress(),
+      async (_) => await this.onArrowUpPress(),
     );
     htmlElement.addEventListener(ViewerEvents.TimestampClick, async (event) => {
       const detail: TimestampClickDetail = (event as CustomEvent).detail;
@@ -315,7 +315,7 @@ export abstract class AbstractLogViewerPresenter<
     }
   }
 
-  protected addViewerSpecificListeners(htmlElement: HTMLElement) {
+  protected addViewerSpecificListeners(_: HTMLElement) {
     // do nothing
   }
 
@@ -423,7 +423,7 @@ export abstract class AbstractLogViewerPresenter<
 
   protected flattenProperties(
     tree: UiPropertyTreeNode | undefined,
-  ): Array<UiTreeNodeRow<UiPropertyTreeNode>> | undefined {
+  ): Array<FlattenedTreeRow<UiPropertyTreeNode>> | undefined {
     if (!tree) {
       return undefined;
     }

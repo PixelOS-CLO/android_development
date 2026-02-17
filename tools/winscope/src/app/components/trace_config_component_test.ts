@@ -33,10 +33,10 @@ import {assertDefined} from '@common/assert';
 import {KeyboardEventCode} from '@common/dom';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {Store} from '@common/store/store';
-import {checkTooltips, DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {checkTooltips, DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {TraceType} from '@trace_api/trace_type';
-import {ConfigurationOptions} from '@trace_collection/ui/ui_trace_configuration';
 import {TraceConfigComponent} from './trace_config_component';
+import {ConfigurationOptions} from '@trace_collection/ui/ui_trace_configuration';
 
 describe('TraceConfigComponent', () => {
   const storeKey = 'TestConfigSettings';
@@ -113,7 +113,7 @@ describe('TraceConfigComponent', () => {
   it('applies stored config and emits event on init', async () => {
     const traceConfig = assertDefined(component.traceConfig);
     traceConfig[windowTraceKey].config.enabled = true;
-    dom.detectChanges();
+    await detectNgModelChanges();
 
     getCheckboxConfigSectionForKey(windowTraceKey).findAndClick('input');
     expect(traceConfig[windowTraceKey].config.checkboxConfigs).toEqual([
@@ -160,7 +160,7 @@ describe('TraceConfigComponent', () => {
     newComponent.traceConfig = component.traceConfig;
     newComponent.traceConfigStoreKey = 'TestConfigSettings';
     newComponent.storage = component.storage;
-    await detectNgModelChanges(newDom);
+    await detectNgModelChanges(newDom, newComponent);
     newDom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -172,14 +172,13 @@ describe('TraceConfigComponent', () => {
 
     const box = getTraceBoxForKey(layersTraceKey);
     const input = box.get('input');
-    const inputElement = input.getHTMLElement<HTMLInputElement>();
 
     box.checkText(traceKey);
-    expect(inputElement.checked).toBeTrue();
+    input.checkInputChecked(true);
     expect(config[traceKey].config.enabled).toBeTrue();
 
     input.click();
-    expect(inputElement.checked).toBeFalse();
+    input.checkInputChecked(false);
     expect(config[traceKey].config.enabled).toBeFalse();
     expect(configChangeSpy).toHaveBeenCalledTimes(1);
   });
@@ -191,14 +190,13 @@ describe('TraceConfigComponent', () => {
 
     const box = getTraceBoxForKey(traceKey);
     const input = box.get('input');
-    const inputElement = input.getHTMLElement<HTMLInputElement>();
 
     box.checkText(traceKey);
-    expect(inputElement.checked).toBeFalse();
+    input.checkInputChecked(false);
     expect(config[traceKey].config.enabled).toBeFalse();
 
     input.click();
-    expect(inputElement.checked).toBeTrue();
+    input.checkInputChecked(true);
     expect(config[traceKey].config.enabled).toBeTrue();
     expect(configChangeSpy).toHaveBeenCalledTimes(1);
   });
@@ -212,9 +210,9 @@ describe('TraceConfigComponent', () => {
 
   it('disables checkbox for disabled checkbox config', () => {
     const traceKey = 'disabled_checkbox_trace';
-    const box = getTraceBoxForKey(traceKey);
-    box.get('input').checkDisabled(true);
-    box.checkText(traceKey);
+    const box = getCheckboxConfigSectionForKey(traceKey);
+    box.checkInnerHTML('disabled="true"');
+    box.get('mat-checkbox').checkText('extra');
   });
 
   it('checkbox and select configs show', () => {
@@ -229,20 +227,18 @@ describe('TraceConfigComponent', () => {
   });
 
   it('changing checkbox config model value causes box to change', async () => {
-    const inputElement = getCheckboxConfigSectionForKey(layersTraceKey)
-      .get('input')
-      .getHTMLElement<HTMLInputElement>();
+    const input = getCheckboxConfigSectionForKey(layersTraceKey).get('input');
     assertDefined(
       assertDefined(component.traceConfig)[layersTraceKey].config,
     ).checkboxConfigs[0].enabled = false;
     await detectNgModelChanges();
-    expect(inputElement.checked).toBeFalse();
+    input.checkInputChecked(false);
 
     assertDefined(
       assertDefined(component.traceConfig)[layersTraceKey].config,
     ).checkboxConfigs[0].enabled = true;
     await detectNgModelChanges();
-    expect(inputElement.checked).toBeTrue();
+    input.checkInputChecked(true);
   });
 
   it('changing checkbox config by DOM interaction emits event', async () => {
@@ -560,13 +556,16 @@ describe('TraceConfigComponent', () => {
     };
     c.traceConfigStoreKey = storeKey;
     c.storage = storage;
-    await detectNgModelChanges(d);
+    await detectNgModelChanges(d, c);
     d.detectChanges();
   }
 
   async function detectNgModelChanges(
     d: DOMTestHelper<TraceConfigComponent> = dom,
+    c: TraceConfigComponent = component,
   ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (c as any).changeDetectorRef.markForCheck();
     await d.detectChangesAndWaitStable();
     d.detectChanges();
   }

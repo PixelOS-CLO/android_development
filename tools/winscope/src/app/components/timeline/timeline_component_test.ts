@@ -54,11 +54,11 @@ import {
   PlaybackStateChangeRequest,
 } from './playback_events';
 import {ExpandedTimelineToggled} from './timeline_events';
-import {checkTooltips, DOMTestHelper} from '@test/unit/dom_test_helpers';
-import {makeRealTimestamp, UTC_CONVERTER} from '@test/unit/time_test_helpers';
-import {TraceBuilder} from '@test/unit/trace_builder';
-import {makeEmptyTrace} from '@test/unit/trace_test_helpers';
-import {TracesBuilder} from '@test/unit/traces_builder';
+import {checkTooltips, DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {makeRealTimestamp, UTC_CONVERTER} from '@common/time/test_helpers';
+import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
+import {makeEmptyTrace} from '@test/unit/trace_api/trace_test_helpers';
+import {TracesBuilder} from '@test/unit/trace_api/traces_builder';
 import {Trace, TraceEntry} from '@trace_api/trace';
 import {TRACE_INFO} from '@trace_api/trace_info';
 import {TracePosition} from '@trace_api/trace_position';
@@ -333,7 +333,7 @@ describe('TimelineComponent', () => {
       TraceType.VIEW_CAPTURE,
     ];
     loadAllTraces();
-    const [spyQueryResult, spyIter] = makeSearchTraceSpies(time100);
+    const [spyQueryResult] = makeSearchTraceSpies(time100);
     const searchTrace = new TraceBuilder<QueryResult>()
       .setEntries([spyQueryResult])
       .setTimestamps([time100])
@@ -359,7 +359,7 @@ describe('TimelineComponent', () => {
     sfOption.checkText('Surface Flinger');
     expect(sfOption.getHTMLElement().ariaDisabled).toBe('true');
     for (const i of [1, 3, 4]) {
-      expect(matOptions[1].getHTMLElement().ariaDisabled).toBe('false');
+      expect(matOptions[i].getHTMLElement().ariaDisabled).toBe('false');
     }
 
     matOptions[3].click();
@@ -1066,12 +1066,14 @@ describe('TimelineComponent', () => {
     const trace = makeEmptyTrace<HierarchyTreeNode>(TraceType.SEARCH);
 
     await timelineComponent.onWinscopeEvent(new TraceAddRequest(trace));
+    dom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(1);
     expect(timelineComponent.sortedTraces).not.toEqual(initialTraces);
     expect(timelineComponent.sortedTraces[0]).toEqual(trace);
     expectSelectedTraceTypes([TraceType.SEARCH, TraceType.SURFACE_FLINGER]);
 
     await timelineComponent.onWinscopeEvent(new TraceRemoveRequest(trace));
+    dom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(2);
     expect(timelineComponent.sortedTraces).toEqual(initialTraces);
     expectSelectedTraceTypes([TraceType.SURFACE_FLINGER]);
@@ -1206,6 +1208,26 @@ describe('TimelineComponent', () => {
     );
     expect(dom.find('#video-content #video')).toBeDefined();
     expect(dom.find('#frameCanvasElementTimeline')).toBeUndefined();
+  });
+
+  it('updates seek position based on trace position update', async () => {
+    loadAllTraces();
+    const timeline = assertDefined(component.timeline);
+    expect(timeline.getCurrentTracePosition().timestamp).toEqual(time100);
+
+    await timeline.onWinscopeEvent(
+      new TracePositionUpdate(position100, undefined, {
+        trace: undefined,
+        seek: time112,
+        screenRecording: undefined,
+      }),
+    );
+    expect(timeline.getCurrentTracePosition().timestamp).toEqual(time112);
+
+    await timeline.onWinscopeEvent(
+      new TracePositionUpdate(position100, undefined),
+    );
+    expect(timeline.getCurrentTracePosition().timestamp).toEqual(time100);
   });
 
   it('shows hover timestamp', () => {
@@ -1406,20 +1428,22 @@ describe('TimelineComponent', () => {
       expect(spyPrevEntry).not.toHaveBeenCalled();
     });
 
-    it('prev and next button disabled on playback active', () => {
+    it('prev and next button disabled on playback active', async () => {
+      await updateActiveTrace(TraceType.WINDOW_MANAGER);
+      const prevEntryButton = dom.get(prevEntrySelector);
+      const nextEntryButton = dom.get(nextEntrySelector);
+      nextEntryButton.click();
+      prevEntryButton.checkDisabled(false);
+      nextEntryButton.checkDisabled(false);
+
       const timelineComponent = assertDefined(component.timeline);
       timelineComponent.playbackState = PlaybackState.FORWARDS;
       dom.detectChanges();
-
-      const prevEntryButton = dom.get(prevEntrySelector);
-      const nextEntryButton = dom.get(nextEntrySelector);
-
       prevEntryButton.checkDisabled(true);
       nextEntryButton.checkDisabled(true);
 
       timelineComponent.playbackState = PlaybackState.PAUSED;
       dom.detectChanges();
-
       prevEntryButton.checkDisabled(false);
       nextEntryButton.checkDisabled(false);
     });

@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {assertDefined} from '@common/assert';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
-import {LegacyParserProvider} from '@test/unit/fixture_utils';
 import {
   makeRealTimestamp,
   timestampEqualityTester,
-} from '@test/unit/time_test_helpers';
+} from '@common/time/test_helpers';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {
   MediaBasedTraceEntry,
@@ -27,23 +25,26 @@ import {
 } from '@trace/media_based/media_based_trace_entry';
 import {Parser} from '@trace_api/parser';
 import {TraceType} from '@trace_api/trace_type';
-import {spyOnThumbnailGenerator} from './test_helpers';
+import {
+  spyOnThumbnailGenerator,
+  waitForThumbnailGeneration,
+} from './test_helpers';
+import {NonPerfettoParserProvider} from '@test/unit/fixture_utils';
+import {FileReader} from '@trace_api/file_reader';
 
 describe('ParserScreenRecording', () => {
-  let parser: Parser<MediaBasedTraceEntry>;
-
-  beforeAll(() => {
-    spyOnThumbnailGenerator();
-  });
+  let parser: Parser<MediaBasedTraceEntry> & FileReader;
+  let thumbnailSpy: jasmine.Spy;
 
   describe('metadata v2', () => {
     beforeAll(async () => {
+      thumbnailSpy = spyOnThumbnailGenerator();
       jasmine.addCustomEqualityTester(timestampEqualityTester);
-      parser = await new LegacyParserProvider()
+      parser = (await new NonPerfettoParserProvider()
         .addFile(
           'traces/elapsed_and_real_timestamp/screen_recording_metadata_v2.mp4',
         )
-        .getParser<MediaBasedTraceEntry>();
+        .get()) as Parser<MediaBasedTraceEntry> & FileReader;
     });
 
     it('has expected trace type', () => {
@@ -55,7 +56,7 @@ describe('ParserScreenRecording', () => {
     });
 
     it('provides timestamps', () => {
-      const timestamps = assertDefined(parser.getTimestamps());
+      const timestamps = parser.getTimestamps();
 
       expect(timestamps.length).toBe(123);
 
@@ -81,6 +82,7 @@ describe('ParserScreenRecording', () => {
     });
 
     it('generates thumbnail', async () => {
+      await waitForThumbnailGeneration(thumbnailSpy);
       const entry0 = await parser.getEntry(0);
       expect(entry0.thumbnail).toBeDefined();
       const entry1 = await parser.getEntry(1);
@@ -90,12 +92,13 @@ describe('ParserScreenRecording', () => {
 
   describe('metadata v3', () => {
     beforeAll(async () => {
+      thumbnailSpy = spyOnThumbnailGenerator();
       jasmine.addCustomEqualityTester(timestampEqualityTester);
-      parser = await new LegacyParserProvider()
+      parser = (await new NonPerfettoParserProvider()
         .addFile(
           'traces/elapsed_and_real_timestamp/screen_recording_metadata_v3.mp4',
         )
-        .getParser<MediaBasedTraceEntry>();
+        .get()) as Parser<MediaBasedTraceEntry> & FileReader;
     });
 
     it('has expected trace type', () => {
@@ -107,7 +110,7 @@ describe('ParserScreenRecording', () => {
     });
 
     it('provides timestamps', () => {
-      const timestamps = assertDefined(parser.getTimestamps());
+      const timestamps = parser.getTimestamps();
       expect(timestamps.length).toBe(105);
       const expected = [
         makeRealTimestamp(1755862820270527000n),
@@ -133,6 +136,7 @@ describe('ParserScreenRecording', () => {
     });
 
     it('generates thumbnail', async () => {
+      await waitForThumbnailGeneration(thumbnailSpy);
       const entry0 = await parser.getEntry(0);
       expect(entry0.thumbnail).toBeDefined();
       const entry1 = await parser.getEntry(1);
@@ -143,9 +147,11 @@ describe('ParserScreenRecording', () => {
   describe('separate metadata file', () => {
     const elapsedNs = 5n;
     const realtoElapsedNs = 10n;
+
     beforeAll(async () => {
+      thumbnailSpy = spyOnThumbnailGenerator();
       jasmine.addCustomEqualityTester(timestampEqualityTester);
-      parser = await new LegacyParserProvider()
+      parser = (await new NonPerfettoParserProvider()
         .addFile(
           'traces/elapsed_and_real_timestamp/screen_recording_no_metadata.mp4',
         )
@@ -155,16 +161,13 @@ describe('ParserScreenRecording', () => {
             realToElapsedTimeOffsetNanos: realtoElapsedNs,
           },
         })
-        .getParser<MediaBasedTraceEntry>();
+        .get()) as Parser<MediaBasedTraceEntry> & FileReader;
     });
 
     it('throws error if metadata not provided', async () => {
-      const parsers = await new LegacyParserProvider()
-        .addFile(
-          'traces/elapsed_and_real_timestamp/screen_recording_no_metadata.mp4',
-        )
-        .getParsers();
-      expect(parsers.length).toBe(0);
+      await checkFailsToParseFilename(
+        'traces/elapsed_and_real_timestamp/screen_recording_no_metadata.mp4',
+      );
     });
 
     it('sets real to boot time offset', () => {
@@ -172,7 +175,7 @@ describe('ParserScreenRecording', () => {
     });
 
     it('provides timestamps', () => {
-      const timestamps = assertDefined(parser.getTimestamps());
+      const timestamps = parser.getTimestamps();
       expect(timestamps.length).toBe(158);
 
       const totalOffset = elapsedNs + realtoElapsedNs;
@@ -198,6 +201,7 @@ describe('ParserScreenRecording', () => {
     });
 
     it('generates thumbnail', async () => {
+      await waitForThumbnailGeneration(thumbnailSpy);
       const entry0 = await parser.getEntry(0);
       expect(entry0.thumbnail).toBeDefined();
       const entry1 = await parser.getEntry(1);
@@ -270,13 +274,14 @@ describe('ParserScreenRecording', () => {
 
     function checkStartTimeInFilename(filename: string) {
       beforeAll(async () => {
+        thumbnailSpy = spyOnThumbnailGenerator();
         jasmine.addCustomEqualityTester(timestampEqualityTester);
-        parser = await new LegacyParserProvider()
+        parser = (await new NonPerfettoParserProvider()
           .addFile(
             'traces/elapsed_and_real_timestamp/screen_recording_no_metadata.mp4',
             filename,
           )
-          .getParser<MediaBasedTraceEntry>();
+          .get()) as Parser<MediaBasedTraceEntry> & FileReader;
       });
 
       it('sets real to boot time offset', () => {
@@ -284,7 +289,7 @@ describe('ParserScreenRecording', () => {
       });
 
       it('provides timestamps', () => {
-        const timestamps = assertDefined(parser.getTimestamps());
+        const timestamps = parser.getTimestamps();
         expect(timestamps.length).toBe(158);
 
         const expected = [
@@ -309,21 +314,22 @@ describe('ParserScreenRecording', () => {
       });
 
       it('generates thumbnail', async () => {
+        await waitForThumbnailGeneration(thumbnailSpy);
         const entry0 = await parser.getEntry(0);
         expect(entry0.thumbnail).toBeDefined();
         const entry1 = await parser.getEntry(1);
         expect(entry1.thumbnail).toEqual(entry0.thumbnail);
       });
     }
-
-    async function checkFailsToParseFilename(filename: string) {
-      const parsers = await new LegacyParserProvider()
-        .addFile(
-          'traces/elapsed_and_real_timestamp/screen_recording_no_metadata.mp4',
-          filename,
-        )
-        .getParsers();
-      expect(parsers.length).toBe(0);
-    }
   });
+
+  async function checkFailsToParseFilename(filename: string) {
+    const parsers = await new NonPerfettoParserProvider()
+      .addFile(
+        'traces/elapsed_and_real_timestamp/screen_recording_no_metadata.mp4',
+        filename,
+      )
+      .getAll();
+    expect(parsers.length).toBe(0);
+  }
 });

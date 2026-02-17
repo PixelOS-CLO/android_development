@@ -33,7 +33,7 @@ import {PropertiesProvider} from '@tree_node/properties_provider';
 import {TraceRect} from '@tree_node/trace_rect';
 import {CornerRadii} from '@common/geometry/corner_radii';
 import {TransformMatrix} from '@common/geometry/transform_matrix';
-import {TraceGeometryData} from '@parsers/trace_geometry_data';
+import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {RawDataQueryResult} from '@trace_processor/raw_data_query_result';
 import {assertDefined, assertTrue} from '@common/assert';
 import {EntriesRange} from '@trace_api/index_types';
@@ -41,6 +41,7 @@ import {createVideoFrameCache} from './video_frame_cache_factory';
 import {VideoFrameCache} from './video_frame_cache';
 
 type WorkerResolve = (value: HierarchyTreeNode[]) => void;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WorkerReject = ((reason?: any) => void) | undefined;
 type CreateVideoFrameCacheStrategy = (
   videoData: Uint8Array,
@@ -484,15 +485,7 @@ export class PlaybackPresenter {
       return new CanvasEntry(frame, rotationAngle);
     };
     const trace = assertDefined(this.currentSr);
-    const fullEntry = trace.getEntry(index);
-    return new CustomTraceEntryLazy(
-      trace,
-      trace.getParser(),
-      index,
-      fullEntry.getTimestamp(),
-      trace.hasFrameInfo() ? fullEntry.getFramesRange() : undefined,
-      getValue,
-    );
+    return trace.createLazyEntry(index, getValue);
   }
 
   private assignPropertyTreeNodePrototype(node: PropertyTreeNode) {
@@ -504,7 +497,7 @@ export class PlaybackPresenter {
       );
   }
 
-  private assignNodePrototypes(node: any) {
+  private assignNodePrototypes(node: HierarchyTreeNode) {
     this.assignPropertyTreeNodePrototype(
       node.propertiesProvider.eagerPropertiesRoot,
     );
@@ -515,31 +508,31 @@ export class PlaybackPresenter {
 
     Object.setPrototypeOf(node, HierarchyTreeNode.prototype);
 
-    node.rects?.forEach((rect: TraceRect) => {
+    node.getRects()?.forEach((rect: TraceRect) => {
       Object.setPrototypeOf(rect.transform, TransformMatrix.prototype);
-      if (rect?.cornerRadii) {
+      if (rect.cornerRadii) {
         Object.setPrototypeOf(rect.cornerRadii, CornerRadii.prototype);
       }
     });
 
-    node.secondaryRects?.forEach((rect: TraceRect) => {
+    node.getSecondaryRects()?.forEach((rect: TraceRect) => {
       Object.setPrototypeOf(rect.transform, TransformMatrix.prototype);
-      if (rect?.cornerRadii) {
+      if (rect.cornerRadii) {
         Object.setPrototypeOf(rect.cornerRadii, CornerRadii.prototype);
       }
     });
 
     node
       .getAllChildren()
-      .forEach((child: any) => this.assignNodePrototypes(child));
+      .forEach((child: HierarchyTreeNode) => this.assignNodePrototypes(child));
 
     node
       .getRelativeChildren()
-      .forEach((child: any) => this.assignNodePrototypes(child));
+      .forEach((child: HierarchyTreeNode) => this.assignNodePrototypes(child));
   }
 
   private createWorker(): Worker {
-    const worker = new Worker(new URL('./playback_worker', import.meta.url), {
+    const worker = new Worker(new URL('./playback.worker', import.meta.url), {
       type: 'module',
     });
 
@@ -585,11 +578,10 @@ export class PlaybackPresenter {
       snapshotBatches = queryResults.snapshotRange.batches;
     }
 
-    const parser = this.trace.getParser();
-    if (parser.getRectsMap === undefined) {
-      throw Error('Playback is only implemented for parsers with rects map');
+    const map = await this.trace.getRectsMap();
+    if (map === undefined) {
+      throw Error('Playback is only implemented for traces with rects map');
     }
-    const map = await parser.getRectsMap();
 
     return new Promise<HierarchyTreeNode[]>((resolve, reject) => {
       this.workerPromiseResolve = resolve;

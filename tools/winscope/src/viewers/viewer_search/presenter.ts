@@ -89,7 +89,7 @@ export class Presenter {
     this.viewerElement = htmlElement;
     htmlElement.addEventListener(
       ViewerEvents.GlobalSearchSectionClick,
-      async (event) => {
+      async (_) => {
         this.onGlobalSearchSectionClick();
       },
     );
@@ -187,7 +187,10 @@ export class Presenter {
     if (activeSearchIndex === -1) {
       return;
     }
-    const activeSearch = this.activeSearches.splice(activeSearchIndex, 1)[0];
+    const activeSearch =
+      activeSearchIndex === 0
+        ? this.activeSearches[activeSearchIndex]
+        : this.activeSearches.splice(activeSearchIndex, 1)[0];
     this.resetActiveSearch(activeSearch);
     this.updateCurrentSearches();
   }

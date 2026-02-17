@@ -19,7 +19,7 @@ import {assertBigInt, assertTrue} from '@common/assert';
 import {NOT_IMPLEMENTED_ERROR} from '@common/errors';
 import {INVALID_TIME_NS, Timestamp} from '@common/time/time';
 import {ParserTimestampConverter} from '@common/time/timestamp_converter';
-import {TraceGeometryData} from '@parsers/trace_geometry_data';
+import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {TraceFile} from '@trace/trace_file';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {
@@ -35,8 +35,9 @@ import {QueryResult, QueryResults} from '@trace_processor/query_result';
 import {RawDataQueryResult} from '@trace_processor/raw_data_query_result';
 import {TraceProcessor} from '@trace_processor/trace_processor';
 import {RectsForTrace} from '@tree_node/rect_extractor_result';
+import {FileReader} from '@trace_api/file_reader';
 
-export abstract class AbstractParser<T> implements Parser<T> {
+export abstract class AbstractParser<T> implements Parser<T>, FileReader {
   protected readonly checkInvalidTs: boolean = false;
 
   protected traceProcessor: TraceProcessor;
@@ -44,24 +45,32 @@ export abstract class AbstractParser<T> implements Parser<T> {
   protected timestampConverter: ParserTimestampConverter;
   protected entryIndexToRowIdMap: number[] = [];
   protected preProcessTrace?(): Promise<void>;
-  protected traceGeometryData?: TraceGeometryData;
+  protected traceGeometryData: TraceGeometryData;
 
   private lengthEntries = 0;
   private traceFile: TraceFile;
-  private bootTimeTimestampsNs: Array<bigint> = [];
+  private bootTimeTimestampsNs: bigint[] = [];
   private timestamps: Timestamp[] | undefined;
 
   constructor(
     traceFile: TraceFile,
     traceProcessor: TraceProcessor,
     timestampConverter: ParserTimestampConverter,
-    traceGeometryData?: TraceGeometryData,
+    traceGeometryData: TraceGeometryData,
     protected logger: Logger = getLogger('AbstractParser'),
   ) {
     this.traceFile = traceFile;
     this.traceProcessor = traceProcessor;
     this.timestampConverter = timestampConverter;
     this.traceGeometryData = traceGeometryData;
+  }
+
+  onDestroy() {
+    // do nothing
+  }
+
+  getFiles(): TraceFile[] {
+    return [this.traceFile];
   }
 
   isPerfetto(): boolean {
@@ -117,7 +126,10 @@ export abstract class AbstractParser<T> implements Parser<T> {
     return this.lengthEntries;
   }
 
-  getTimestamps(): Timestamp[] | undefined {
+  getTimestamps(): Timestamp[] {
+    if (!this.timestamps) {
+      throw NOT_IMPLEMENTED_ERROR;
+    }
     return this.timestamps;
   }
 
@@ -126,15 +138,20 @@ export abstract class AbstractParser<T> implements Parser<T> {
   }
 
   getQueryResults(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     entriesRange: EntriesRange,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     queryRawData: boolean,
   ): Promise<QueryResults<QueryResult | RawDataQueryResult>> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
   customQuery<Q extends CustomQueryType>(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     type: Q,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     entriesRange: EntriesRange,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     param?: CustomQueryParamTypeMap[Q],
   ): Promise<CustomQueryParserResultTypeMap[Q]> {
     throw NOT_IMPLEMENTED_ERROR;
@@ -156,15 +173,11 @@ export abstract class AbstractParser<T> implements Parser<T> {
     return this.realToBootTimeOffsetNs;
   }
 
-  canConvertToPerfetto(): boolean {
-    return false;
-  }
-
   getAllEntries(): Promise<Array<T | undefined>> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
-  getRangeOfEntries(entriesRange: EntriesRange): Promise<T[]> {
+  getRangeOfEntries(_: EntriesRange): Promise<T[]> {
     throw NOT_IMPLEMENTED_ERROR;
   }
 
@@ -183,12 +196,12 @@ export abstract class AbstractParser<T> implements Parser<T> {
     return entryIndexToRowId;
   }
 
-  protected async queryRowBootTimeTimestamps(): Promise<Array<bigint>> {
+  protected async queryRowBootTimeTimestamps(): Promise<bigint[]> {
     const sql = this.checkInvalidTs
       ? `SELECT ts, has_invalid_elapsed_ts FROM ${this.getTableName()} ORDER BY id;`
       : `SELECT ts FROM ${this.getTableName()} ORDER BY id;`;
     const result = await this.traceProcessor.query(sql);
-    const timestamps: Array<bigint> = [];
+    const timestamps: bigint[] = [];
     for (const it = result.iter({}); it.valid(); it.next()) {
       const ts =
         this.checkInvalidTs && Boolean(it.get('has_invalid_elapsed_ts'))

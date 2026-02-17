@@ -17,7 +17,7 @@ import {Component} from '@angular/core';
 import {ComponentFixtureAutoDetect, TestBed} from '@angular/core/testing';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {VcCuratedProperties} from '@viewers/common/curated_properties';
 import {TransformMatrixComponent} from './transform_matrix_component';
 import {ViewCapturePropertyGroupsComponent} from './view_capture_property_groups_component';
@@ -52,6 +52,8 @@ describe('ViewCapturePropertyGroupsComponent', () => {
     section.get('.class-name').checkText('test.package.name');
     section.get('.hashcode').checkText('12345678');
     section.get('.view-id').checkText('package/name');
+    section.get('.content-description').checkText('Description');
+    section.get('.text').checkText('Text');
   });
 
   it('displays geometry coordinates section', () => {
@@ -109,6 +111,8 @@ describe('ViewCapturePropertyGroupsComponent', () => {
       className: 'test.package.name',
       viewId: 'package/name',
       hashcode: '12345678',
+      contentDescription: 'Description',
+      text: 'Text',
       left: '0',
       top: '5',
       elevation: '2',

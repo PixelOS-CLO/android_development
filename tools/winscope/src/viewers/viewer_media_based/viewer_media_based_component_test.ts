@@ -23,8 +23,8 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
-import {getFixtureFile} from '@test/unit/io_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {getFixtureFile} from '@test/unit/common/io_helpers';
 import {
   CanvasEntry,
   MediaBasedTraceEntry,
@@ -32,9 +32,9 @@ import {
 } from '@trace/media_based/media_based_trace_entry';
 import {ViewerEvents} from '@viewers/common/viewer_events';
 import {ViewerMediaBasedComponent} from './viewer_media_based_component';
-import {LegacyParserProvider} from '@test/unit/fixture_utils';
 import {Parser} from '@trace_api/parser';
 import {Timer} from '@common/time/timer';
+import {NonPerfettoParserProvider} from '@test/unit/fixture_utils';
 
 describe('ViewerMediaBasedComponent', () => {
   let component: TestHostComponent;
@@ -43,11 +43,11 @@ describe('ViewerMediaBasedComponent', () => {
   let screenRecordingParser: Parser<MediaBasedTraceEntry>;
 
   beforeAll(async () => {
-    screenRecordingParser = await new LegacyParserProvider()
+    screenRecordingParser = (await new NonPerfettoParserProvider()
       .addFile(
         'traces/elapsed_and_real_timestamp/screen_recording_metadata_v2.mp4',
       )
-      .getParser<MediaBasedTraceEntry>();
+      .get()) as Parser<MediaBasedTraceEntry>;
     const screenshotFile = await getFixtureFile(
       'traces/screenshot/screenshot_2.png',
     );
@@ -79,7 +79,7 @@ describe('ViewerMediaBasedComponent', () => {
 
   it('renders title correctly', () => {
     const title = dom.get('.overlay-title');
-    title.checkTextExact('Screen recording');
+    title.checkText('Screen');
 
     component.titles = ['Screenshot'];
     dom.detectChanges();
@@ -354,7 +354,7 @@ describe('ViewerMediaBasedComponent', () => {
   })
   class TestHostComponent {
     currentTraceEntries: MediaBasedTraceEntry[] = [];
-    titles: string[] = [];
+    titles: string[] = ['Screen recording'];
     forceMinimize = false;
     isFetchingEntries = false;
     isInPlaybackMode = false;

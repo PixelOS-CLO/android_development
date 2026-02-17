@@ -16,7 +16,7 @@
 
 import {assertTrue} from '@common/assert';
 import {Sample} from 'mp4box';
-import {startsWithMagicNumber} from '@parsers/legacy/parsing_utils';
+import {startsWithMagicNumber} from '@common/magic_number_helpers';
 import {
   parseLongFromBuffer,
   ParserResult,
@@ -44,7 +44,7 @@ export class ParserMetadataV3 implements ScreenRecordingParser {
       return info.metadataTracks[0];
     });
 
-    const timestamps: Array<bigint> = [];
+    const timestamps: bigint[] = [];
     samples.forEach((sample: Sample) => {
       let offset = 0;
       if (startsWithMagicNumber(sample.data, WINSCOPE_MAGIC_STRING)) {

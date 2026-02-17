@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-import {assertDefined} from '@common/assert';
 import {getPerfettoParser} from '@test/unit/fixture_utils';
-import {PropertyTreeBuilder} from '@test/unit/property_tree_builder';
+import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
 import {
   makeRealTimestamp,
   timestampEqualityTester,
   UTC_CONVERTER,
-} from '@test/unit/time_test_helpers';
+} from '@common/time/test_helpers';
 import {
   DEFAULT_PROPERTY_FORMATTER,
   TIMESTAMP_NODE_FORMATTER,
@@ -37,10 +36,12 @@ describe('ParserCujs', () => {
 
   beforeAll(async () => {
     jasmine.addCustomEqualityTester(timestampEqualityTester);
-    parser = (await getPerfettoParser(
-      TraceType.CUJS,
-      'traces/perfetto/cujs.perfetto-trace',
-    )) as Parser<HierarchyTreeNode>;
+    parser = (
+      await getPerfettoParser(
+        TraceType.CUJS,
+        'traces/perfetto/cujs.perfetto-trace',
+      )
+    ).parser;
   });
 
   it('has expected trace type', () => {
@@ -61,7 +62,7 @@ describe('ParserCujs', () => {
       makeRealTimestamp(1754580962747188031n),
       makeRealTimestamp(1754580962769690133n),
     ];
-    expect(assertDefined(parser.getTimestamps())).toEqual(expected);
+    expect(parser.getTimestamps()).toEqual(expected);
   });
 
   it('contains parsed CUJ events', async () => {

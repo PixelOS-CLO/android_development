@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-import {assertDefined} from '@common/assert';
 import {
   TimestampConverter,
   UTC_TIMEZONE_INFO,
 } from '@common/time/timestamp_converter';
-import {getFixtureFile} from '@test/unit/io_helpers';
+import {getFixtureFile} from '@test/unit/common/io_helpers';
 import {
-  TIMESTAMP_CONVERTER_WITH_UTC_OFFSET,
+  createTestConverterWithUtcOffset,
   makeElapsedTimestamp,
   timestampEqualityTester,
-} from '@test/unit/time_test_helpers';
+} from '@common/time/test_helpers';
 import {TraceFile} from '@trace/trace_file';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {CanvasEntry} from '@trace/media_based/media_based_trace_entry';
@@ -34,6 +33,7 @@ import {ParserScreenshot} from './parser_screenshot';
 describe('ParserScreenshot', () => {
   let parser: ParserScreenshot;
   let file: File;
+  let converter: TimestampConverter;
 
   beforeAll(async () => {
     jasmine.addCustomEqualityTester(timestampEqualityTester);
@@ -44,6 +44,7 @@ describe('ParserScreenshot', () => {
     );
     await parser.parse();
     parser.createTimestamps();
+    converter = await createTestConverterWithUtcOffset();
   });
 
   it('has expected trace type', () => {
@@ -55,7 +56,7 @@ describe('ParserScreenshot', () => {
   });
 
   it('provides timestamps', () => {
-    const timestamps = assertDefined(parser.getTimestamps());
+    const timestamps = parser.getTimestamps();
 
     const expected = makeElapsedTimestamp(0n);
     timestamps.forEach((timestamp) => expect(timestamp).toEqual(expected));
@@ -64,14 +65,14 @@ describe('ParserScreenshot', () => {
   it('does not apply timezone info', async () => {
     const parserWithTimezoneInfo = new ParserScreenshot(
       new TraceFile(file),
-      TIMESTAMP_CONVERTER_WITH_UTC_OFFSET,
+      converter,
     );
     await parserWithTimezoneInfo.parse();
 
     const expectedReal = makeElapsedTimestamp(0n);
-    assertDefined(parser.getTimestamps()).forEach((timestamp) =>
-      expect(timestamp).toEqual(expectedReal),
-    );
+    parser
+      .getTimestamps()
+      .forEach((timestamp) => expect(timestamp).toEqual(expectedReal));
   });
 
   it('retrieves entry', async () => {

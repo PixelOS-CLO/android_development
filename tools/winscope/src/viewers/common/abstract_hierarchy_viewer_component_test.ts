@@ -30,12 +30,13 @@ import {MatSliderModule} from '@angular/material/slider';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 
 export abstract class AbstractHierarchyViewerComponentTest<T extends object> {
   execute() {
     describe('Hierarchy viewer component', () => {
       let dom: DOMTestHelper<T>;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       let component: T;
 
       beforeEach(async () => {
@@ -89,7 +90,7 @@ export abstract class AbstractHierarchyViewerComponentTest<T extends object> {
 
   protected async initializeTestEnvironment<U extends T>(
     typeofViewer: Type<U>,
-    addedDeclarations: object[] = [],
+    _addedDeclarations: object[] = [],
   ): Promise<[DOMTestHelper<U>, U]> {
     await TestBed.configureTestingModule({
       providers: [

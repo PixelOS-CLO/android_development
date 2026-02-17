@@ -182,15 +182,15 @@ export class TimelineComponent
   playbackState: PlaybackState = PlaybackState.PAUSED;
   disabledMessage: string = 'Timeline disabled due to ongoing search query';
 
-  private expanded = false;
+  expanded = false;
   private emitEvent: EmitEvent = () => Promise.resolve();
-  private expandedTimelineScrollEvent: WheelEvent | undefined;
-  private expandedTimelineMouseXRatio: number | undefined;
+  expandedTimelineScrollEvent: WheelEvent | undefined;
+  expandedTimelineMouseXRatio: number | undefined;
   private seekTracePosition?: TracePosition;
   private isProcessingKeyPress = false;
   private currentTabTraceType: TraceType | undefined;
   private lastPlayState: PlaybackState | undefined;
-  private frameCanvasEntry: MediaBasedTraceEntry | undefined;
+  frameCanvasEntry: MediaBasedTraceEntry | undefined;
   private hoverPosition: HoverPositionUpdate | undefined;
 
   constructor(
@@ -297,7 +297,7 @@ export class TimelineComponent
       case ActiveTraceChanged:
         return await this.onActiveTraceChanged(event as ActiveTraceChanged);
       case DarkModeToggled:
-        return await this.onDarkModeToggled(event as DarkModeToggled);
+        return await this.onDarkModeToggled();
       case TraceAddRequest:
         return await this.onTraceAddRequest(event as TraceAddRequest);
       case TraceRemoveRequest:
@@ -396,7 +396,7 @@ export class TimelineComponent
   }
 
   @HostListener('window:resize', ['$event'])
-  onResize(event: Event) {
+  onResize(_: Event) {
     if (this.frameCanvasEntry) {
       this.renderFrameInExpandedTimeline(this.frameCanvasEntry);
     }
@@ -760,7 +760,7 @@ export class TimelineComponent
     return assertDefined(lastPart);
   }
 
-  private traceSupportsPlayback() {
+  traceSupportsPlayback() {
     if (this.currentTabTraceType === undefined) {
       return false;
     }
@@ -779,7 +779,7 @@ export class TimelineComponent
     }
   }
 
-  private async onPlaybackStateChange(state: PlaybackState) {
+  async onPlaybackStateChange(state: PlaybackState) {
     if (this.currentTabTraceType === undefined) {
       return;
     }
@@ -951,6 +951,8 @@ export class TimelineComponent
       this.seekTracePosition = TracePosition.fromTimestamp(
         event.prefetchedEntries.seek,
       );
+    } else {
+      this.seekTracePosition = undefined;
     }
     this.updateTimeInputValuesToCurrentTimestamp();
     await this.updateScreenRecordingVisualization(event.prefetchedEntries);
@@ -961,7 +963,7 @@ export class TimelineComponent
     this.updateSelectedTraces(event.trace);
   }
 
-  private async onDarkModeToggled(event: DarkModeToggled) {
+  private async onDarkModeToggled() {
     const activeTrace = this.timelineData?.getActiveTrace();
     if (activeTrace === undefined) {
       return;
@@ -977,7 +979,6 @@ export class TimelineComponent
     );
     this.selectedTracesFormControl.setValue(newSelection);
     this.applyNewTraceSelection(event.trace);
-    await this.miniTimeline?.drawer?.draw();
   }
 
   private async onTraceRemoveRequest(event: TraceRemoveRequest) {
@@ -990,7 +991,6 @@ export class TimelineComponent
       ) ?? [],
     );
     this.applyNewTraceSelection(event.trace);
-    await this.miniTimeline?.drawer?.draw();
   }
 
   private async onTraceSearchStart() {

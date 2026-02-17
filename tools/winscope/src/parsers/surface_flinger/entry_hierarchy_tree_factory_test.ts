@@ -21,8 +21,8 @@ import {
   makeWarningMissingLayerIds,
   makeWarningDuplicateLayerIds,
   makeWarningRecursiveLayerIds,
-} from '@parsers/warnings';
-import {TraceGeometryData} from '@parsers/trace_geometry_data';
+} from '@parsers/helpers/warnings';
+import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {
   ColumnType,
   QueryResult,
@@ -30,6 +30,7 @@ import {
 } from '@trace_processor/query_result';
 import {
   makeSpyRowIterator,
+  makeSpyQueryResult,
   setupMockIteratorWithRows,
 } from '@trace_processor/test_utils';
 import {TraceProcessor} from '@trace_processor/trace_processor';
@@ -51,7 +52,6 @@ describe('EntryHierarchyTreeFactory', () => {
 
   const layerName1 = 'Layer1';
   const defaultSnapshotId = 100n;
-  let displaysSpy: jasmine.Spy;
   let layerRectsSpy: jasmine.Spy;
   let snapshotResult: jasmine.SpyObj<QueryResult>;
   let snapshotIter: jasmine.SpyObj<RowIterator>;
@@ -62,24 +62,19 @@ describe('EntryHierarchyTreeFactory', () => {
 
   beforeEach(() => {
     snapshotIter = makeSpyRowIterator();
-    snapshotResult = jasmine.createSpyObj<QueryResult>('result', ['iter']);
-    snapshotResult.iter.and.returnValue(snapshotIter);
+    snapshotResult = makeSpyQueryResult(snapshotIter);
     let snapshotIterValidCallCount = 0;
     snapshotIter.valid.and.callFake(() => {
       return snapshotIterValidCallCount++ === 0;
     });
     layersIter = makeSpyRowIterator();
     setColumnValuesForLayer();
-    layersResult = jasmine.createSpyObj<QueryResult>('result', ['iter']);
-    layersResult.iter.and.returnValue(layersIter);
+    layersResult = makeSpyQueryResult(layersIter);
     mockTraceGeometryData = jasmine.createSpyObj<TraceGeometryData>(
       'TraceGeometryData',
       ['getRect', 'getTransform'],
     );
-    displaysSpy = spyOn(
-      RectExtractor,
-      'extractDisplayRectsForSnapshot',
-    ).and.returnValue({
+    spyOn(RectExtractor, 'extractDisplayRectsForSnapshot').and.returnValue({
       displayRects: [],
     });
     layerRectsSpy = spyOn(RectExtractor, 'extractLayerRects').and.returnValue(

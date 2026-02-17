@@ -15,12 +15,12 @@
  */
 
 import {TimeRange} from '@common/time/time';
-import {HierarchyTreeBuilder} from '@test/unit/hierarchy_tree_builder';
+import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
 import {
   makeRealTimestamp,
   makeZeroTimestamp,
   UTC_CONVERTER,
-} from '@test/unit/time_test_helpers';
+} from '@common/time/test_helpers';
 import {TransitionStatus} from '@trace/transitions/status';
 import {
   convertHexToRgb,
@@ -28,7 +28,7 @@ import {
   isTransitionWithUnknownEnd,
   isTransitionWithUnknownStart,
 } from './timeline_utils';
-import {SetFormatters} from '@parsers/set_formatters';
+import {SetFormatters} from '@parsers/helpers/set_formatters';
 
 describe('TimelineUtils', () => {
   const zeroTs = makeZeroTimestamp();

@@ -15,14 +15,14 @@
  */
 
 import {assertDefined} from '@common/assert';
-import {PropertyTreeBuilder} from '@test/unit/property_tree_builder';
+import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
 import {
   makeBufferNode,
   makeColorNode,
   makePositionNode,
   makeRectNode,
   makeSizeNode,
-} from '@test/unit/tree_node_test_helpers';
+} from '@test/unit/tree_node/tree_node_test_helpers';
 
 import {
   PropertyFormatter,
@@ -145,7 +145,7 @@ describe('property_tree_node', () => {
 
   it('setFormatter returns the node instance', () => {
     const formatter: PropertyFormatter = {
-      format(nodeToFormat: PropertyTreeNode): string {
+      format(_: PropertyTreeNode): string {
         return '';
       },
     };

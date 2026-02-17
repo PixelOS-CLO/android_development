@@ -2,8 +2,10 @@
   "compileOnSave": false,
   "compilerOptions": {
     "baseUrl": "./src",
-    "paths":{
-      "protos/*": ["../deps_build/protos/*"],
+    "paths": {
+      "protos/*": [
+        "../deps_build/protos/*"
+      ],
       "@abt_chrome_extension/*": [
         "abt_chrome_extension/*"
       ],
@@ -18,6 +20,9 @@
       ],
       "@cross_tool/*": [
         "cross_tool/*"
+      ],
+      "@legacy_file_readers/*": [
+        "legacy_file_readers/*"
       ],
       "@logging/*": [
         "logging/*"

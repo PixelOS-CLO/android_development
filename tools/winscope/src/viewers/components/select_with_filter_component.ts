@@ -21,6 +21,7 @@ import {
   EventEmitter,
   Input,
   Output,
+  SimpleChanges,
 } from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -61,6 +62,7 @@ import {AbstractSelectComponent} from './abstract_select_component';
   styleUrls: ['select_with_filter_component.css'],
 })
 export class SelectWithFilterComponent extends AbstractSelectComponent<HTMLInputElement> {
+  @Input() override label = 'Search';
   @Input() options: string[] = [];
   @Input() outerFilterWidth = '100px';
   @Input() innerFilterWidth = '100';
@@ -77,6 +79,12 @@ export class SelectWithFilterComponent extends AbstractSelectComponent<HTMLInput
   private static readonly OPTION_PADDING_WIDTH = 32;
   private static readonly SCROLLBAR_WIDTH = 8;
   private static readonly CHAR_WIDTH = 8.5;
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['options']) {
+      this.updateNonHiddenOptionToIndex();
+    }
+  }
 
   onSelectChange(event: MatSelectChange) {
     this.selectChange.emit(event);
@@ -131,7 +139,7 @@ export class SelectWithFilterComponent extends AbstractSelectComponent<HTMLInput
   }
 
   nonHiddenOptions() {
-    return this.options.filter((value, i) => {
+    return this.options.filter((value: string) => {
       return !this.hideOption(value, this.filterString);
     });
   }
@@ -166,6 +174,10 @@ export class SelectWithFilterComponent extends AbstractSelectComponent<HTMLInput
   }
 
   onFilterStringChange() {
+    this.updateNonHiddenOptionToIndex();
+  }
+
+  private updateNonHiddenOptionToIndex() {
     const nonHiddenOptionToIndex: number[] = [];
     this.options.forEach((value, i) => {
       if (!this.hideOption(value, this.filterString)) {

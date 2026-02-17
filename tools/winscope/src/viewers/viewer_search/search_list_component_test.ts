@@ -15,14 +15,13 @@
  */
 
 import {CdkMenuModule} from '@angular/cdk/menu';
-import {NgTemplateOutlet} from '@angular/common';
-import {Component, ViewChild} from '@angular/core';
+import {Component, TemplateRef, ViewChild} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {ListItemOption, SearchListComponent} from './search_list_component';
 import {ListedSearch} from './ui_data';
 
@@ -152,7 +151,7 @@ describe('SearchListComponent', () => {
     @ViewChild(SearchListComponent) searchListComponent:
       | SearchListComponent
       | undefined;
-    @ViewChild('testTemplate') testTemplate: NgTemplateOutlet | undefined;
+    @ViewChild('testTemplate') testTemplate: TemplateRef<unknown> | undefined;
 
     searches: ListedSearch[] = [];
     placeholderText: string | undefined;

@@ -19,16 +19,15 @@ import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {Store} from '@common/store/store';
 import {TabbedViewSwitchRequest} from '@app/tabbed_view_events';
 import {TracePositionUpdate} from '@trace/trace_events';
-import {getFixtureFile} from '@test/unit/io_helpers';
+import {getFixtureFile} from '@test/unit/common/io_helpers';
 import {
   getPerfettoParser,
-  LegacyParserProvider,
+  parseAndConvertToPerfettoTrace,
 } from '@test/unit/fixture_utils';
-import {TraceBuilder} from '@test/unit/trace_builder';
-import {makeEmptyTrace} from '@test/unit/trace_test_helpers';
+import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
+import {makeEmptyTrace} from '@test/unit/trace_api/trace_test_helpers';
 import {TraceFile} from '@trace/trace_file';
 import {CustomQueryType} from '@trace_api/custom_query';
-import {Parser} from '@trace_api/parser';
 import {Trace} from '@trace_api/trace';
 import {TRACE_INFO} from '@trace_api/trace_info';
 import {TraceType} from '@trace_api/trace_type';
@@ -131,10 +130,12 @@ the default for its data type.`,
   override readonly treeNodeShortName = 'SearchContainerView@53568094';
 
   override async setUpTestEnvironment(): Promise<void> {
-    const parser = (await getPerfettoParser(
-      TraceType.VIEW_CAPTURE,
-      'traces/perfetto/viewcapture.perfetto-trace',
-    )) as Parser<HierarchyTreeNode>;
+    const parser = (
+      await getPerfettoParser(
+        TraceType.VIEW_CAPTURE,
+        'traces/perfetto/viewcapture.perfetto-trace',
+      )
+    ).parser;
 
     const trace = Trace.fromParser(parser);
     this.traces = new Traces();
@@ -215,6 +216,8 @@ the default for its data type.`,
     );
     expect(curatedProperties.translationY).toBe('786.506');
     expect(curatedProperties.translationX).toBe('0');
+    expect(curatedProperties.contentDescription).toBe('description');
+    expect(curatedProperties.text).toBe('text');
   }
 
   override executePropertiesChecksAfterSecondPositionUpdate(
@@ -241,6 +244,8 @@ the default for its data type.`,
     expect(curatedProperties.translationY).toBe('210.700');
     expect(curatedProperties.alpha).toBe('0');
     expect(curatedProperties.willNotDraw).toBe('true');
+    expect(curatedProperties.contentDescription).toBe('null');
+    expect(curatedProperties.text).toBe('null');
   }
 
   override executeSpecializedTests() {
@@ -292,13 +297,11 @@ the default for its data type.`,
         const perfettoFile = new TraceFile(
           await getFixtureFile('traces/perfetto/viewcapture.perfetto-trace'),
         );
-        const sfTrace = Trace.fromParser(
-          await new LegacyParserProvider()
-            .addFile('traces/elapsed_timestamp/SurfaceFlinger.pb')
-            .setExistingPerfettoFile(perfettoFile)
-            .setConvertToPerfetto(true)
-            .getParser<HierarchyTreeNode>(),
+        const sfParser = await parseAndConvertToPerfettoTrace(
+          'traces/elapsed_timestamp/SurfaceFlinger.pb',
+          perfettoFile,
         );
+        const sfTrace = Trace.fromParser(sfParser);
         const presenterWithSfTrace = createPresenterWithSfTrace(
           assertDefined(this.traces),
           sfTrace,

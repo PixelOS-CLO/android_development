@@ -32,7 +32,7 @@ import {getLogger, Logger} from '@compat/logging';
 import {Analytics} from '@logging/analytics';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {EmitEvent} from '@messaging/winscope_event_emitter';
-import {TraceGeometryData} from '@parsers/trace_geometry_data';
+import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {ScreenRecordingChange, TracePositionUpdate} from '@trace/trace_events';
 import {Trace, TraceEntry} from '@trace_api/trace';
@@ -60,7 +60,7 @@ import {PlaybackPresenter} from './playback/playback_presenter';
 import {PlaybackState} from './playback/playback_state';
 import {flattenNodesToRows} from './ui_tree_node_helpers';
 import {UiPropertyTreeNode} from './ui_property_tree_node';
-import {UiTreeNodeRow} from './ui_tree_node_row';
+import {FlattenedTreeRow} from './flattened_tree_row';
 
 export type NotifyHierarchyViewCallbackType<UiData> = (uiData: UiData) => void;
 
@@ -364,11 +364,11 @@ export abstract class AbstractHierarchyViewerPresenter<
     await this.onViewerSpecificWinscopeEvent(event);
   }
 
-  protected async onViewerSpecificWinscopeEvent(event: WinscopeEvent) {
+  protected async onViewerSpecificWinscopeEvent(_: WinscopeEvent) {
     // do nothing
   }
 
-  protected addViewerSpecificListeners(htmlElement: HTMLElement) {
+  protected addViewerSpecificListeners(_: HTMLElement) {
     // do nothing;
   }
 
@@ -628,7 +628,7 @@ export abstract class AbstractHierarchyViewerPresenter<
   }
 
   private flattenHierarchies():
-    | Array<UiTreeNodeRow<UiHierarchyTreeNode>>
+    | Array<FlattenedTreeRow<UiHierarchyTreeNode>>
     | undefined {
     const trees = this.hierarchyPresenter.getAllFormattedTrees();
     if (!trees) {
@@ -646,7 +646,7 @@ export abstract class AbstractHierarchyViewerPresenter<
   }
 
   private flattenProperties():
-    | Array<UiTreeNodeRow<UiPropertyTreeNode>>
+    | Array<FlattenedTreeRow<UiPropertyTreeNode>>
     | undefined {
     const tree = this.propertiesPresenter.getFormattedTree();
     if (!tree) {

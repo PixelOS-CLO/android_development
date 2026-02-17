@@ -44,6 +44,7 @@ import {
   isOriginAllowedTimestampSync,
   isUnauthorizedOriginExpected,
 } from './origin_allow_list';
+import {AppResetRequest} from '@app/app_events';
 
 class RemoteTool {
   timestampType?: TimestampType;
@@ -78,6 +79,10 @@ export class CrossToolProtocol
 
   setEmitEvent(callback: EmitEvent) {
     this.emitEvent = callback;
+  }
+
+  updateTimestampConverter(value: RemoteToolTimestampConverter) {
+    this.timestampConverter = value;
   }
 
   private async onTracePositionUpdate(event: TracePositionUpdate) {
@@ -224,6 +229,7 @@ export class CrossToolProtocol
     const deferredTimestamp = this.makeDeferredTimestampForWinscope(
       message.timestampNs,
     );
+    await this.emitEvent(new AppResetRequest());
     await this.emitEvent(
       new RemoteToolFilesReceived([message.file], deferredTimestamp),
     );
@@ -234,6 +240,7 @@ export class CrossToolProtocol
     const deferredTimestamp = this.makeDeferredTimestampForWinscope(
       message.timestampNs,
     );
+    await this.emitEvent(new AppResetRequest());
     await this.emitEvent(
       new RemoteToolFilesReceived(message.files, deferredTimestamp),
     );
@@ -319,7 +326,7 @@ export class CrossToolProtocol
 
   // Make a deferred timestamp: a lambda meant to be executed at a later point to create a
   // timestamp. The lambda is needed to defer timestamp creation to the point where traces
-  // are loaded into TracePipeline and TimestampConverter is properly initialized and ready
+  // are loaded into LoadedFileData and TimestampConverter is properly initialized and ready
   // to instantiate timestamps.
   private makeDeferredTimestampForWinscope(
     timestampNs: bigint | undefined,

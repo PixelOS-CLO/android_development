@@ -42,6 +42,7 @@ import {
 import {Parser} from './parser';
 import {TRACE_INFO} from './trace_info';
 import {TraceType} from './trace_type';
+import {RectsForTrace} from '@tree_node/rect_extractor_result';
 
 /**
  * Represents a single entry within a trace. This abstract class provides
@@ -219,8 +220,8 @@ export class Trace<T> {
     return this.parser.getDescriptors();
   }
 
-  getParser(): Parser<T> {
-    return this.parser;
+  async getRectsMap(): Promise<RectsForTrace | undefined> {
+    return this.parser.getRectsMap?.();
   }
 
   isPerfetto(): boolean {
@@ -253,6 +254,21 @@ export class Trace<T> {
         frames,
       );
     });
+  }
+
+  createLazyEntry<U>(
+    index: number,
+    getValue: () => Promise<U>,
+  ): CustomTraceEntryLazy<T, U> {
+    const fullEntry = this.getEntry(index);
+    return new CustomTraceEntryLazy(
+      this,
+      this.parser,
+      index,
+      fullEntry.getTimestamp(),
+      this.hasFrameInfo() ? fullEntry.getFramesRange() : undefined,
+      getValue,
+    );
   }
 
   createEagerEntriesFromValues(
@@ -292,7 +308,7 @@ export class Trace<T> {
       });
 
       return eagerEntries;
-    } catch (e) {
+    } catch {
       const result: Array<Promise<TraceEntryEager<T, T>>> = [];
       for (
         let absoluteIndex = entriesRange.start;
@@ -317,7 +333,7 @@ export class Trace<T> {
   async customQuery<Q extends CustomQueryType>(
     type: Q,
     param?: CustomQueryParamTypeMap[Q],
-  ): Promise<CustomQueryResultTypeMap<T>[Q]> {
+  ): Promise<CustomQueryResultTypeMap[Q]> {
     const makeTraceEntry = <U>(
       index: RelativeEntryIndex,
       value: U,
@@ -328,7 +344,7 @@ export class Trace<T> {
     const processParserResult = PROCESS_CUSTOM_QUERY_PARSER_RESULT[type] as (
       parserResult: CustomQueryParserResultTypeMap[Q],
       make: typeof makeTraceEntry,
-    ) => CustomQueryResultTypeMap<T>[Q];
+    ) => CustomQueryResultTypeMap[Q];
 
     const parserResult = await this.parser.customQuery<Q>(
       type,
@@ -660,15 +676,16 @@ export class Trace<T> {
   }
 
   private getFullTraceTimestamps(): Timestamp[] {
-    const timestamps = this.parser.getTimestamps();
-    if (!timestamps) {
+    try {
+      return this.parser.getTimestamps();
+    } catch (e) {
+      this.logger.error('Failed to get timestamps for trace', e);
       throw new Error(
         `Timestamps expected to be available for this ${
           TRACE_INFO[this.type].name
         } trace.`,
       );
     }
-    return timestamps;
   }
 
   private convertToAbsoluteEntryIndex(

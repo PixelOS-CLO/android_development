@@ -15,19 +15,19 @@
  */
 
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
-import {ParserBuilder} from '@test/unit/parser_builder';
+import {ParserBuilder} from '@test/unit/trace_api/parser_builder';
 import {
   makeElapsedTimestamp,
   makeRealTimestamp,
   makeZeroTimestamp,
-} from '@test/unit/time_test_helpers';
-import {TraceBuilder} from '@test/unit/trace_builder';
+} from '@common/time/test_helpers';
+import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {
   extractEntries,
   extractFrames,
   extractTimestamps,
   makeEmptyTrace,
-} from '@test/unit/trace_test_helpers';
+} from '@test/unit/trace_api/trace_test_helpers';
 
 import {FrameMapBuilder} from './frame_map_builder';
 import {AbsoluteFrameIndex} from './index_types';
@@ -1314,7 +1314,7 @@ describe('Trace', () => {
     await expectAsync(trace.getEntry(0).getValue()).toBeRejected();
     try {
       await trace.getEntry(0).getValue();
-    } catch (e) {
+    } catch {
       expect(trace.isCorrupted()).toBeTrue();
       expect(trace.getCorruptedReason()).toEqual(
         'Cannot parse entry at index 0',
@@ -1356,11 +1356,8 @@ describe('Trace', () => {
   });
 
   it('onDestroy()', () => {
-    const trace = new TraceBuilder<string>()
-      .setEntries(['entry-0'])
-      .setTimestamps([time10])
-      .build();
-    const parser = trace.getParser();
+    const parser = new ParserBuilder<string>().setEntries([]).build();
+    const trace = new TraceBuilder<string>().setParser(parser).build();
     parser.onDestroy = jasmine.createSpy();
     trace.onDestroy();
     expect(parser.onDestroy).toHaveBeenCalledTimes(1);

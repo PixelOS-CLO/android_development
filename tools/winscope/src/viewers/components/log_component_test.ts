@@ -17,7 +17,11 @@
 import {Clipboard, ClipboardModule} from '@angular/cdk/clipboard';
 import {ScrollingModule} from '@angular/cdk/scrolling';
 import {Component, ViewChild} from '@angular/core';
-import {ComponentFixtureAutoDetect, TestBed} from '@angular/core/testing';
+import {
+  ComponentFixture,
+  ComponentFixtureAutoDetect,
+  TestBed,
+} from '@angular/core/testing';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatPseudoCheckboxModule} from '@angular/material/core';
@@ -32,12 +36,12 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventKey} from '@common/dom';
 import {Timestamp} from '@common/time/time';
-import {DOMTestHelper} from '@test/unit/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {
   makeElapsedTimestamp,
   makeRealTimestamp,
-} from '@test/unit/time_test_helpers';
-import {TraceBuilder} from '@test/unit/trace_builder';
+} from '@common/time/test_helpers';
+import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {TraceEntry} from '@trace_api/trace';
 import {TraceType} from '@trace_api/trace_type';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
@@ -68,6 +72,7 @@ describe('LogComponent', () => {
   const testColumn2: ColumnSpec = {name: 'test2', cssClass: 'test-2'};
   const testColumn3: ColumnSpec = {name: 'test3', cssClass: 'test-3'};
 
+  let fixture: ComponentFixture<TestHostComponent>;
   let component: TestHostComponent;
   let dom: DOMTestHelper<TestHostComponent>;
   let mockCopyText: jasmine.Spy;
@@ -103,11 +108,12 @@ describe('LogComponent', () => {
         VariableHeightScrollDirective,
       ],
     }).compileComponents();
-    const fixture = TestBed.createComponent(TestHostComponent);
+    fixture = TestBed.createComponent(TestHostComponent);
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
     setComponentInputData();
     dom.detectChanges();
+    await dom.whenStable();
   });
 
   it('can be created', () => {
@@ -228,11 +234,11 @@ describe('LogComponent', () => {
 
   it('emits event on arrow key press', () => {
     let downArrowPressedTimes = 0;
-    dom.addEventListener(ViewerEvents.ArrowDownPress, (event) => {
+    dom.addEventListener(ViewerEvents.ArrowDownPress, (_) => {
       downArrowPressedTimes++;
     });
     let upArrowPressedTimes = 0;
-    dom.addEventListener(ViewerEvents.ArrowUpPress, (event) => {
+    dom.addEventListener(ViewerEvents.ArrowUpPress, (_) => {
       upArrowPressedTimes++;
     });
 
@@ -261,7 +267,14 @@ describe('LogComponent', () => {
     checkEntryPropagatedOnTimestampClick(logTimestampButton);
   });
 
-  it('propagates timestamp on raw timestamp click', () => {
+  it('propagates timestamp on raw timestamp click', async () => {
+    // Force viewport layout update
+    dom.detectChanges();
+    await dom.whenRenderingDone();
+    component.logComponent?.scrollComponent?.checkViewportSize();
+    dom.detectChanges();
+    await dom.whenRenderingDone();
+
     let timestamp: Timestamp | undefined;
     dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
       const detail: TimestampClickDetail = (event as CustomEvent).detail;
@@ -406,6 +419,27 @@ describe('LogComponent', () => {
     component.scrollToIndex = 1;
     dom.detectChanges();
     expect(spy).toHaveBeenCalledOnceWith(0);
+  });
+
+  // TODO: This test should be reviewed since it's very simplistic and does not cover much of the functionality.
+  // Blocking point at the moment of creation: inside onDocumentCopy cannot get isCopyInsideLogComponent = true.
+  it('copies formatted log', () => {
+    const onDocumentCopySpy = spyOn(
+      assertDefined(component.logComponent),
+      'onDocumentCopy',
+    ).and.callThrough();
+
+    component.traceType = TraceType.PROTO_LOG;
+    dom.detectChanges();
+
+    const copyEvent = new ClipboardEvent('copy', {
+      bubbles: true,
+      composed: true,
+    });
+
+    document.dispatchEvent(copyEvent);
+
+    expect(onDocumentCopySpy).toHaveBeenCalledTimes(1);
   });
 
   function setComponentInputData(elapsed = true) {

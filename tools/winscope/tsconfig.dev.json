@@ -2,7 +2,6 @@
   "extends": "./tsconfig.common.json",
   "files": [
     "src/main_dev.ts",
-    "src/polyfills.ts",
-    "src/parsers/trace_entry_value_builder.ts",
-  ],
+    "src/polyfills.ts"
+  ]
 }

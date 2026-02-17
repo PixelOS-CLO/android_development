@@ -28,17 +28,17 @@ import {
   SimpleChange,
   SimpleChanges,
 } from '@angular/core';
-import {MatButtonModule} from '@angular/material/button';
+import {MatButtonModule, MatIconButton} from '@angular/material/button';
 import {
   MatButtonToggleChange,
   MatButtonToggleModule,
 } from '@angular/material/button-toggle';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatIconModule, MatIconRegistry} from '@angular/material/icon';
+import {MatIcon, MatIconModule, MatIconRegistry} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectChange, MatSelectModule} from '@angular/material/select';
-import {MatSliderModule} from '@angular/material/slider';
+import {MatSlider, MatSliderModule} from '@angular/material/slider';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {DomSanitizer} from '@angular/platform-browser';
 import {assertDefined} from '@common/assert';
@@ -59,10 +59,6 @@ import {UserOptionsComponent} from '@viewers/components/user_options_component';
 import {Canvas} from './canvas';
 import {Mapper3D} from './mapper3d';
 import {ShadingMode} from './shading_mode';
-
-interface CanColor {
-  color: string | undefined;
-}
 
 @Component({
   selector: 'rects-view',
@@ -113,21 +109,21 @@ export class RectsComponent implements OnInit, OnDestroy {
   private storeKeyZSpacingFactor = '';
   private storeKeyShadingMode = '';
   private storeKeySelectedDisplays = '';
-  private internalDisplays: DisplayIdentifier[] = [];
+  internalDisplays: DisplayIdentifier[] = [];
   private internalHighlightedItem = '';
-  private currentDisplays: DisplayIdentifier[] = [];
+  currentDisplays: DisplayIdentifier[] = [];
   largeRectsMapper3d = new Mapper3D();
   private miniRectsMapper3d = new Mapper3D();
   private largeRectsCanvas?: Canvas;
   private miniRectsCanvas?: Canvas;
-  private resizeObserver = new ResizeObserver((entries) => {
+  private resizeObserver = new ResizeObserver((_) => {
     this.updateLargeRectsPosition();
   });
   private largeRectsCanvasElement?: HTMLCanvasElement;
   private miniRectsCanvasElement?: HTMLCanvasElement;
   private largeRectsLabelsElement?: HTMLElement;
   private mouseMoveListener = (event: MouseEvent) => this.onMouseMove(event);
-  private mouseUpListener = (event: MouseEvent) => this.onMouseUp(event);
+  private mouseUpListener = () => this.onMouseUp();
   private panning = false;
   private defaultRectType: TraceRectType | undefined;
 
@@ -173,8 +169,8 @@ export class RectsComponent implements OnInit, OnDestroy {
       this.largeRectsLabelsElement,
       () => this.isDarkMode,
     );
-    this.largeRectsCanvasElement.addEventListener('mousedown', (event) =>
-      this.onCanvasMouseDown(event),
+    this.largeRectsCanvasElement.addEventListener('mousedown', () =>
+      this.onCanvasMouseDown(),
     );
 
     this.largeRectsMapper3d.increaseZoomFactor(this.zoomFactor - 1);
@@ -183,7 +179,7 @@ export class RectsComponent implements OnInit, OnDestroy {
       this.updateControlsFromStore();
     }
 
-    this.redrawLargeRectsAndLabels();
+    this.redrawLargeRectsAndLabels(true);
 
     this.miniRectsCanvasElement = canvasContainer.querySelector(
       '.mini-rects-canvas',
@@ -228,6 +224,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     let redrawRects = false;
     let recolorRects = false;
     let recolorLabels = false;
+    let updateBoundingBox = false;
     if (simpleChanges['pinnedItems']) {
       this.largeRectsMapper3d.setPinnedItems(this.pinnedItems);
       recolorRects = true;
@@ -246,6 +243,8 @@ export class RectsComponent implements OnInit, OnDestroy {
       recolorLabels = true;
     }
     if (simpleChanges['rects']) {
+      updateBoundingBox =
+        this.internalRects.length === 0 && this.rects.length > 0;
       this.internalRects = simpleChanges['rects'].currentValue;
       redrawRects = true;
     }
@@ -253,7 +252,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     if (displayChange) {
       this.onDisplaysChange(simpleChanges['displays']);
     } else if (redrawRects) {
-      this.redrawLargeRectsAndLabels();
+      this.redrawLargeRectsAndLabels(updateBoundingBox);
     } else if (recolorRects && recolorLabels) {
       this.updateLargeRectsAndLabelsColors();
     } else if (recolorRects) {
@@ -265,11 +264,11 @@ export class RectsComponent implements OnInit, OnDestroy {
     this.resizeObserver?.disconnect();
     this.largeRectsCanvas?.onDestroy();
     this.miniRectsCanvas?.onDestroy();
-    (this.largeRectsCanvasElement?.getContext('2d') as any)?.reset();
-    (this.miniRectsCanvasElement?.getContext('2d') as any)?.reset();
+    this.largeRectsCanvasElement?.getContext('2d')?.reset();
+    this.miniRectsCanvasElement?.getContext('2d')?.reset();
   }
 
-  onDisplaysChange(change: SimpleChange) {
+  private onDisplaysChange(change: SimpleChange) {
     const displays = change.currentValue;
     this.internalDisplays = displays;
     const activeDisplay = this.getActiveDisplay(this.internalDisplays);
@@ -307,7 +306,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     return;
   }
 
-  updateControlsFromStore() {
+  private updateControlsFromStore() {
     this.storeKeyZSpacingFactor = `rectsView.${this.title}.zSpacingFactor`;
     this.storeKeyShadingMode = `rectsView.${this.title}.shadingMode`;
     this.storeKeySelectedDisplays = `rectsView.${this.title}.selectedDisplayId`;
@@ -384,7 +383,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     }
   }
 
-  onCanvasMouseDown(event: MouseEvent) {
+  onCanvasMouseDown() {
     document.addEventListener('mousemove', this.mouseMoveListener);
     document.addEventListener('mouseup', this.mouseUpListener);
   }
@@ -396,7 +395,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     this.updateLargeRectsPosition();
   }
 
-  onMouseUp(event: MouseEvent) {
+  onMouseUp() {
     document.removeEventListener('mousemove', this.mouseMoveListener);
     document.removeEventListener('mouseup', this.mouseUpListener);
   }
@@ -483,11 +482,11 @@ export class RectsComponent implements OnInit, OnDestroy {
     this.updateLargeRectsColors();
   }
 
-  onInteractionStart(components: CanColor[]) {
+  onInteractionStart(components: Array<MatIconButton | MatSlider | MatIcon>) {
     components.forEach((c) => (c.color = 'primary'));
   }
 
-  onInteractionEnd(components: CanColor[]) {
+  onInteractionEnd(components: Array<MatIconButton | MatSlider | MatIcon>) {
     components.forEach((c) => (c.color = 'accent'));
   }
 

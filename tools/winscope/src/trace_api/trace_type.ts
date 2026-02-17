@@ -64,11 +64,6 @@ export enum TraceType {
    */
   PROTO_LOG,
   /**
-   * Represents a System UI trace, which provides information about the
-   * state and events of the Android System UI.
-   */
-  SYSTEM_UI,
-  /**
    * Represents a trace from Input Method Editor (IME) clients, which
    * captures interactions between applications and the input method.
    */
@@ -147,6 +142,8 @@ export type ImeTraceType =
 
 const UI_PIPELINE_ORDER = [
   TraceType.INPUT_EVENT_MERGED,
+  TraceType.INPUT_KEY_EVENT,
+  TraceType.INPUT_MOTION_EVENT,
   TraceType.INPUT_METHOD_CLIENTS,
   TraceType.INPUT_METHOD_SERVICE,
   TraceType.INPUT_METHOD_MANAGER_SERVICE,
@@ -164,6 +161,8 @@ const TRACES_WITH_VIEWERS_DISPLAY_ORDER = [
   TraceType.SURFACE_FLINGER,
   TraceType.WINDOW_MANAGER,
   TraceType.INPUT_EVENT_MERGED,
+  TraceType.INPUT_KEY_EVENT,
+  TraceType.INPUT_MOTION_EVENT,
   TraceType.INPUT_METHOD_CLIENTS,
   TraceType.INPUT_METHOD_MANAGER_SERVICE,
   TraceType.INPUT_METHOD_SERVICE,
