@@ -18,7 +18,11 @@ import {Type} from '@angular/core';
 import {ComponentFixture} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {assertDefined} from '@common/assert';
-import {KeyboardEventKey, KeyboardEventKeyCode} from '@common/dom';
+import {
+  KeyboardEventCode,
+  KeyboardEventKey,
+  KeyboardEventKeyCode,
+} from '@common/dom';
 
 export class DOMTestHelper<T> {
   constructor(
@@ -241,6 +245,15 @@ export class DOMTestHelper<T> {
     this.keydownByKey(KeyboardEventKey.ARROW_DOWN, toDocument);
   }
 
+  keydownCtrlAToSelectPanel() {
+    const keydownCtrlA = new KeyboardEvent('keydown', {
+      code: KeyboardEventCode.A,
+      ctrlKey: true,
+    });
+    const panel = this.getMatSelectPanel();
+    panel.dispatchEvent(keydownCtrlA);
+  }
+
   private keydownByKey(key: string, toDocument = false) {
     const event = new KeyboardEvent('keydown', {key});
     if (toDocument) {
@@ -358,6 +371,9 @@ export class DOMTestHelper<T> {
 
   async checkTooltip(text: string | undefined) {
     this.dispatchEvent(new Event('mouseenter'));
+    await this.detectChangesAndWaitStable();
+    await this.whenRenderingDone();
+
     const panel = this.findMatTooltipPanel();
     if (text !== undefined) {
       assertDefined(panel).checkText(text);
@@ -365,7 +381,20 @@ export class DOMTestHelper<T> {
       expect(panel).toBeUndefined();
     }
     this.dispatchEvent(new Event('mouseleave'));
-    await this.whenStable();
+    await this.detectChangesAndWaitStable();
+    await this.whenRenderingDone();
+
+    if (panel) {
+      // tooltip hide animation must be manually ended for the tooltip to be
+      // removed from the DOM
+      const animationEnd = new AnimationEvent('animationend', {
+        animationName: 'mat-mdc-tooltip-hide',
+      });
+      panel.get('.mat-mdc-tooltip-hide').dispatchEvent(animationEnd);
+      await this.detectChangesAndWaitStable();
+      await this.whenRenderingDone();
+      expect(this.findMatTooltipPanel()).toBeUndefined();
+    }
   }
 
   private dispatchMouseEvent(
