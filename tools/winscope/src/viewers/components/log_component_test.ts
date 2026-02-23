@@ -36,7 +36,7 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventKey} from '@common/dom';
 import {Timestamp} from '@common/time/time';
-import {checkTooltips, DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {
   makeElapsedTimestamp,
   makeRealTimestamp,
@@ -456,7 +456,7 @@ describe('LogComponent', () => {
     await dom.whenStable();
 
     const entry = dom.get('.field-value');
-    entry.checkTooltip(tooltipMessage);
+    await entry.checkTooltip(tooltipMessage);
   });
 
   it('tooltip message correctly undefined', async () => {
@@ -466,7 +466,7 @@ describe('LogComponent', () => {
     await dom.whenStable();
 
     const entry = dom.get('.field-value');
-    entry.checkTooltip(undefined);
+    await entry.checkTooltip(undefined);
   });
 
   function setTooltipInputData(message: string | undefined) {

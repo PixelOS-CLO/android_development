@@ -16,14 +16,15 @@
 
 import {assertDefined} from '@common/assert';
 import {Timestamp} from '@common/time/time';
-import {
-  TimestampConverter,
-  UTC_TIMEZONE_INFO,
-} from '@common/time/timestamp_converter';
+import {TimestampConverter} from '@common/time/timestamp_converter';
 import {WinscopeEvent} from '@messaging/winscope_event';
-import {RemoteToolTimestampReceived} from './remote_tool_events';
+import {
+  RemoteToolInitialized,
+  RemoteToolTimestampReceived,
+} from './remote_tool_events';
 import {CrossToolProtocol} from './cross_tool_protocol';
 import {MessageTestFailureInfo, MessageType} from './messages';
+import {makeConverterZeroRteOffsets} from '@common/time/test_helpers';
 
 describe('CrossToolProtocol', () => {
   const FAKE_ORIGIN = 'http://localhost:8081';
@@ -35,9 +36,18 @@ describe('CrossToolProtocol', () => {
   describe('handles debug info', () => {
     beforeEach(() => {
       setUpTestEnvironment();
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: FAKE_ORIGIN,
+          source: window,
+          data: {type: MessageType.PING},
+        }),
+      );
+      expect(emittedEvent).toBeInstanceOf(RemoteToolInitialized);
+      emittedEvent = undefined;
     });
 
-    it('handles debug info message and extracts timestamp', () => {
+    it('handles debug info message and extracts timestamp', async () => {
       const stackTrace = `
 android.tools.flicker.subject.exceptions.IncorrectVisibilityException: com.android.server.wm.flicker.testapp/com.android.server.wm.flicker.testapp.SimpleActivity# should be visible
 
@@ -82,6 +92,7 @@ Check the test run artifacts for trace files
 	at android.tools.flicker.assertions.BaseFlickerTest.assertLayers(BaseFlickerTest.kt:87)
 	at com.android.server.wm.flicker.launch.OpenAppFromIconColdTest.appLayerBecomesVisible(OpenAppFromIconColdTest.kt:100)
     `;
+
       const message = new MessageTestFailureInfo(stackTrace);
       window.dispatchEvent(
         new MessageEvent('message', {
@@ -90,7 +101,6 @@ Check the test run artifacts for trace files
           data: message,
         }),
       );
-
       expect(emittedEvent).toBeInstanceOf(RemoteToolTimestampReceived);
       const receivedEvent = emittedEvent as RemoteToolTimestampReceived;
       const timestamp = assertDefined(receivedEvent.deferredTimestamp)();
@@ -154,6 +164,7 @@ Check the test run artifacts for trace files
         }),
       );
       expect(protocol.isAllowedTimestampSync()).toBeFalse();
+      expect(emittedEvent).toBeUndefined();
     });
 
     it('toggles whether timestamp sync is allowed', () => {
@@ -166,6 +177,7 @@ Check the test run artifacts for trace files
         }),
       );
       expect(protocol.getAllowTimestampSync()).toBeTrue();
+      expect(emittedEvent).toBeInstanceOf(RemoteToolInitialized);
       protocol.setAllowTimestampSync(false);
       expect(protocol.getAllowTimestampSync()).toBeFalse();
     });
@@ -173,7 +185,7 @@ Check the test run artifacts for trace files
 
   function setUpTestEnvironment() {
     emittedEvent = undefined;
-    timestampConverter = new TimestampConverter(UTC_TIMEZONE_INFO, 0n);
+    timestampConverter = makeConverterZeroRteOffsets();
     protocol = new CrossToolProtocol(timestampConverter);
     protocol.setEmitEvent(async (event) => {
       emittedEvent = event;

@@ -16,7 +16,6 @@
 
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
-import {TimestampConverter} from '@common/time/timestamp_converter';
 import {CrossToolProtocol} from '@cross_tool/cross_tool_protocol';
 import {ProgressListener} from '@messaging/progress_listener';
 import {ProgressListenerStub} from '@messaging/progress_listener_stub';
@@ -63,6 +62,7 @@ import {ViewersLoaded, ViewersUnloaded} from '@app/viewers_events';
 import {
   RemoteToolDownloadStart,
   RemoteToolFilesReceived,
+  RemoteToolInitialized,
   RemoteToolTimestampReceived,
 } from '@cross_tool/remote_tool_events';
 import {
@@ -85,7 +85,7 @@ import {WinscopeEventListenerStub} from '@messaging/winscope_event_listener_stub
 import {getFixtureFile} from '@test/unit/common/io_helpers';
 import {mixin} from '@test/unit/common/mixin_helpers';
 import {
-  ASIA_TIMEZONE_INFO,
+  makeConverterWithUtcOffset,
   makeRealTimestamp,
   makeZeroTimestamp,
 } from '@common/time/test_helpers';
@@ -432,11 +432,20 @@ describe('Mediator', () => {
   //TODO: test "data from ABT chrome extension" when file_utils is fully compatible with Node.js
   //      (b/262269229).
 
+  it('handles initialized event from remote tool', async () => {
+    expect(uploadTracesComponent.onProgressUpdate).toHaveBeenCalledTimes(0);
+
+    await mediator.onWinscopeEvent(new RemoteToolInitialized());
+    expect(uploadTracesComponent.onProgressUpdate).toHaveBeenCalledTimes(1);
+    expect(appComponent.onWinscopeEvent).not.toHaveBeenCalled();
+  });
+
   it('handles start download event from remote tool', async () => {
     expect(uploadTracesComponent.onProgressUpdate).toHaveBeenCalledTimes(0);
 
     await mediator.onWinscopeEvent(new RemoteToolDownloadStart());
     expect(uploadTracesComponent.onProgressUpdate).toHaveBeenCalledTimes(1);
+    expect(appComponent.onWinscopeEvent).not.toHaveBeenCalled();
   });
 
   it('handles empty downloaded files from remote tool', async () => {
@@ -480,7 +489,9 @@ describe('Mediator', () => {
   });
 
   it('propagates trace position update according to timezone', async () => {
-    const converter = new TimestampConverter(ASIA_TIMEZONE_INFO, 0n);
+    const converter = await makeConverterWithUtcOffset();
+    converter.setRealToMonotonicTimeOffsetNs(0n);
+    converter.setRealToBootTimeOffsetNs(0n);
     spyOn(loadedFileData, 'getTimestampConverter').and.returnValue(converter);
     await loadFiles();
     await loadTraceView();
