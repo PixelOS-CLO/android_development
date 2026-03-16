@@ -14,14 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {
-  Component,
-  computed,
-  ElementRef,
-  Inject,
-  input,
-  output,
-} from '@angular/core';
+import {Component, ElementRef, Inject, input, output} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {EMPTY_OBJ_STRING} from '@trace/formatters';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
@@ -60,23 +53,6 @@ export class ImeAdditionalPropertiesComponent {
 
   constructor(@Inject(ElementRef) private elementRef: ElementRef) {}
 
-  readonly formattedWindowColor = computed<string>(() => {
-    const color =
-      this.additionalProperties()?.sf?.properties.focusedWindowColor;
-    if (!color) return EMPTY_OBJ_STRING;
-    return color.formattedValue();
-  });
-
-  readonly sfRootLabel = computed<string>(() => {
-    const props = this.additionalProperties();
-    const rootProps = props?.sf?.properties.root;
-    if (!rootProps) {
-      return props?.sf?.name ?? 'root';
-    }
-
-    return rootProps.timestamp;
-  });
-
   isHighlighted(
     item:
       | TreeNode
@@ -91,27 +67,42 @@ export class ImeAdditionalPropertiesComponent {
     return this.isHighlighted(node) ? undefined : 'primary';
   }
 
-  readonly wmRootLabel = computed<string>(() => {
+  formattedWindowColor(): string {
+    const color =
+      this.additionalProperties()?.sf?.properties.focusedWindowColor;
+    if (!color) return EMPTY_OBJ_STRING;
+    return color.formattedValue();
+  }
+
+  sfRootLabel(): string {
+    const props = this.additionalProperties();
+    const rootProps = props?.sf?.properties.root;
+    if (!rootProps) {
+      return props?.sf?.name ?? 'root';
+    }
+
+    return rootProps.timestamp;
+  }
+
+  wmRootLabel(): string {
     const props = this.additionalProperties();
     const timestamp = props?.wm?.wmStateProperties.timestamp;
     if (!timestamp) {
       return props?.wm?.name ?? 'root';
     }
     return timestamp;
-  });
+  }
 
-  readonly wmHierarchyTree = computed<HierarchyTreeNode | undefined>(() => {
+  wmHierarchyTree(): HierarchyTreeNode | undefined {
     return this.additionalProperties()?.wm?.hierarchyTree;
-  });
+  }
 
-  readonly wmInsetsSourceProvider = computed<PropertyTreeNode | undefined>(
-    () => {
-      return this.additionalProperties()?.wm?.wmStateProperties
-        .imeInsetsSourceProvider;
-    },
-  );
+  wmInsetsSourceProvider(): PropertyTreeNode | undefined {
+    return this.additionalProperties()?.wm?.wmStateProperties
+      .imeInsetsSourceProvider;
+  }
 
-  readonly wmControlTargetFrame = computed<PropertyTreeNode | undefined>(() => {
+  wmControlTargetFrame(): PropertyTreeNode | undefined {
     return this.additionalProperties()
       ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
         'insetsSourceProvider',
@@ -119,9 +110,9 @@ export class ImeAdditionalPropertiesComponent {
       ?.getChildByName('controlTarget')
       ?.getChildByName('windowFrames')
       ?.getChildByName('frame');
-  });
+  }
 
-  readonly wmInsetsSourceProviderPosition = computed<string>(() => {
+  wmInsetsSourceProviderPosition(): string {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
@@ -131,9 +122,9 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('position')
         ?.formattedValue() ?? 'null'
     );
-  });
+  }
 
-  readonly wmInsetsSourceProviderIsLeashReady = computed<string>(() => {
+  wmInsetsSourceProviderIsLeashReady(): string {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
@@ -142,9 +133,9 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('isLeashReadyForDispatching')
         ?.formattedValue() ?? 'null'
     );
-  });
+  }
 
-  readonly wmInsetsSourceProviderControllable = computed<string>(() => {
+  wmInsetsSourceProviderControllable(): string {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
@@ -153,17 +144,15 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('controllable')
         ?.formattedValue() ?? 'null'
     );
-  });
+  }
 
-  readonly wmInsetsSourceProviderSourceFrame = computed<
-    PropertyTreeNode | undefined
-  >(() => {
+  wmInsetsSourceProviderSourceFrame(): PropertyTreeNode | undefined {
     return this.additionalProperties()
       ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName('source')
       ?.getChildByName('frame');
-  });
+  }
 
-  readonly wmInsetsSourceProviderSourceVisible = computed<string>(() => {
+  wmInsetsSourceProviderSourceVisible(): string {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
@@ -172,21 +161,19 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('visible')
         ?.formattedValue() ?? 'null'
     );
-  });
+  }
 
-  readonly wmInsetsSourceProviderSourceVisibleFrame = computed<
-    PropertyTreeNode | undefined
-  >(() => {
+  wmInsetsSourceProviderSourceVisibleFrame(): PropertyTreeNode | undefined {
     return this.additionalProperties()
       ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName('source')
       ?.getChildByName('visibleFrame');
-  });
+  }
 
-  readonly wmImeControlTarget = computed<PropertyTreeNode | undefined>(() => {
+  wmImeControlTarget(): PropertyTreeNode | undefined {
     return this.additionalProperties()?.wm?.wmStateProperties.imeControlTarget;
-  });
+  }
 
-  readonly wmImeControlTargetTitle = computed<string | undefined>(() => {
+  wmImeControlTargetTitle(): string | undefined {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeControlTarget?.getChildByName(
@@ -196,13 +183,13 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('title')
         ?.formattedValue() ?? undefined
     );
-  });
+  }
 
-  readonly wmImeInputTarget = computed<PropertyTreeNode | undefined>(() => {
+  wmImeInputTarget(): PropertyTreeNode | undefined {
     return this.additionalProperties()?.wm?.wmStateProperties.imeInputTarget;
-  });
+  }
 
-  readonly wmImeInputTargetTitle = computed<string | undefined>(() => {
+  wmImeInputTargetTitle(): string | undefined {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInputTarget?.getChildByName(
@@ -212,13 +199,13 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('title')
         ?.formattedValue() ?? undefined
     );
-  });
+  }
 
-  readonly wmImeLayeringTarget = computed<PropertyTreeNode | undefined>(() => {
+  wmImeLayeringTarget(): PropertyTreeNode | undefined {
     return this.additionalProperties()?.wm?.wmStateProperties.imeLayeringTarget;
-  });
+  }
 
-  readonly wmImeLayeringTargetTitle = computed<string | undefined>(() => {
+  wmImeLayeringTargetTitle(): string | undefined {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeLayeringTarget?.getChildByName(
@@ -228,32 +215,30 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('title')
         ?.formattedValue() ?? undefined
     );
-  });
+  }
 
-  readonly sfImeContainerScreenBounds = computed<PropertyTreeNode | undefined>(
-    () => {
-      return (
-        this.additionalProperties()?.sf?.properties.inputMethodSurface
-          ?.screenBounds ?? undefined
-      );
-    },
-  );
+  sfImeContainerScreenBounds(): PropertyTreeNode | undefined {
+    return (
+      this.additionalProperties()?.sf?.properties.inputMethodSurface
+        ?.screenBounds ?? undefined
+    );
+  }
 
-  readonly sfImeContainerRect = computed<PropertyTreeNode | undefined>(() => {
+  sfImeContainerRect(): PropertyTreeNode | undefined {
     return (
       this.additionalProperties()?.sf?.properties.inputMethodSurface?.rect ??
       undefined
     );
-  });
+  }
 
-  readonly isAllPropertiesUndefined = computed<boolean>(() => {
+  isAllPropertiesUndefined(): boolean {
     const props = this.additionalProperties();
     if (this.isImeManagerService()) {
       return !props?.wm;
     } else {
       return !(props?.wm || props?.sf);
     }
-  });
+  }
 
   onClickShowInPropertiesPanelWm(item: TreeNode | undefined, name: string) {
     if (!item) {

@@ -14,30 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-@let componentTitle = title();
-@if (componentTitle) {
+@if (title) {
   <div class="view-header">
     <div class="title-section">
       <collapsible-section-title
         class="log-title"
-        [title]="componentTitle"
+        [title]="title"
         (collapseButtonClicked)="collapseButtonClicked.emit()"
       ></collapsible-section-title>
     </div>
   </div>
 }
 
-<div class="entries" [class.padded]="padEntries()">
-  @let currHeaders = headers();
-  @let showTraceTimes = showTraceEntryTimes();
-  @if (currHeaders.length > 0) {
+<div class="entries" [class.padded]="padEntries">
+  @if (headers.length > 0) {
     <div class="headers table-header">
-      @if (showTraceTimes) {
+      @if (showTraceEntryTimes) {
         <div class="time time-controls cell">
           <ng-container [ngTemplateOutlet]="timeControls"></ng-container>
         </div>
       }
-      @for (header of currHeaders; track $index) {
+      @for (header of headers; track $index) {
         @let hasFilter = isHeaderWithFilter(header);
         @if (!hasFilter) {
           <div
@@ -48,7 +45,7 @@ limitations under the License.
             [matTooltipDisabled]="disableHeaderTooltip(headerEl)"
             matTooltipPosition="above"
           >
-            @if (!showTraceTimes && showTimeControls() && $index === 0) {
+            @if (!showTraceEntryTimes && showTimeControls && $index === 0) {
               <mat-icon
                 class="time-controls-trigger with-header-text"
                 color="primary"
@@ -140,12 +137,10 @@ limitations under the License.
     </button>
   </ng-template>
 
-  @let currEntries = entries();
-  @let isFetching = isFetchingData();
-  @if (!isFetching && currEntries.length === 0) {
+  @if (!isFetchingData && entries.length === 0) {
     <div class="placeholder-text mat-body-1">No entries found.</div>
   }
-  @if (isFetching) {
+  @if (isFetchingData) {
     <div class="fetching-data mat-body-1">
       <span class="message-with-spinner">
         <span>Fetching all data</span>
@@ -157,11 +152,11 @@ limitations under the License.
     <cdk-virtual-scroll-viewport
       variableHeightScroll
       class="scroll"
-      [traceType]="traceType()"
-      [scrollItems]="currEntries"
+      [traceType]="traceType"
+      [scrollItems]="entries"
     >
       <ng-container
-        *cdkVirtualFor="let entry of currEntries; let i = index"
+        *cdkVirtualFor="let entry of entries; let i = index"
         [ngTemplateOutlet]="content"
         [ngTemplateOutletContext]="{entry: entry, i: i}"
       >
@@ -176,7 +171,7 @@ limitations under the License.
       class="scroll"
     >
       <ng-container
-        *cdkVirtualFor="let entry of currEntries; let i = index"
+        *cdkVirtualFor="let entry of entries; let i = index"
         [ngTemplateOutlet]="content"
         [ngTemplateOutletContext]="{entry: entry, i: i}"
       >
@@ -192,7 +187,7 @@ limitations under the License.
       [class.selected]="isSelectedEntry(i)"
       (click)="onEntryClicked(i)"
     >
-      @if (showTraceTimes) {
+      @if (showTraceEntryTimes) {
         <div class="time cell">
           <button
             mat-button

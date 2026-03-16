@@ -18,13 +18,14 @@ import {CommonModule} from '@angular/common';
 import {
   Component,
   ElementRef,
+  EventEmitter,
   HostListener,
   Inject,
   input,
   OnDestroy,
+  Output,
   effect,
   OnInit,
-  output,
 } from '@angular/core';
 import {MatButtonModule, MatIconButton} from '@angular/material/button';
 import {
@@ -99,7 +100,7 @@ export class RectsComponent implements OnInit, OnDestroy {
   pinnedItems = input<UiHierarchyTreeNode[]>([]);
   isDarkMode = input(false);
 
-  collapseButtonClicked = output();
+  @Output() collapseButtonClicked = new EventEmitter();
 
   legendExpanded = false;
   private internalRects: UiRect[] = [];
