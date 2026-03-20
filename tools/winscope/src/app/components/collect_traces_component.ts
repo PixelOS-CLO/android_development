@@ -15,16 +15,7 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {
-  ChangeDetectorRef,
-  Component,
-  EventEmitter,
-  Inject,
-  Input,
-  NgZone,
-  Output,
-  ViewEncapsulation,
-} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, Inject, input, NgZone, output, signal, ViewEncapsulation,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatDialog} from '@angular/material/dialog';
@@ -34,50 +25,32 @@ import {MatListModule} from '@angular/material/list';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTabsModule} from '@angular/material/tabs';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {equal} from '@common/typed_array';
-import {assertDefined, assertTrue, assertUnreachable} from '@common/assert';
-import {Store} from '@common/store/store';
-import {Analytics} from '@logging/analytics';
-import {ProgressListener} from '@messaging/progress_listener';
-import {makeWarningProxyTraceTimeout} from '@app/warnings';
 import {AppRefreshDumpsRequest} from '@app/app_events';
 import {NoTraceTargetsSelectedEvent} from '@app/misc_events';
-import {
-  EmitEvent,
-  WinscopeEventEmitter,
-} from '@messaging/winscope_event_emitter';
-import {WinscopeEvent} from '@messaging/winscope_event';
-import {WinscopeEventListener} from '@messaging/winscope_event_listener';
+import {makeWarningProxyTraceTimeout} from '@app/warnings';
+import {assertDefined, assertTrue, assertUnreachable} from '@common/assert';
+import {Store} from '@common/store/store';
+import {equal} from '@common/typed_array';
 import {getLogger} from '@compat/logging';
+import {Analytics} from '@logging/analytics';
+import {ProgressListener} from '@messaging/progress_listener';
+import {WinscopeEvent} from '@messaging/winscope_event';
+import {EmitEvent, WinscopeEventEmitter,} from '@messaging/winscope_event_emitter';
+import {WinscopeEventListener} from '@messaging/winscope_event_listener';
 import {UserNotifier} from '@services/user_notifier';
-import {
-  AdbDeviceConnection,
-  AdbDeviceState,
-} from '@trace_collection/adb/adb_device_connection';
 import {AdbConnectionType} from '@trace_collection/adb_connection_type';
 import {AdbFiles, RequestedTraceTypes} from '@trace_collection/adb_files';
+import {AdbDeviceConnection, AdbDeviceState,} from '@trace_collection/adb/adb_device_connection';
 import {ConnectionState} from '@trace_collection/connection_state';
 import {ConnectionStateListener} from '@trace_collection/connection_state_listener';
 import {TraceCollectionController} from '@trace_collection/controller/trace_collection_controller';
-import {
-  CheckboxConfiguration,
-  makeDefaultDumpConfigMap,
-  makeDefaultTraceConfigMap,
-  makeProtologGroupOptions,
-  makeScreenRecordingSelectionConfigs,
-  SelectionConfiguration,
-  TraceConfigurationMap,
-  updateConfigsFromStore,
-} from '@trace_collection/ui/ui_trace_configuration';
+import {CheckboxConfiguration, makeDefaultDumpConfigMap, makeDefaultTraceConfigMap, makeProtologGroupOptions, makeScreenRecordingSelectionConfigs, SelectionConfiguration, TraceConfigurationMap, updateConfigsFromStore,} from '@trace_collection/ui/ui_trace_configuration';
 import {UiTraceTarget} from '@trace_collection/ui/ui_trace_target';
 import {UserRequest, UserRequestConfig} from '@trace_collection/user_request';
+
 import {LoadProgressComponent} from './load_progress_component';
 import {TraceConfigComponent} from './trace_config_component';
-import {
-  WarningDialogComponent,
-  WarningDialogData,
-  WarningDialogResult,
-} from './warning_dialog_component';
+import {WarningDialogComponent, WarningDialogData, WarningDialogResult,} from './warning_dialog_component';
 import {WdpSetupComponent} from './wdp_setup_component';
 import {WinscopeProxySetupComponent} from './winscope_proxy_setup_component';
 
@@ -117,21 +90,22 @@ export class CollectTracesComponent
   AdbConnectionType = AdbConnectionType;
   AdbDeviceState = AdbDeviceState;
   ConnectionState = ConnectionState;
-  isExternalOperationInProgress = false;
   progressMessage = 'Fetching...';
   progressIcon = 'sync';
   progressPercentage: number | undefined;
   lastUiProgressUpdateTimeMs?: number;
-  refreshDumps = false;
   targetTabIndex = 0;
   connectionTabIndex = 0;
   traceConfig: TraceConfigurationMap;
   dumpConfig: TraceConfigurationMap;
   requestedTraceTypes: RequestedTraceTypes[] = [];
   controller: TraceCollectionController | undefined;
-  state = ConnectionState.CONNECTING;
   errorText = '';
-  isChangingConnection = false;
+
+  refreshDumps = signal<boolean>(false);
+  state = signal<ConnectionState>(ConnectionState.CONNECTING);
+  isChangingConnection = signal<boolean>(false);
+  private isExternalOperationInProgress = signal<boolean>(false);
 
   readonly storeKeyPrefixTraceConfig = 'TraceSettings.';
   readonly storeKeyPrefixDumpConfig = 'DumpSettings.';
@@ -155,8 +129,41 @@ export class CollectTracesComponent
     ConnectionState.DUMPING_STATE,
   ];
 
-  @Input() storage: Store | undefined;
-  @Output() readonly filesCollected = new EventEmitter<AdbFiles>();
+  storage = input.required<Store>();
+  readonly filesCollected = output<AdbFiles>();
+
+  readonly isLoadOperationInProgress = computed<boolean>(() => {
+    return (
+      this.state() === ConnectionState.LOADING_DATA ||
+      this.isExternalOperationInProgress()
+    );
+  });
+
+  readonly isTracing = computed<boolean>(() => {
+    return this.tracingSessionStates.includes(this.state());
+  });
+
+  readonly isTracingOrLoading = computed<boolean>(() => {
+    return this.isTracing() || this.isLoadOperationInProgress();
+  });
+
+  readonly isDumpingState = computed<boolean>(() => {
+    return (
+      this.refreshDumps() ||
+      this.state() === ConnectionState.DUMPING_STATE ||
+      this.isLoadOperationInProgress()
+    );
+  });
+
+  readonly disableTraceSection = computed<boolean>(() => {
+    return this.isTracingOrLoading() || this.refreshDumps();
+  });
+
+  readonly adbSuccess = computed<boolean>(() => {
+    return (
+      this.isChangingConnection() || !this.notConnected.includes(this.state())
+    );
+  });
 
   constructor(
     @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
@@ -168,7 +175,9 @@ export class CollectTracesComponent
   }
 
   async ngOnInit() {
-    const adbConnectionType = this.storage?.get(this.storeKeyAdbConnectionType);
+    const adbConnectionType = this.storage().get(
+      this.storeKeyAdbConnectionType,
+    );
     if (adbConnectionType !== undefined) {
       await this.changeHostConnection(adbConnectionType);
     } else {
@@ -181,8 +190,9 @@ export class CollectTracesComponent
   }
 
   ngOnDestroy() {
-    if (this.selectedDevice) {
-      this.controller?.onDestroy(this.selectedDevice);
+    const selectedDevice = this.selectedDevice;
+    if (selectedDevice) {
+      this.controller?.onDestroy(selectedDevice);
     }
   }
 
@@ -191,14 +201,26 @@ export class CollectTracesComponent
   }
 
   async onConnectionChange(adbConnectionType: string) {
-    this.isChangingConnection = true;
+    this.isChangingConnection.set(true);
     this.changeDetectorRef.detectChanges();
     await this.changeHostConnection(adbConnectionType);
   }
 
   onConnectionTabAnimationDone() {
-    this.isChangingConnection = false;
+    this.isChangingConnection.set(false);
     this.changeDetectorRef.detectChanges();
+  }
+
+  showTraceCollectionConfig(): boolean {
+    if (this.selectedDevice === undefined) {
+      return false;
+    }
+    return this.state() === ConnectionState.IDLE || this.isTracingOrLoading();
+  }
+
+  selectedDeviceName(): string | undefined {
+    const selectedDevice = this.selectedDevice;
+    return selectedDevice ? this.getDeviceName(selectedDevice) : undefined;
   }
 
   onDeviceClick(device: AdbDeviceConnection) {
@@ -211,24 +233,13 @@ export class CollectTracesComponent
     }
     this.selectedDevice = device;
     this.onDevicesChange(assertDefined(this.controller).getDevices());
-    this.storage?.add(this.storeKeyLastDevice, device.id);
+    this.storage().add(this.storeKeyLastDevice, device.id);
     this.changeDetectorRef.detectChanges();
   }
 
   onAuthorizeButtonClick(event: MouseEvent, device: AdbDeviceConnection) {
     event.stopPropagation();
     device.tryAuthorize();
-  }
-
-  private async onAppRefreshDumpsRequest() {
-    this.targetTabIndex = 1;
-    this.dumpConfig = updateConfigsFromStore(
-      JSON.parse(JSON.stringify(assertDefined(this.dumpConfig))),
-      assertDefined(this.storage),
-      this.storeKeyPrefixDumpConfig,
-    );
-    this.refreshDumps = true;
-    this.changeDetectorRef.detectChanges();
   }
 
   async onWinscopeEvent(event: WinscopeEvent) {
@@ -248,7 +259,7 @@ export class CollectTracesComponent
     ) {
       return;
     }
-    this.isExternalOperationInProgress = true;
+    this.isExternalOperationInProgress.set(true);
     this.progressMessage = message;
     this.progressPercentage = progressPercentage;
     this.lastUiProgressUpdateTimeMs = Date.now();
@@ -256,19 +267,12 @@ export class CollectTracesComponent
   }
 
   onOperationFinished(success: boolean) {
-    this.isExternalOperationInProgress = false;
+    this.isExternalOperationInProgress.set(false);
     this.lastUiProgressUpdateTimeMs = undefined;
     if (!success) {
       this.controller?.restartConnection();
     }
     this.changeDetectorRef.detectChanges();
-  }
-
-  isLoadOperationInProgress(): boolean {
-    return (
-      this.state === ConnectionState.LOADING_DATA ||
-      this.isExternalOperationInProgress
-    );
   }
 
   async onRetryConnection(token?: string) {
@@ -281,15 +285,16 @@ export class CollectTracesComponent
 
   showAllDevices(): boolean {
     const controller = assertDefined(this.controller);
-    if (this.state !== ConnectionState.IDLE) {
+    if (this.state() !== ConnectionState.IDLE) {
       return false;
     }
 
     const devices = controller.getDevices();
-    const lastId = this.storage?.get(this.storeKeyLastDevice) ?? undefined;
+    const lastId = this.storage().get(this.storeKeyLastDevice) ?? undefined;
 
-    if (this.selectedDevice) {
-      const newDevice = devices.find((d) => d.id === this.selectedDevice?.id);
+    const selectedDevice = this.selectedDevice;
+    if (selectedDevice) {
+      const newDevice = devices.find((d) => d.id === selectedDevice.id);
       if (newDevice && newDevice.getState() === AdbDeviceState.AVAILABLE) {
         this.selectedDevice = newDevice;
       } else {
@@ -302,19 +307,12 @@ export class CollectTracesComponent
       if (device && device.getState() === AdbDeviceState.AVAILABLE) {
         this.selectedDevice = device;
         this.onDevicesChange(devices);
-        this.storage?.add(this.storeKeyLastDevice, device.id);
+        this.storage().add(this.storeKeyLastDevice, device.id);
         return false;
       }
     }
 
     return this.selectedDevice === undefined;
-  }
-
-  showTraceCollectionConfig(): boolean {
-    if (this.selectedDevice === undefined) {
-      return false;
-    }
-    return this.state === ConnectionState.IDLE || this.isTracingOrLoading();
   }
 
   onTraceConfigChange(newConfig: TraceConfigurationMap) {
@@ -326,7 +324,7 @@ export class CollectTracesComponent
   }
 
   async onChangeDeviceButton() {
-    this.storage?.add(this.storeKeyLastDevice, '');
+    this.storage().add(this.storeKeyLastDevice, '');
     this.selectedDevice = undefined;
     await this.controller?.restartConnection();
   }
@@ -335,14 +333,10 @@ export class CollectTracesComponent
     await assertDefined(this.controller).restartConnection();
   }
 
-  adbSuccess() {
-    return this.isChangingConnection || !this.notConnected.includes(this.state);
-  }
-
   async startTracing() {
     const requestedTraces = this.getRequests(assertDefined(this.traceConfig));
     const imeReq = requestedTraces.includes(UiTraceTarget.IME);
-    const doNotShowDialog = !!this.storage?.get(this.storeKeyImeWarning);
+    const doNotShowDialog = !!this.storage().get(this.storeKeyImeWarning);
 
     if (!imeReq || doNotShowDialog) {
       await this.requestTraces(requestedTraces);
@@ -381,8 +375,8 @@ export class CollectTracesComponent
       dialogRef
         .beforeClosed()
         .subscribe((result: WarningDialogResult | undefined) => {
-          if (this.storage && result?.selectedOptions.includes(optionText)) {
-            this.storage.add(this.storeKeyImeWarning, 'true');
+          if (result?.selectedOptions.includes(optionText)) {
+            this.storage().add(this.storeKeyImeWarning, 'true');
           }
           if (result?.closeActionText === closeText) {
             this.requestTraces(requestedTraces);
@@ -430,9 +424,9 @@ export class CollectTracesComponent
     const device = assertDefined(this.selectedDevice);
     await this.setState(ConnectionState.DUMPING_STATE);
     await controller.dumpState(device, requestedDumpsWithConfig);
-    this.refreshDumps = false;
+    this.refreshDumps.set(false);
     this.changeDetectorRef.detectChanges();
-    if (this.state === ConnectionState.DUMPING_STATE) {
+    if (this.state() === ConnectionState.DUMPING_STATE) {
       this.filesCollected.emit({
         requested: requestedTraceTypes,
         collected: await this.fetchLastSessionData(),
@@ -441,13 +435,14 @@ export class CollectTracesComponent
   }
 
   async endTrace() {
-    if (!this.selectedDevice) {
+    const selectedDevice = this.selectedDevice;
+    if (!selectedDevice) {
       return;
     }
     const controller = assertDefined(this.controller);
     await this.setState(ConnectionState.ENDING_TRACE);
-    await controller.endTrace(this.selectedDevice);
-    if (this.state === ConnectionState.ENDING_TRACE) {
+    await controller.endTrace(selectedDevice);
+    if (this.state() === ConnectionState.ENDING_TRACE) {
       this.filesCollected.emit({
         requested: this.requestedTraceTypes,
         collected: await this.fetchLastSessionData(),
@@ -466,10 +461,6 @@ export class CollectTracesComponent
     );
   }
 
-  getSelectedDevice(): string {
-    return this.getDeviceName(assertDefined(this.selectedDevice));
-  }
-
   getDeviceStateIcon(state: AdbDeviceState): string {
     switch (state) {
       case AdbDeviceState.AVAILABLE:
@@ -481,26 +472,6 @@ export class CollectTracesComponent
       default:
         assertUnreachable(state);
     }
-  }
-
-  isTracing(): boolean {
-    return this.tracingSessionStates.includes(this.state);
-  }
-
-  isTracingOrLoading(): boolean {
-    return this.isTracing() || this.isLoadOperationInProgress();
-  }
-
-  isDumpingState(): boolean {
-    return (
-      this.refreshDumps ||
-      this.state === ConnectionState.DUMPING_STATE ||
-      this.isLoadOperationInProgress()
-    );
-  }
-
-  disableTraceSection(): boolean {
-    return this.isTracingOrLoading() || this.refreshDumps;
   }
 
   async fetchExistingTraces() {
@@ -530,12 +501,11 @@ export class CollectTracesComponent
   }
 
   onDevicesChange(devices: AdbDeviceConnection[]) {
-    if (!this.selectedDevice) {
+    const selectedDevice = this.selectedDevice;
+    if (!selectedDevice) {
       return;
     }
-    const device = devices.find(
-      (d) => d.id === assertDefined(this.selectedDevice).id,
-    );
+    const device = devices.find((d) => d.id === selectedDevice.id);
     if (!device) {
       return;
     }
@@ -551,7 +521,7 @@ export class CollectTracesComponent
   async onConnectionStateChange(newState: ConnectionState): Promise<void> {
     switch (newState) {
       case ConnectionState.IDLE:
-        if (this.state === ConnectionState.CONNECTING) {
+        if (this.state() === ConnectionState.CONNECTING) {
           await this.setState(newState);
         }
         return;
@@ -559,21 +529,33 @@ export class CollectTracesComponent
         await this.setState(newState);
         return;
       default:
-        if (newState !== this.state) {
+        if (newState !== this.state()) {
           await this.setState(newState);
         }
     }
   }
 
+  private async onAppRefreshDumpsRequest() {
+    this.targetTabIndex = 1;
+    this.dumpConfig = updateConfigsFromStore(
+      JSON.parse(JSON.stringify(assertDefined(this.dumpConfig))),
+      this.storage(),
+      this.storeKeyPrefixDumpConfig,
+    );
+    this.refreshDumps.set(true);
+    this.changeDetectorRef.detectChanges();
+  }
+
   private async changeHostConnection(adbConnectionType: string) {
-    if (this.selectedDevice) {
-      await this.controller?.onDestroy(this.selectedDevice);
+    const selectedDevice = this.selectedDevice;
+    if (selectedDevice) {
+      await this.controller?.onDestroy(selectedDevice);
     }
     this.controller = new TraceCollectionController(adbConnectionType, this);
     this.connectionTabIndex =
       adbConnectionType === AdbConnectionType.WINSCOPE_PROXY ? 1 : 0;
     this.changeDetectorRef.detectChanges();
-    this.storage?.add(this.storeKeyAdbConnectionType, adbConnectionType);
+    this.storage().add(this.storeKeyAdbConnectionType, adbConnectionType);
     await this.controller.restartConnection();
   }
 
@@ -616,7 +598,7 @@ export class CollectTracesComponent
       assertDefined(this.selectedDevice),
       requestedTracesWithConfig,
     );
-    if (this.state === ConnectionState.STARTING_TRACE) {
+    if (this.state() === ConnectionState.STARTING_TRACE) {
       Analytics.Tracing.logStartTime(Date.now() - startTimeMs);
       await this.setState(ConnectionState.TRACING);
     }
@@ -743,12 +725,12 @@ export class CollectTracesComponent
 
     const controller = assertDefined(this.controller);
 
-    this.state = newState;
+    this.state.set(newState);
     this.errorText = errorText;
     this.changeDetectorRef.detectChanges();
 
     const maybeRefreshDumps =
-      this.refreshDumps &&
+      this.refreshDumps() &&
       newState !== ConnectionState.LOADING_DATA &&
       newState !== ConnectionState.CONNECTING;
     if (
@@ -760,7 +742,7 @@ export class CollectTracesComponent
     } else if (maybeRefreshDumps) {
       // device is not connected or proxy is not started/invalid/in error state
       // so cannot refresh dump automatically
-      this.refreshDumps = false;
+      this.refreshDumps.set(false);
       this.changeDetectorRef.detectChanges();
     }
 

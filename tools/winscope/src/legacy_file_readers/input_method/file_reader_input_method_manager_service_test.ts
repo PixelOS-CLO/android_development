@@ -14,20 +14,14 @@
  * limitations under the License.
  */
 
-import Long from 'long';
-import {
-  makeConverterNoRteOffsets,
-  makeElapsedTimestamp,
-  makeRealTimestamp,
-  timestampEqualityTester,
-} from '@common/time/test_helpers';
+import {makeConverterNoRteOffsets, makeElapsedTimestamp, makeRealTimestamp, timestampEqualityTester,} from '@common/time/test_helpers';
+import {WinscopeExtensionsImpl} from '@compat/protobuf';
+import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
+import {convertToPerfettoTrace, LegacyFileReaderProvider,} from '@test/unit/legacy_file_readers/fixture_utils';
 import {TraceType} from '@trace_api/trace_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
-import {
-  convertToPerfettoTrace,
-  LegacyFileReaderProvider,
-} from '@test/unit/fixture_utils';
+
+import {FileReaderInputMethodManagerService} from './file_reader_input_method_manager_service';
 
 describe('FileReaderInputMethodManagerService', () => {
   describe('trace with real timestamps', () => {
@@ -35,7 +29,9 @@ describe('FileReaderInputMethodManagerService', () => {
 
     beforeAll(async () => {
       jasmine.addCustomEqualityTester(timestampEqualityTester);
-      reader = await new LegacyFileReaderProvider()
+      reader = await new LegacyFileReaderProvider([
+        FileReaderInputMethodManagerService.createInstance,
+      ])
         .addFile(
           'traces/elapsed_and_real_timestamp/InputMethodManagerService.pb',
         )
@@ -57,18 +53,15 @@ describe('FileReaderInputMethodManagerService', () => {
     it('converts to valid perfetto packets', async () => {
       const packets = reader.convertToPerfettoPackets(10);
       expect(packets.length).toBe(1);
-      expect(packets[0].trustedPacketSequenceId).toBe(10);
-      const data =
-        packets[0].winscopeExtensions?.[
-          '.perfetto.protos.WinscopeExtensionsImpl.inputmethodManagerService'
-        ];
-      expect(data?.inputMethodManagerService).toBeDefined();
-      expect(data?.where).toBe(
+      expect(packets[0].getTrustedPacketSequenceId()).toBe(10);
+      const data = packets[0]
+        .getWinscopeExtensions()
+        ?.getExtension(WinscopeExtensionsImpl.inputmethodManagerService);
+      expect(data?.hasInputMethodManagerService()).toBeTrue();
+      expect(data?.getWhere()).toBe(
         'InputMethodManagerService#startInputOrWindowGainedFocus',
       );
-      const ts = Long.fromString(BigInt(15963782518).toString());
-      ts.unsigned = true;
-      expect(packets[0].timestamp).toEqual(ts);
+      expect(packets[0].getTimestamp()?.toString()).toEqual('15963782518');
     });
 
     it('converts to valid perfetto trace', async () => {
@@ -93,7 +86,9 @@ describe('FileReaderInputMethodManagerService', () => {
 
     beforeAll(async () => {
       jasmine.addCustomEqualityTester(timestampEqualityTester);
-      reader = await new LegacyFileReaderProvider()
+      reader = await new LegacyFileReaderProvider([
+        FileReaderInputMethodManagerService.createInstance,
+      ])
         .addFile('traces/elapsed_timestamp/InputMethodManagerService.pb')
         .get();
     });
@@ -113,18 +108,15 @@ describe('FileReaderInputMethodManagerService', () => {
     it('converts to valid perfetto packets', async () => {
       const packets = reader.convertToPerfettoPackets(10);
       expect(packets.length).toBe(3);
-      expect(packets[0].trustedPacketSequenceId).toBe(10);
-      const data =
-        packets[0].winscopeExtensions?.[
-          '.perfetto.protos.WinscopeExtensionsImpl.inputmethodManagerService'
-        ];
-      expect(data?.inputMethodManagerService).toBeDefined();
-      expect(data?.where).toBe(
+      expect(packets[0].getTrustedPacketSequenceId()).toBe(10);
+      const data = packets[0]
+        .getWinscopeExtensions()
+        ?.getExtension(WinscopeExtensionsImpl.inputmethodManagerService);
+      expect(data?.hasInputMethodManagerService()).toBeTrue();
+      expect(data?.getWhere()).toBe(
         'InputMethodManagerService#startInputOrWindowGainedFocus',
       );
-      const ts = Long.fromString(BigInt(1149226290110).toString());
-      ts.unsigned = true;
-      expect(packets[0].timestamp).toEqual(ts);
+      expect(packets[0].getTimestamp()?.toString()).toEqual('1149226290110');
     });
   });
 });

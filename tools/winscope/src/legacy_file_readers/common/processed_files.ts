@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-// TODO(b/311642700): Not google3 compatible
-import Long from 'long';
-import * as protobuf from 'protobufjs';
+import {FileReader} from '@trace_api/file_reader';
+import {TraceFile} from '@trace_api/trace_file';
 
-protobuf.util.Long = Long; // otherwise 64-bit types would be decoded as 'number' (only 53-bits precision)
-protobuf.configure();
+export interface ProcessedFiles<T extends FileReader> {
+  supportedFiles: T[];
+  unsupportedFiles: TraceFile[];
+}

@@ -26,13 +26,14 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
 import {Rect} from '@common/geometry/rect';
+import {makeConverterZeroRteOffsets} from '@common/time/test_helpers';
 import {TimeRange} from '@common/time/time';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {waitToBeCalled} from '@test/unit/spy_utils';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {TraceType} from '@trace_api/trace_type';
+
 import {DefaultTimelineRowComponent} from './default_timeline_row_component';
-import {makeConverterZeroRteOffsets} from '@common/time/test_helpers';
 
 describe('DefaultTimelineRowComponent', () => {
   const converter = makeConverterZeroRteOffsets();
@@ -80,25 +81,27 @@ describe('DefaultTimelineRowComponent', () => {
     const canvasWidth =
       component.canvasDrawer.getScaledCanvasWidth() - rectWidth;
 
+    const color = component.color();
+
     expect(drawRectSpy).toHaveBeenCalledTimes(4);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, 0, rectWidth, rectHeight),
-      component.color,
+      color,
       alpha,
     );
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(Math.floor((canvasWidth * 2) / 100), 0, rectWidth, rectHeight),
-      component.color,
+      color,
       alpha,
     );
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(Math.floor((canvasWidth * 5) / 100), 0, rectWidth, rectHeight),
-      component.color,
+      color,
       alpha,
     );
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(Math.floor((canvasWidth * 60) / 100), 0, rectWidth, rectHeight),
-      component.color,
+      color,
       alpha,
     );
   });
@@ -118,7 +121,7 @@ describe('DefaultTimelineRowComponent', () => {
     expect(drawRectSpy).toHaveBeenCalledTimes(1);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(Math.floor((canvasWidth * 10) / 25), 0, rectWidth, rectHeight),
-      component.color,
+      component.color(),
       alpha,
     );
   });
@@ -158,7 +161,7 @@ describe('DefaultTimelineRowComponent', () => {
     expect(drawRectSpy).toHaveBeenCalledTimes(1);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, 0, rectWidth, rectHeight),
-      component.color,
+      component.color(),
       1.0,
     );
 
@@ -230,7 +233,7 @@ describe('DefaultTimelineRowComponent', () => {
     await dom.detectChangesAndRenderingDone();
 
     const spy = spyOn(component.onMouseXRatioUpdate, 'emit');
-    const canvas = assertDefined(component.canvasRef).nativeElement;
+    const canvas = component.canvasRef().nativeElement;
 
     const mouseMoveEvent = new MouseEvent('mousemove');
     Object.defineProperty(mouseMoveEvent, 'target', {value: canvas});
@@ -247,21 +250,27 @@ describe('DefaultTimelineRowComponent', () => {
   });
 
   function setTraceAndSelectionRange(low: bigint, high: bigint) {
-    component.trace = new TraceBuilder<{}>()
-      .setType(TraceType.TRANSITION)
-      .setEntries([{}, {}, {}, {}])
-      .setTimestamps([
-        converter.makeTimestampFromRealNs(10n),
-        converter.makeTimestampFromRealNs(12n),
-        converter.makeTimestampFromRealNs(15n),
-        converter.makeTimestampFromRealNs(70n),
-      ])
-      .build();
-    component.selectionRange = new TimeRange(
-      converter.makeTimestampFromRealNs(low),
-      converter.makeTimestampFromRealNs(high),
+    dom.setComponentInput(
+      'trace',
+      new TraceBuilder<{}>()
+        .setType(TraceType.TRANSITION)
+        .setEntries([{}, {}, {}, {}])
+        .setTimestamps([
+          converter.makeTimestampFromRealNs(10n),
+          converter.makeTimestampFromRealNs(12n),
+          converter.makeTimestampFromRealNs(15n),
+          converter.makeTimestampFromRealNs(70n),
+        ])
+        .build(),
     );
-    component.timestampConverter = converter;
+    dom.setComponentInput(
+      'selectionRange',
+      new TimeRange(
+        converter.makeTimestampFromRealNs(low),
+        converter.makeTimestampFromRealNs(high),
+      ),
+    );
+    dom.setComponentInput('timestampConverter', converter);
   }
 
   async function drawCorrectEntryOnClick(
@@ -288,7 +297,7 @@ describe('DefaultTimelineRowComponent', () => {
     await Promise.all(waitPromises);
 
     expect(
-      assertDefined(component.selectedEntry).getTimestamp().getValueNs(),
+      assertDefined(component.selectedEntry()).getTimestamp().getValueNs(),
     ).toBe(expectedTimestampNs);
 
     const rectHeight = component.canvasDrawer.getScaledCanvasHeight() - 2;
@@ -299,7 +308,7 @@ describe('DefaultTimelineRowComponent', () => {
     expect(drawRectSpy).toHaveBeenCalledTimes(rectSpyCalls);
     expect(drawRectSpy).toHaveBeenCalledWith(
       expectedRect,
-      component.color,
+      component.color(),
       1.0,
     );
 

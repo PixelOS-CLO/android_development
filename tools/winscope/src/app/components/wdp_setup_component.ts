@@ -15,10 +15,9 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {Component, EventEmitter, Input, Output} from '@angular/core';
+import {Component, input, output} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
-
 import {ConnectionState} from '@trace_collection/connection_state';
 
 /**
@@ -32,8 +31,8 @@ import {ConnectionState} from '@trace_collection/connection_state';
   styleUrls: ['../styles/proxy_setup.css'],
 })
 export class WdpSetupComponent {
-  @Input() state: ConnectionState | undefined;
-  @Output() readonly retryConnection = new EventEmitter();
+  state = input.required<ConnectionState>();
+  retryConnection = output<void>();
   ConnectionState = ConnectionState;
 
   onInstallExternalButtonClick() {

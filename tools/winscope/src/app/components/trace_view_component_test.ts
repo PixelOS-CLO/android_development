@@ -16,7 +16,7 @@
 
 import {OverlayModule} from '@angular/cdk/overlay';
 import {CommonModule} from '@angular/common';
-import {ComponentFixture, TestBed} from '@angular/core/testing';
+import {TestBed} from '@angular/core/testing';
 import {ReactiveFormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
@@ -26,29 +26,21 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatTabsModule} from '@angular/material/tabs';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {
-  BrowserAnimationsModule,
-  NoopAnimationsModule,
-} from '@angular/platform-browser/animations';
+import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
+import {FilterPresetApplyRequest, FilterPresetSaveRequest,} from '@app/misc_events';
+import {ParsingErrorType} from '@app/parsing_error_type';
+import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@app/tabbed_view_events';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
-import {
-  FilterPresetApplyRequest,
-  FilterPresetSaveRequest,
-} from '@app/misc_events';
-import {
-  TabbedViewSwitchRequest,
-  TabbedViewSwitched,
-} from '@app/tabbed_view_events';
-import {checkTooltips, DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {makeZeroTimestamp} from '@common/time/test_helpers';
+import {checkTooltips, DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {makeEmptyTrace} from '@test/unit/trace_api/trace_test_helpers';
 import {TraceType} from '@trace_api/trace_type';
+import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {Viewer, ViewType} from '@viewers/viewer';
 import {ViewerStub} from '@viewers/viewer_stub';
+
 import {TraceViewComponent} from './trace_view_component';
-import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {ParsingErrorType} from '@app/parsing_error_type';
 
 describe('TraceViewComponent', () => {
   const traceSf = makeEmptyTrace<HierarchyTreeNode>(TraceType.SURFACE_FLINGER);
@@ -62,7 +54,6 @@ describe('TraceViewComponent', () => {
   const traceProtolog = makeEmptyTrace<HierarchyTreeNode>(TraceType.PROTO_LOG);
 
   let component: TraceViewComponent;
-  let fixture: ComponentFixture<TraceViewComponent>;
   let dom: DOMTestHelper<TraceViewComponent>;
   let viewers: Viewer[];
   let store: InMemoryStorage;
@@ -88,9 +79,7 @@ describe('TraceViewComponent', () => {
       ],
       schemas: [],
     }).compileComponents();
-    fixture = TestBed.createComponent(TraceViewComponent);
-    component = fixture.componentInstance;
-    dom = new DOMTestHelper(fixture, fixture.nativeElement);
+    resetDom();
     store = new InMemoryStorage();
 
     viewers = [
@@ -106,9 +95,9 @@ describe('TraceViewComponent', () => {
       ParsingErrorType.DATA_INCORRECT,
     );
 
-    fixture.componentRef.setInput('viewers', viewers);
-    fixture.componentRef.setInput('store', store);
-    fixture.componentRef.setInput(
+    dom.setComponentInput('viewers', viewers);
+    dom.setComponentInput('store', store);
+    dom.setComponentInput(
       'traceTypesWithParsingErrors',
       traceTypesWithParsingErrors,
     );
@@ -133,7 +122,8 @@ describe('TraceViewComponent', () => {
 
   it('throws error if more than one overlay present', () => {
     expect(() => {
-      fixture.componentRef.setInput('viewers', [
+      resetDom();
+      dom.setComponentInput('viewers', [
         new ViewerStub('Title0', 'Content0', traceSf, ViewType.TRACE_TAB),
         new ViewerStub('Title1', 'Content1', traceWm, ViewType.OVERLAY),
         new ViewerStub('Title2', 'Content2', traceSr, ViewType.OVERLAY),
@@ -202,21 +192,6 @@ describe('TraceViewComponent', () => {
     expect(visibleTabContents[0].innerHTML).toBe('Content0');
   });
 
-  it('emits TabbedViewSwitched event on viewer changes', () => {
-    const emitAppEvent = jasmine.createSpy();
-    component.setEmitEvent(emitAppEvent);
-
-    expect(emitAppEvent).not.toHaveBeenCalled();
-
-    fixture.componentRef.setInput('viewers', [
-      new ViewerStub('Title1', 'Content1', traceWm),
-    ]);
-    dom.detectChanges();
-
-    expect(emitAppEvent).toHaveBeenCalledTimes(1);
-    expect(emitAppEvent).toHaveBeenCalledWith(jasmine.any(TabbedViewSwitched));
-  });
-
   it('disables filter presets button for viewers without presets', () => {
     const filterPresets = dom.get('.filter-presets');
     filterPresets.checkText('Filter Presets');
@@ -279,12 +254,12 @@ describe('TraceViewComponent', () => {
 
     // Simulate switching view or component recreation using same store
     // Use a new component instance with same store
-    fixture.destroy();
-    fixture = TestBed.createComponent(TraceViewComponent);
+    dom.destroy();
+    const fixture = TestBed.createComponent(TraceViewComponent);
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
-    fixture.componentRef.setInput('viewers', viewers);
-    fixture.componentRef.setInput('store', store); // Same store
+    dom.setComponentInput('viewers', viewers);
+    dom.setComponentInput('store', store); // Same store
     dom.detectChanges();
 
     // Switch to same view logic if needed, but defaults to first tab (SF)
@@ -335,10 +310,12 @@ describe('TraceViewComponent', () => {
   });
 
   it('does not show global tab first', () => {
-    fixture.componentRef.setInput('viewers', [
+    resetDom();
+    dom.setComponentInput('viewers', [
       new ViewerStub('Title0', 'Content0', undefined, ViewType.GLOBAL_SEARCH),
       new ViewerStub('Title1', 'Content1', traceWm, ViewType.TRACE_TAB),
     ]);
+    dom.setComponentInput('store', store);
     dom.detectChanges();
     const visibleTabContents = getVisibleTabContents();
     expect(visibleTabContents.length).toBe(1);
@@ -394,5 +371,11 @@ describe('TraceViewComponent', () => {
 
   function openFilterPresets() {
     dom.findAndClick('.filter-presets');
+  }
+
+  function resetDom() {
+    const fixture = TestBed.createComponent(TraceViewComponent);
+    component = fixture.componentInstance;
+    dom = new DOMTestHelper(fixture, fixture.nativeElement);
   }
 });

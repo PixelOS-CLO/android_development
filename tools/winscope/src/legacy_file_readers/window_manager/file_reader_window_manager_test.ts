@@ -13,23 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {
-  makeRealTimestamp,
-  makeElapsedTimestamp,
-  timestampEqualityTester,
-  makeConverterNoRteOffsets,
-} from '@common/time/test_helpers';
+import {makeConverterNoRteOffsets, makeElapsedTimestamp, makeRealTimestamp, timestampEqualityTester,} from '@common/time/test_helpers';
+import {PerfettoClockSnapshot, WinscopeExtensionsImpl} from '@compat/protobuf';
+import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
+import {convertToPerfettoTrace, LegacyFileReaderProvider,} from '@test/unit/legacy_file_readers/fixture_utils';
 import {CustomQueryType} from '@trace_api/custom_query';
 import {Parser} from '@trace_api/parser';
 import {TraceType} from '@trace_api/trace_type';
-import Long from 'long';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {ClockSnapshot} from '@compat/perfetto';
-import {
-  convertToPerfettoTrace,
-  LegacyFileReaderProvider,
-} from '@test/unit/fixture_utils';
-import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
+
+import {FileReaderWindowManager} from './file_reader_window_manager';
 
 describe('FileReaderWindowManager', () => {
   beforeAll(() => {
@@ -40,7 +33,9 @@ describe('FileReaderWindowManager', () => {
     let readerRealTs: LegacyFileReader;
 
     beforeAll(async () => {
-      readerRealTs = await new LegacyFileReaderProvider()
+      readerRealTs = await new LegacyFileReaderProvider([
+        FileReaderWindowManager.createInstance,
+      ])
         .addFile('traces/elapsed_and_real_timestamp/WindowManager.pb')
         .get();
     });
@@ -61,17 +56,16 @@ describe('FileReaderWindowManager', () => {
     it('converts to valid perfetto packets', async () => {
       const packets = readerRealTs.convertToPerfettoPackets(10);
       expect(packets.length).toBe(27);
-      expect(packets[0].trustedPacketSequenceId).toBe(10);
+      expect(packets[0].getTrustedPacketSequenceId()).toBe(10);
       expect(
-        packets[0].winscopeExtensions?.[
-          '.perfetto.protos.WinscopeExtensionsImpl.windowmanager'
-        ]?.windowManagerService,
+        packets[0]
+          .getWinscopeExtensions()
+          ?.getExtension(WinscopeExtensionsImpl.windowmanager)
+          ?.getWindowManagerService(),
       ).toBeDefined();
-      const ts = Long.fromString(BigInt(14474594000).toString());
-      ts.unsigned = true;
-      expect(packets[0].timestamp).toEqual(ts);
-      expect(packets[0].timestampClockId).toEqual(
-        ClockSnapshot.Clock.BuiltinClocks.BOOTTIME,
+      expect(packets[0].getTimestamp()?.toString()).toEqual('14474594000');
+      expect(packets[0].getTimestampClockId()).toEqual(
+        PerfettoClockSnapshot.Clock.BuiltinClocks.BOOTTIME,
       );
     });
 
@@ -125,7 +119,9 @@ describe('FileReaderWindowManager', () => {
     let readerElapsedTs: LegacyFileReader;
 
     beforeAll(async () => {
-      readerElapsedTs = await new LegacyFileReaderProvider()
+      readerElapsedTs = await new LegacyFileReaderProvider([
+        FileReaderWindowManager.createInstance,
+      ])
         .addFile('traces/elapsed_timestamp/WindowManager.pb')
         .get();
     });
@@ -146,17 +142,16 @@ describe('FileReaderWindowManager', () => {
     it('converts to valid perfetto packets', async () => {
       const packets = readerElapsedTs.convertToPerfettoPackets(10);
       expect(packets.length).toBe(3);
-      expect(packets[0].trustedPacketSequenceId).toBe(10);
+      expect(packets[0].getTrustedPacketSequenceId()).toBe(10);
       expect(
-        packets[0].winscopeExtensions?.[
-          '.perfetto.protos.WinscopeExtensionsImpl.windowmanager'
-        ]?.windowManagerService,
+        packets[0]
+          .getWinscopeExtensions()
+          ?.getExtension(WinscopeExtensionsImpl.windowmanager)
+          ?.getWindowManagerService(),
       ).toBeDefined();
-      const ts = Long.fromString(BigInt(850254319343).toString());
-      ts.unsigned = true;
-      expect(packets[0].timestamp).toEqual(ts);
-      expect(packets[0].timestampClockId).toEqual(
-        ClockSnapshot.Clock.BuiltinClocks.BOOTTIME,
+      expect(packets[0].getTimestamp()?.toString()).toEqual('850254319343');
+      expect(packets[0].getTimestampClockId()).toEqual(
+        PerfettoClockSnapshot.Clock.BuiltinClocks.BOOTTIME,
       );
     });
   });
@@ -165,7 +160,9 @@ describe('FileReaderWindowManager', () => {
     let readerCritical: LegacyFileReader;
 
     beforeAll(async () => {
-      readerCritical = await new LegacyFileReaderProvider()
+      readerCritical = await new LegacyFileReaderProvider([
+        FileReaderWindowManager.createInstance,
+      ])
         .addFile(
           'traces/elapsed_and_real_timestamp/window_trace_critical.winscope',
         )
