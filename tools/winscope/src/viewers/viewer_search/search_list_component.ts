@@ -22,6 +22,7 @@ import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {isElementOverflowing} from '@common/dom';
+
 import {ListedSearch} from './ui_data';
 
 @Component({
@@ -38,9 +39,9 @@ import {ListedSearch} from './ui_data';
   styleUrls: ['search_list_component.css'],
 })
 export class SearchListComponent {
-  searches = input<ListedSearch[]>([]);
+  searches = input.required<ListedSearch[]>();
+  listItemOptions = input.required<ListItemOption[]>();
   placeholderText = input('');
-  listItemOptions = input<ListItemOption[]>([]);
   control = input(new FormControl(''));
 
   searchOptionsTarget: ListedSearch | undefined;

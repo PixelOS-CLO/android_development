@@ -13,23 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import Long from 'long';
-import {ClockSnapshot} from '@compat/perfetto';
-import {
-  makeRealTimestamp,
-  makeElapsedTimestamp,
-  timestampEqualityTester,
-  makeConverterNoRteOffsets,
-} from '@common/time/test_helpers';
+import {makeConverterNoRteOffsets, makeElapsedTimestamp, makeRealTimestamp, timestampEqualityTester,} from '@common/time/test_helpers';
+import {PerfettoClockSnapshot} from '@compat/protobuf';
+import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
+import {convertToPerfettoTrace, LegacyFileReaderProvider,} from '@test/unit/legacy_file_readers/fixture_utils';
 import {CustomQueryType} from '@trace_api/custom_query';
 import {Parser} from '@trace_api/parser';
 import {TraceType} from '@trace_api/trace_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {
-  convertToPerfettoTrace,
-  LegacyFileReaderProvider,
-} from '@test/unit/fixture_utils';
-import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
+
+import {FileReaderTransactions} from './file_reader_transactions';
 
 describe('FileReaderTransactions', () => {
   describe('trace with real timestamps', () => {
@@ -37,7 +30,9 @@ describe('FileReaderTransactions', () => {
 
     beforeAll(async () => {
       jasmine.addCustomEqualityTester(timestampEqualityTester);
-      reader = await new LegacyFileReaderProvider()
+      reader = await new LegacyFileReaderProvider([
+        FileReaderTransactions.createInstance,
+      ])
         .addFile('traces/elapsed_and_real_timestamp/Transactions.pb')
         .get();
     });
@@ -62,15 +57,15 @@ describe('FileReaderTransactions', () => {
     it('converts to valid perfetto packets', async () => {
       const packets = reader.convertToPerfettoPackets(10);
       expect(packets.length).toBe(712);
-      expect(packets[0].trustedPacketSequenceId).toBe(10);
-      expect(packets[0].surfaceflingerTransactions?.transactions?.length).toBe(
-        2,
-      );
-      expect(packets[0].timestamp).toEqual(
-        Long.fromString(BigInt(2450981445).toString()),
-      );
-      expect(packets[0].timestampClockId).toEqual(
-        ClockSnapshot.Clock.BuiltinClocks.MONOTONIC,
+      expect(packets[0].getTrustedPacketSequenceId()).toBe(10);
+      expect(packets[0].hasSurfaceflingerTransactions()).toBeTrue();
+      expect(
+        packets[0].getSurfaceflingerTransactions()?.getTransactionsList()
+          ?.length,
+      ).toBe(2);
+      expect(packets[0].getTimestamp()?.toString()).toEqual('2450981445');
+      expect(packets[0].getTimestampClockId()).toEqual(
+        PerfettoClockSnapshot.Clock.BuiltinClocks.MONOTONIC,
       );
     });
 
@@ -139,7 +134,9 @@ describe('FileReaderTransactions', () => {
     let reader: LegacyFileReader;
 
     beforeAll(async () => {
-      reader = await new LegacyFileReaderProvider()
+      reader = await new LegacyFileReaderProvider([
+        FileReaderTransactions.createInstance,
+      ])
         .addFile('traces/elapsed_timestamp/Transactions.pb')
         .get();
     });
@@ -164,15 +161,15 @@ describe('FileReaderTransactions', () => {
     it('converts to valid perfetto packets', async () => {
       const packets = reader.convertToPerfettoPackets(10);
       expect(packets.length).toBe(4997);
-      expect(packets[0].trustedPacketSequenceId).toBe(10);
-      expect(packets[0].surfaceflingerTransactions?.transactions?.length).toBe(
-        1,
-      );
-      expect(packets[0].timestamp).toEqual(
-        Long.fromString(BigInt(14862317023).toString()),
-      );
-      expect(packets[0].timestampClockId).toEqual(
-        ClockSnapshot.Clock.BuiltinClocks.MONOTONIC,
+      expect(packets[0].getTrustedPacketSequenceId()).toBe(10);
+      expect(packets[0].hasSurfaceflingerTransactions()).toBeTrue();
+      expect(
+        packets[0].getSurfaceflingerTransactions()?.getTransactionsList()
+          ?.length,
+      ).toBe(1);
+      expect(packets[0].getTimestamp()?.toString()).toEqual('14862317023');
+      expect(packets[0].getTimestampClockId()).toEqual(
+        PerfettoClockSnapshot.Clock.BuiltinClocks.MONOTONIC,
       );
     });
   });

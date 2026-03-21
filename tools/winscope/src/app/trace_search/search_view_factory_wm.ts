@@ -15,6 +15,7 @@
  */
 
 import {TraceType} from '@trace_api/trace_type';
+
 import {AbstractSearchViewFactory} from './abstract_search_view_factory';
 import {SearchView} from './search_view';
 
@@ -39,6 +40,10 @@ export class SearchViewFactoryWm extends AbstractSearchViewFactory {
       {name: 'token', desc: 'Container token'},
       {name: 'parent_token', desc: 'Parent container token'},
       {name: 'is_visible', desc: 'Container visibility'},
+      {
+        name: 'previous_is_visible',
+        desc: 'Container visibility from previous entry',
+      },
       {
         name: 'property',
         desc: 'Property name accounting for repeated fields',
@@ -114,6 +119,7 @@ AND is_visible=1`,
               token INT,
               parent_token INT,
               is_visible INT,
+              previous_is_visible INT,
               property STRING,
               flat_property STRING,
               value STRING,
@@ -126,6 +132,7 @@ AND is_visible=1`,
               CURRENT.token,
               CURRENT.parent_token,
               CURRENT.is_visible,
+              PREVIOUS.is_visible as previous_is_visible,
               CURRENT.property,
               CURRENT.flat_property,
               CURRENT.value,

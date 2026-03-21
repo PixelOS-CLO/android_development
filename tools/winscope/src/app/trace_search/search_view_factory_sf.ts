@@ -15,6 +15,7 @@
  */
 
 import {TraceType} from '@trace_api/trace_type';
+
 import {AbstractSearchViewFactory} from './abstract_search_view_factory';
 import {SearchView} from './search_view';
 
@@ -39,6 +40,10 @@ export class SearchViewFactorySf extends AbstractSearchViewFactory {
       {name: 'parent_id', desc: 'Layer id of parent'},
       {name: 'layer_name', desc: 'Layer name'},
       {name: 'is_visible', desc: 'Layer visibility, accounting for occlusion'},
+      {
+        name: 'previous_is_visible',
+        desc: 'Layer visibility from previous entry,accounting for occlusion',
+      },
       {
         name: 'property',
         desc: 'Property name accounting for repeated fields',
@@ -166,6 +171,7 @@ AND STATE.property LIKE CONCAT(
               parent_id INT,
               layer_name STRING,
               is_visible INT,
+              previous_is_visible INT,
               property STRING,
               flat_property STRING,
               value STRING,
@@ -178,6 +184,7 @@ AND STATE.property LIKE CONCAT(
               CURRENT.parent_id,
               CURRENT.layer_name,
               CURRENT.is_visible,
+              PREVIOUS.is_visible as previous_is_visible,
               CURRENT.property,
               CURRENT.flat_property,
               CURRENT.value,

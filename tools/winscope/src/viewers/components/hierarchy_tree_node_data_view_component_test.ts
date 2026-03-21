@@ -19,6 +19,7 @@ import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {makeUiHierarchyNode} from '@test/unit/ui_tree_node_utils';
 import {VISIBLE_CHIP} from '@viewers/common/chip';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
+
 import {HierarchyTreeNodeDataViewComponent} from './hierarchy_tree_node_data_view_component';
 
 describe('HierarchyTreeNodeDataViewComponent', () => {
@@ -33,14 +34,13 @@ describe('HierarchyTreeNodeDataViewComponent', () => {
     const fixture = TestBed.createComponent(HierarchyTreeNodeDataViewComponent);
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
-    dom.detectChanges();
     testNode = makeUiHierarchyNode({
       id: 1,
       name: 'test node',
     });
   });
 
-  it('is robust to no node', () => {
+  it('can be created', () => {
     expect(component).toBeTruthy();
   });
 

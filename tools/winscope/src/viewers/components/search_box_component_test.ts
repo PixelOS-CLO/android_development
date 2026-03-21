@@ -25,6 +25,7 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {FilterFlag} from '@common/filter_flag';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {TextFilter} from '@viewers/common/text_filter';
+
 import {SearchBoxComponent} from './search_box_component';
 
 describe('SearchBoxComponent', () => {
@@ -47,7 +48,6 @@ describe('SearchBoxComponent', () => {
     const fixture = TestBed.createComponent(SearchBoxComponent);
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
-    component.textFilter = new TextFilter();
     dom.detectChanges();
   });
 
@@ -58,17 +58,17 @@ describe('SearchBoxComponent', () => {
   it('shows custom label', () => {
     const label = dom.get('.search-box mat-label');
     label.checkTextExact('Search');
-    component.label = 'custom label';
+    dom.setComponentInput('label', 'custom label');
     dom.detectChanges();
     label.checkTextExact('custom label');
   });
 
   it('handles change in filter', () => {
     const spy = spyOn(component.filterChange, 'emit');
-    expect(component.textFilter?.filterString).toBe('');
+    expect(component.currentTextFilter()?.filterString).toBe('');
     expect(dom.find('.highlighted')).toBeUndefined();
     dom.findAndDispatchInput('.search-box', 'Test');
-    expect(component.textFilter?.filterString).toBe('Test');
+    expect(component.currentTextFilter()?.filterString).toBe('Test');
     expect(spy).toHaveBeenCalledWith(new TextFilter('Test'));
     expect(dom.find('.highlighted')).toBeDefined();
   });

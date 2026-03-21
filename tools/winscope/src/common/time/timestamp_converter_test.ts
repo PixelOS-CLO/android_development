@@ -14,20 +14,18 @@
  * limitations under the License.
  */
 
-import {
-  timestampEqualityTester,
-  ASIA_TIMEZONE_INFO,
-} from '@common/time/test_helpers';
+import {ASIA_TIMEZONE_INFO, timestampEqualityTester,} from '@common/time/test_helpers';
+
 import {TIME_UNIT_TO_NANO} from './time_units';
 import {TimestampConverter} from './timestamp_converter';
 import {getResolvedUTCOffset} from './utc_offset_resolver';
 
 describe('TimestampConverter', () => {
-  const MILLISECOND = BigInt(TIME_UNIT_TO_NANO.ms);
-  const SECOND = BigInt(TIME_UNIT_TO_NANO.s);
-  const MINUTE = BigInt(TIME_UNIT_TO_NANO.m);
-  const HOUR = BigInt(TIME_UNIT_TO_NANO.h);
-  const DAY = BigInt(TIME_UNIT_TO_NANO.d);
+  const MILLISECOND = TIME_UNIT_TO_NANO.ms;
+  const SECOND = TIME_UNIT_TO_NANO.s;
+  const MINUTE = TIME_UNIT_TO_NANO.m;
+  const HOUR = TIME_UNIT_TO_NANO.h;
+  const DAY = TIME_UNIT_TO_NANO.d;
 
   const testElapsedNs = 100n;
   const testRealNs = 1659243341051481088n; // Sun, 31 Jul 2022 04:55:41 GMT to test timestamp conversion between different days
@@ -377,7 +375,7 @@ describe('TimestampConverter', () => {
   describe('makes timestamps from string with timezone info', () => {
     it('makeTimestampFromHumanReal', async () => {
       const NOV_10_2022 = 1668038400000n * MILLISECOND;
-      testMakeTimestampFromHumanReal(
+      await testMakeTimestampFromHumanReal(
         '2022-11-11T03:34:54.186123212',
         NOV_10_2022 +
           22n * HOUR +
@@ -388,7 +386,7 @@ describe('TimestampConverter', () => {
         '2022-11-11, 03:34:54.186',
       );
 
-      testMakeTimestampFromHumanReal(
+      await testMakeTimestampFromHumanReal(
         '2022-11-11T03:34:54.186123212Z',
         NOV_10_2022 +
           22n * HOUR +
@@ -399,19 +397,19 @@ describe('TimestampConverter', () => {
         '2022-11-11, 03:34:54.186',
       );
 
-      testMakeTimestampFromHumanReal(
+      await testMakeTimestampFromHumanReal(
         '2022-11-10T11:34:54',
         NOV_10_2022 + 6n * HOUR + 4n * MINUTE + 54n * SECOND,
         '2022-11-10, 11:34:54.000',
       );
 
-      testMakeTimestampFromHumanReal(
+      await testMakeTimestampFromHumanReal(
         '2022-11-10T11:34:54.0',
         NOV_10_2022 + 6n * HOUR + 4n * MINUTE + 54n * SECOND,
         '2022-11-10, 11:34:54.000',
       );
 
-      testMakeTimestampFromHumanReal(
+      await testMakeTimestampFromHumanReal(
         '2022-11-10T11:34:54.0100',
         NOV_10_2022 +
           6n * HOUR +
@@ -421,7 +419,7 @@ describe('TimestampConverter', () => {
         '2022-11-10, 11:34:54.010',
       );
 
-      testMakeTimestampFromHumanReal(
+      await testMakeTimestampFromHumanReal(
         '2022-11-10T11:34:54.0175328',
         NOV_10_2022 + 6n * HOUR + 4n * MINUTE + 54n * SECOND + 17532800n,
         '2022-11-10, 11:34:54.018',

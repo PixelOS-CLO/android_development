@@ -15,25 +15,18 @@
  */
 import {ClipboardModule} from '@angular/cdk/clipboard';
 import {CommonModule} from '@angular/common';
-import {
-  Component,
-  computed,
-  effect,
-  ElementRef,
-  Inject,
-  input,
-  output,
-} from '@angular/core';
+import {Component, computed, effect, ElementRef, Inject, input, output,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {assertDefined} from '@common/assert';
+import {TreeNode} from '@tree_node/tree_node';
 import {DiffType} from '@viewers/common/diff_type';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
 import {UiTreeNode} from '@viewers/common/ui_tree_node';
+
 import {HierarchyTreeNodeDataViewComponent} from './hierarchy_tree_node_data_view_component';
 import {PropertyTreeNodeDataViewComponent} from './property_tree_node_data_view_component';
-import {TreeNode} from '@tree_node/tree_node';
 
 @Component({
   selector: 'tree-node',
@@ -50,17 +43,18 @@ import {TreeNode} from '@tree_node/tree_node';
   styleUrls: ['tree_node_component.css'],
 })
 export class TreeNodeComponent {
-  node = input<UiTreeNode>();
-  isLeaf = input<boolean | undefined>(undefined);
-  flattened = input<boolean | undefined>(undefined);
-  isExpanded = input<boolean | undefined>(undefined);
+  node = input.required<UiTreeNode>();
+
+  isLeaf = input<boolean>(false);
+  flattened = input<boolean>(false);
+  isExpanded = input<boolean>(false);
   isPinned = input(false);
   isInPinnedSection = input(false);
   isSelected = input(false);
-  showStateIcon = input<string | undefined>(undefined);
-  depth = input(0);
-  childHighlightDepth = input<number | undefined>(undefined);
-  parentHighlightDepth = input<number | undefined>(undefined);
+  depth = input<number>(0);
+  showStateIcon = input<string>();
+  childHighlightDepth = input<number>();
+  parentHighlightDepth = input<number>();
 
   readonly toggleTreeChange = output<void>();
   readonly rectShowStateChange = output<void>();
@@ -108,9 +102,12 @@ export class TreeNodeComponent {
   readonly showCopyButton = computed<boolean>(() => {
     const node = this.node();
     return (
-      node?.getCopyText() !== undefined &&
-      (node?.isRoot() || !this.showChevron())
+      node.getCopyText() !== undefined && (node.isRoot() || !this.showChevron())
     );
+  });
+
+  readonly indentMarkers = computed<number[]>(() => {
+    return Array.from({length: this.depth()}, (_, index) => index);
   });
 
   private readonly el: HTMLElement;
@@ -128,10 +125,6 @@ export class TreeNodeComponent {
 
   ngOnDestroy() {
     this.el?.removeEventListener('mousedown', this.nodeMouseDownEventListener);
-  }
-
-  getIndentMarkers(depth: number): number[] {
-    return Array.from({length: depth}, (_, index) => index);
   }
 
   toPropertyTreeNode(input: TreeNode): UiPropertyTreeNode {
@@ -159,7 +152,7 @@ export class TreeNodeComponent {
 
   pinNode(event: MouseEvent) {
     event.stopPropagation();
-    this.pinNodeChange.emit(assertDefined(this.node()));
+    this.pinNodeChange.emit(this.node());
   }
 
   private getAllDiffTypesOfChildren(node: UiTreeNode): Set<DiffType> {

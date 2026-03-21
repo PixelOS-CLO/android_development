@@ -15,17 +15,7 @@
  */
 import {CdkOverlayOrigin, OverlayModule} from '@angular/cdk/overlay';
 import {CommonModule} from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ElementRef,
-  EventEmitter,
-  Inject,
-  Input,
-  NgZone,
-  Output,
-} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, ElementRef, Inject, input, model, NgZone, output,} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -33,23 +23,12 @@ import {MatOption} from '@angular/material/core';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
-import {
-  MatSelect,
-  MatSelectChange,
-  MatSelectModule,
-} from '@angular/material/select';
+import {MatSelect, MatSelectChange, MatSelectModule,} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {assertDefined} from '@common/assert';
 import {isElementOverflowing} from '@common/dom';
 import {Store} from '@common/store/store';
-import {
-  AdvancedConfiguration,
-  CheckboxConfiguration,
-  SelectionConfiguration,
-  SelectionOption,
-  TraceConfigurationMap,
-  updateConfigsFromStore,
-} from '@trace_collection/ui/ui_trace_configuration';
+import {AdvancedConfiguration, CheckboxConfiguration, SelectionConfiguration, SelectionOption, TraceConfigurationMap, updateConfigsFromStore,} from '@trace_collection/ui/ui_trace_configuration';
 import {AbstractSelectComponent} from '@viewers/components/abstract_select_component';
 
 /**
@@ -78,12 +57,18 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
   advancedSettingsTrigger: CdkOverlayOrigin | undefined;
   advancedSettingsKey: string | undefined;
 
-  @Input() title: string | undefined;
-  @Input() traceConfigStoreKey: string | undefined;
-  @Input() traceConfig: TraceConfigurationMap | undefined;
-  @Input() storage: Store | undefined;
-  @Output() readonly traceConfigChange =
-    new EventEmitter<TraceConfigurationMap>();
+  title = input.required<string>();
+  traceConfigStoreKey = input.required<string>();
+  storage = input.required<Store>();
+  traceConfig = model.required<TraceConfigurationMap>();
+  readonly traceConfigChange = output<TraceConfigurationMap>();
+
+  readonly getSortedTraceKeys = computed<string[]>(() => {
+    const config = this.traceConfig();
+    return Object.keys(config).sort((a, b) => {
+      return config[a].name < config[b].name ? -1 : 1;
+    });
+  });
 
   private lastClickedIndex = new Map<string, number>();
   private readonly observer = new ResizeObserver((_) => {
@@ -99,14 +84,12 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
   }
 
   ngOnInit() {
-    this.traceConfig = updateConfigsFromStore(
-      assertDefined(
-        JSON.parse(JSON.stringify(assertDefined(this.traceConfig))),
-        () => 'component initialized without config',
-      ),
-      assertDefined(this.storage),
-      assertDefined(this.traceConfigStoreKey),
+    const config = updateConfigsFromStore(
+      JSON.parse(JSON.stringify(this.traceConfig())),
+      this.storage(),
+      this.traceConfigStoreKey(),
     );
+    this.traceConfig.set(config);
     this.onTraceConfigChange();
   }
 
@@ -119,19 +102,12 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
   }
 
   getTraceCheckboxContainerHeight(): string {
-    const config = assertDefined(this.traceConfig);
+    const config = this.traceConfig();
     const columns = Math.min(
       3,
       Math.floor(this.elementRef.nativeElement.clientWidth / 160),
     );
     return Math.ceil(Object.keys(config).length / columns) * 36 + 'px';
-  }
-
-  getSortedTraceKeys(): string[] {
-    const config = assertDefined(this.traceConfig);
-    return Object.keys(config).sort((a, b) => {
-      return config[a].name < config[b].name ? -1 : 1;
-    });
   }
 
   getSortedConfigs(configs: AdvancedConfiguration[]): AdvancedConfiguration[] {
@@ -212,7 +188,7 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
   }
 
   hasAdvancedConfig(traceKey: string): boolean {
-    const config = assertDefined(this.traceConfig?.[traceKey]?.config);
+    const config = assertDefined(this.traceConfig()[traceKey]?.config);
     return (
       config.checkboxConfigs.length > 0 || config.selectionConfigs.length > 0
     );
@@ -239,7 +215,7 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
 
   onTraceConfigChange() {
     this.changeDetectorRef.markForCheck();
-    this.traceConfigChange.emit(this.traceConfig);
+    this.traceConfigChange.emit(this.traceConfig());
   }
 
   isMultipleSelect(config: SelectionConfiguration): boolean {

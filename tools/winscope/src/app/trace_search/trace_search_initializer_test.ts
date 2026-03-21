@@ -15,12 +15,13 @@
  */
 
 import {assertDefined} from '@common/assert';
-import {getPerfettoParser} from '@test/unit/fixture_utils';
+import {getPerfettoParser} from '@test/unit/parsers/fixture_utils';
 import {Parser} from '@trace_api/parser';
 import {Trace} from '@trace_api/trace';
 import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {runQueryAndGetResult} from '@trace_processor/test_utils';
+
 import {SEARCH_VIEWS, TraceSearchInitializer} from './trace_search_initializer';
 
 describe('TraceSearchInitializer', () => {
@@ -55,6 +56,18 @@ describe('TraceSearchInitializer', () => {
         )
     `);
     expect(queryResultEntry.numRows()).toBe(40);
+
+    const queryResultVisibility = await runQueryAndGetResult(`
+      SELECT DISTINCT ts FROM sf_layer_search
+        WHERE is_visible = 1
+    `);
+    expect(queryResultVisibility.numRows()).toBe(20);
+
+    const queryResultPrevious = await runQueryAndGetResult(`
+      SELECT DISTINCT ts FROM sf_layer_search
+        WHERE previous_is_visible = 1
+    `);
+    expect(queryResultPrevious.numRows()).toBe(20);
   });
 
   it('initializes transactions', async () => {
@@ -131,6 +144,13 @@ describe('TraceSearchInitializer', () => {
         AND is_visible = 1
     `);
     expect(queryResult.numRows()).toBe(17);
+
+    const queryResultPrevious = await runQueryAndGetResult(`
+      SELECT DISTINCT ts FROM wm_search
+        WHERE title LIKE '%LauncherActivity'
+        AND previous_is_visible = 1
+    `);
+    expect(queryResultPrevious.numRows()).toBe(17);
   });
 
   async function createViewsAndTestExamples(

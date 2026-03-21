@@ -14,37 +14,26 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {
-  ChangeDetectorRef,
-  Component,
-  EventEmitter,
-  Inject,
-  Input,
-  NgZone,
-  Output,
-} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, Inject, input, NgZone, output, signal,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MatIconModule} from '@angular/material/icon';
 import {MatListModule} from '@angular/material/list';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {Store} from '@common/store/store';
-import {ProgressListener} from '@messaging/progress_listener';
 import {AppTraceViewRequest, AppTraceViewRequestHandled} from '@app/app_events';
-import {ShowTraceUploadWarning} from '@trace/trace_events';
+import {Store} from '@common/store/store';
+import {getLogger} from '@compat/logging';
+import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
+import {ProgressListener} from '@messaging/progress_listener';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {WinscopeEventListener} from '@messaging/winscope_event_listener';
-import {getLogger} from '@compat/logging';
-import {TRACE_INFO} from '@trace_api/trace_info';
-import {
-  isTraceTypeWithViewer,
-  getReasonForNoTraceVisualization,
-  TraceType,
-} from '@trace_api/trace_type';
-import {LoadProgressComponent} from './load_progress_component';
 import {FileReader} from '@trace_api/file_reader';
-import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
+import {ShowTraceUploadWarning} from '@trace_api/trace_events';
+import {TRACE_INFO} from '@trace_api/trace_info';
+import {getReasonForNoTraceVisualization, isTraceTypeWithViewer, TraceType,} from '@trace_api/trace_type';
+
+import {LoadProgressComponent} from './load_progress_component';
 
 /**
  * A component for uploading traces.
@@ -73,7 +62,7 @@ export class UploadTracesComponent
   progressMessage = '';
   progressPercentage?: number;
   lastUiProgressUpdateTimeMs?: number;
-  viewersLoading = false;
+  viewersLoading = signal(false);
   warningMessages: string[] = [];
   discardLegacyFiles = false;
 
@@ -82,13 +71,37 @@ export class UploadTracesComponent
     'Unless "Discard legacy traces" is selected, this trace will be converted ' +
     'to a Perfetto trace when you click "View traces".';
 
-  @Input() loadedFileReaders: FileReader[] | undefined;
-  @Input() storage: Store | undefined;
-  @Output() filesUploaded = new EventEmitter<File[]>();
-  @Output() viewTracesButtonClick = new EventEmitter<boolean>();
-  @Output() downloadTracesClick = new EventEmitter<void>();
-  @Output() removeTrace = new EventEmitter<FileReader>();
-  @Output() removeAllTraces = new EventEmitter<void>();
+  loadedFileReaders = input.required<FileReader[]>();
+  storage = input.required<Store>();
+
+  filesUploaded = output<File[]>();
+  viewTracesButtonClick = output<boolean>();
+  downloadTracesClick = output<void>();
+  removeTrace = output<FileReader>();
+  removeAllTraces = output<void>();
+
+  readonly hasLoadedFiles = computed<boolean>(() => {
+    return (this.loadedFileReaders().length ?? 0) > 0;
+  });
+
+  readonly hasLoadedFilesWithViewers = computed<boolean>(() => {
+    return this.loadedFileReaders().some((reader) => {
+      return isTraceTypeWithViewer(reader.getTraceType());
+    });
+  });
+
+  readonly isViewTracesButtonDisabled = computed<boolean>(() => {
+    return this.viewersLoading() || !this.hasLoadedFilesWithViewers();
+  });
+
+  readonly isDiscardLegacyTracesBoxDisabled = computed<boolean>(() => {
+    if (this.isViewTracesButtonDisabled()) {
+      return true;
+    }
+    return !this.loadedFileReaders().some((reader) => {
+      return this.isLegacyTrace(reader);
+    });
+  });
 
   private readonly discardLegacyStoreKey = 'discardLegacyFiles';
 
@@ -98,22 +111,17 @@ export class UploadTracesComponent
   ) {}
 
   ngOnInit() {
-    if (this.storage) {
-      const storedValue = this.storage.get(this.discardLegacyStoreKey);
-      this.discardLegacyFiles =
-        storedValue === 'true' || storedValue === undefined;
-    }
+    const storage = this.storage();
+    const storedValue = storage.get(this.discardLegacyStoreKey);
+    this.discardLegacyFiles =
+      storedValue === 'true' || storedValue === undefined;
     this.removeAllTraces.emit();
     this.clearAllWarnings();
   }
 
-  hasLoadedFiles(): boolean {
-    return (this.loadedFileReaders?.length ?? 0) > 0;
-  }
-
   updateDiscardLegacyTraces() {
     this.discardLegacyFiles = !this.discardLegacyFiles;
-    this.storage?.add(
+    this.storage().add(
       this.discardLegacyStoreKey,
       this.discardLegacyFiles.toString(),
     );
@@ -121,21 +129,6 @@ export class UploadTracesComponent
 
   clearAllWarnings() {
     this.warningMessages = [];
-  }
-
-  private async onAppTraceViewRequest() {
-    this.viewersLoading = true;
-  }
-
-  private async onAppTraceViewRequestHandled() {
-    this.viewersLoading = false;
-  }
-
-  private async onShowTraceUploadWarning(event: ShowTraceUploadWarning) {
-    if (event.message && !this.warningMessages.includes(event.message)) {
-      this.warningMessages.push(event.message);
-    }
-    this.changeDetectorRef.detectChanges();
   }
 
   async onWinscopeEvent(event: WinscopeEvent) {
@@ -178,7 +171,7 @@ export class UploadTracesComponent
   }
 
   onInputFiles(event: Event) {
-    if (this.viewersLoading) {
+    if (this.viewersLoading()) {
       return;
     }
     const files = this.getInputFiles(event);
@@ -207,7 +200,7 @@ export class UploadTracesComponent
   }
 
   onFileDrop(e: DragEvent) {
-    if (this.viewersLoading) {
+    if (this.viewersLoading()) {
       return;
     }
     e.preventDefault();
@@ -222,30 +215,6 @@ export class UploadTracesComponent
     event.stopPropagation();
     this.removeTrace.emit(reader);
     this.onOperationFinished();
-  }
-
-  hasLoadedFilesWithViewers(): boolean {
-    return this.ngZone.run(() => {
-      return (
-        this.loadedFileReaders?.some((reader) => {
-          return isTraceTypeWithViewer(reader.getTraceType());
-        }) ?? false
-      );
-    });
-  }
-
-  isDiscardLegacyTracesBoxDisabled(): boolean {
-    if (this.isViewTracesButtonDisabled()) {
-      return true;
-    }
-    const isDisabled = !this.loadedFileReaders?.some((reader) => {
-      return this.isLegacyTrace(reader);
-    });
-    return isDisabled;
-  }
-
-  isViewTracesButtonDisabled(): boolean {
-    return this.viewersLoading || !this.hasLoadedFilesWithViewers();
   }
 
   canVisualizeTrace(traceType: TraceType): boolean {
@@ -271,5 +240,20 @@ export class UploadTracesComponent
       return [];
     }
     return Array.from(files);
+  }
+
+  private async onAppTraceViewRequest() {
+    this.viewersLoading.set(true);
+  }
+
+  private async onAppTraceViewRequestHandled() {
+    this.viewersLoading.set(false);
+  }
+
+  private async onShowTraceUploadWarning(event: ShowTraceUploadWarning) {
+    if (event.message && !this.warningMessages.includes(event.message)) {
+      this.warningMessages.push(event.message);
+    }
+    this.changeDetectorRef.detectChanges();
   }
 }
