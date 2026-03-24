@@ -52,7 +52,7 @@ import {
 } from '@tree_node/property_tree_node';
 import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {getLogger, Logger} from '@compat/logging';
-import {SetFormatters} from '@parsers/helpers/set_formatters';
+import {SetFormatters} from '@parsers/operations/set_formatters';
 
 /**
  * Parser for Transitions Perfetto traces.
@@ -66,6 +66,11 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
     'transition_type',
     'send_time_ns',
     'dispatch_time_ns',
+    'wm_abort_time_ns',
+    'shell_abort_time_ns',
+    'finish_time_ns',
+    'merge_time_ns',
+    'create_time_ns',
     'duration_ns',
     'handler',
     'status',
@@ -76,6 +81,9 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
     'shellAbortTimeNs',
     'sendTimeNs',
     'dispatchTimeNs',
+    'finishTimeNs',
+    'mergeTimeNs',
+    'createTimeNs',
   ];
   private static readonly LAZY_TIMESTAMP_PROPERTIES = [
     'wmAbortTimeNs',
@@ -95,7 +103,7 @@ export class ParserTransitions extends AbstractParser<HierarchyTreeNode> {
   );
   private static readonly ADD_DEFAULTS_OPERATION = new AddDefaults(
     ParserTransitions.TRANSITION_FIELD,
-    ['type', 'targets'],
+    ['type', 'changes'],
   );
   private static readonly TRANSITION_TYPE_FORMATTER = new EnumFormatter(
     TransitionType,

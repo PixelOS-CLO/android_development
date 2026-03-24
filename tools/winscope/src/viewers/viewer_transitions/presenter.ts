@@ -33,7 +33,7 @@ import {PropertiesPresenter} from '@viewers/common/properties_presenter';
 import {TextFilter} from '@viewers/common/text_filter';
 import {ColumnSpec, LogField, LogHeader} from '@viewers/common/ui_data_log';
 import {UpdateTransitionParticipants} from './operations/update_transition_participants';
-import {UpdateTransitionTargets} from './operations/update_transition_targets';
+import {UpdateTransitionChanges} from './operations/update_transition_changes';
 import {TransitionsEntry, UiData} from './ui_data';
 
 export class Presenter extends AbstractLogViewerPresenter<
@@ -45,7 +45,7 @@ export class Presenter extends AbstractLogViewerPresenter<
     type: {name: 'Type', cssClass: 'transition-type'},
     sendTime: {name: 'Send Time', cssClass: 'send-time time'},
     dispatchTime: {name: 'Dispatch Time', cssClass: 'dispatch-time time'},
-    duration: {name: 'Duration', cssClass: 'duration right-align'},
+    duration: {name: 'Play Duration', cssClass: 'duration right-align'},
     handler: {name: 'Handler', cssClass: 'handler'},
     participants: {name: 'Participants', cssClass: 'participants'},
     flags: {name: 'Flags', cssClass: 'flags'},
@@ -59,7 +59,7 @@ export class Presenter extends AbstractLogViewerPresenter<
     this.layerIdToName,
     this.windowTokenToTitle,
   );
-  private updateTransitionTargets = new UpdateTransitionTargets(
+  private updateTransitionChanges = new UpdateTransitionChanges(
     this.layerIdToName,
     this.windowTokenToTitle,
   );
@@ -234,13 +234,13 @@ export class Presenter extends AbstractLogViewerPresenter<
         {
           spec: Presenter.COLUMNS.sendTime,
           value: sendTs ?? Presenter.VALUE_NA,
-          propagateEntryTimestamp:
-            dispatchTs === undefined && sendTs !== undefined,
+          propagateEntryTimestamp: sendTs !== undefined,
         },
         {
           spec: Presenter.COLUMNS.dispatchTime,
           value: dispatchTs ?? Presenter.VALUE_NA,
-          propagateEntryTimestamp: dispatchTs !== undefined,
+          propagateEntryTimestamp:
+            sendTs === undefined && dispatchTs !== undefined,
         },
         {
           spec: Presenter.COLUMNS.duration,
@@ -262,7 +262,7 @@ export class Presenter extends AbstractLogViewerPresenter<
       transitions.push(
         new TransitionsEntry(entry, fields, async () => {
           const properties = await transitionNode.getAllProperties();
-          this.updateTransitionTargets.apply(properties);
+          this.updateTransitionChanges.apply(properties);
           return properties;
         }),
       );

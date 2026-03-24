@@ -33,30 +33,32 @@ import {Rect} from '@common/geometry/rect';
 import {TimeRange, Timestamp} from '@common/time/time';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
-import {makeRealTimestamp, UTC_CONVERTER} from '@common/time/test_helpers';
 import {waitToBeCalled} from '@test/unit/spy_utils';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {TransitionStatus} from '@trace/transitions/status';
 import {TraceType} from '@trace_api/trace_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {TransitionTimelineComponent} from './transition_timeline_component';
-import {SetFormatters} from '@parsers/helpers/set_formatters';
+import {SetFormatters} from '@parsers/operations/set_formatters';
+import {makeConverterZeroRteOffsets} from '@common/time/test_helpers';
+import {PENDING_TO_PLAY_COLOR} from 'app/components/timeline/common/transition_timeline_helpers';
 
 describe('TransitionTimelineComponent', () => {
   let component: TransitionTimelineComponent;
   let dom: DOMTestHelper<TransitionTimelineComponent>;
 
-  const time0 = makeRealTimestamp(0n);
-  const time5 = makeRealTimestamp(5n);
-  const time10 = makeRealTimestamp(10n);
-  const time20 = makeRealTimestamp(20n);
-  const time30 = makeRealTimestamp(30n);
-  const time35 = makeRealTimestamp(35n);
-  const time60 = makeRealTimestamp(60n);
-  const time85 = makeRealTimestamp(85n);
-  const time110 = makeRealTimestamp(110n);
-  const time120 = makeRealTimestamp(120n);
-  const time160 = makeRealTimestamp(160n);
+  const converter = makeConverterZeroRteOffsets();
+  const time0 = converter.makeTimestampFromRealNs(0n);
+  const time5 = converter.makeTimestampFromRealNs(5n);
+  const time10 = converter.makeTimestampFromRealNs(10n);
+  const time20 = converter.makeTimestampFromRealNs(20n);
+  const time30 = converter.makeTimestampFromRealNs(30n);
+  const time35 = converter.makeTimestampFromRealNs(35n);
+  const time60 = converter.makeTimestampFromRealNs(60n);
+  const time85 = converter.makeTimestampFromRealNs(85n);
+  const time110 = converter.makeTimestampFromRealNs(110n);
+  const time120 = converter.makeTimestampFromRealNs(120n);
+  const time160 = converter.makeTimestampFromRealNs(160n);
 
   const range10to110 = new TimeRange(time10, time110);
   const range0to160 = new TimeRange(time0, time160);
@@ -85,7 +87,7 @@ describe('TransitionTimelineComponent', () => {
     const fixture = TestBed.createComponent(TransitionTimelineComponent);
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
-    component.timestampConverter = UTC_CONVERTER;
+    component.timestampConverter = converter;
     component.fullRange = range0to160;
   });
 
@@ -134,7 +136,7 @@ describe('TransitionTimelineComponent', () => {
 
     const transitions = [
       makeTransition(time10, time20), // drawn
-      makeTransition(time60, time160), // drawn
+      makeTransition(time60, time160), // drawn at half size
       makeTransition(time120, time160), // not drawn - starts after selection range
       makeTransition(time0, time5), // not drawn - finishes before selection range
       makeTransition(time5, undefined), // not drawn - starts before selection range with unknown finish time
@@ -153,7 +155,7 @@ describe('TransitionTimelineComponent', () => {
     const oneRowHeight = oneRowTotalHeight - padding;
     const width = component.canvasDrawer.getScaledCanvasWidth();
 
-    expect(drawRectSpy).toHaveBeenCalledTimes(2); // does not draw final transition
+    expect(drawRectSpy).toHaveBeenCalledTimes(2);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, padding, Math.floor(width / 10), oneRowHeight),
       component.color,
@@ -162,7 +164,12 @@ describe('TransitionTimelineComponent', () => {
       false,
     );
     expect(drawRectSpy).toHaveBeenCalledWith(
-      new Rect(Math.floor(width / 2), padding, Math.floor(width), oneRowHeight),
+      new Rect(
+        Math.floor(width / 2),
+        padding,
+        Math.floor(width / 2),
+        oneRowHeight,
+      ),
       component.color,
       1,
       false,
@@ -325,7 +332,9 @@ describe('TransitionTimelineComponent', () => {
 
   it('can draw aborted transitions', async () => {
     const drawRectSpy = spyOn(component.canvasDrawer, 'drawRect');
-    const transitions = [makeTransition(time35, undefined, time85)];
+    const transitions = [
+      makeTransition(undefined, undefined, time85, undefined, time35),
+    ];
     await setTraceAndSelectionRange(transitions, [time35]);
 
     const padding = 5;
@@ -341,7 +350,7 @@ describe('TransitionTimelineComponent', () => {
         Math.floor(width / 2),
         oneRowHeight,
       ),
-      component.color,
+      PENDING_TO_PLAY_COLOR,
       0.25,
       false,
       false,
@@ -350,7 +359,7 @@ describe('TransitionTimelineComponent', () => {
 
   it('can draw transition with unknown start time', async () => {
     const drawRectSpy = spyOn(component.canvasDrawer, 'drawRect');
-    const transitions = [makeTransition(undefined, time85)];
+    const transitions = [makeTransition(undefined, undefined, time85)];
     await setTraceAndSelectionRange(transitions, [time0]);
 
     const padding = 5;
@@ -365,8 +374,8 @@ describe('TransitionTimelineComponent', () => {
         oneRowHeight,
         oneRowHeight,
       ),
-      component.color,
-      1,
+      PENDING_TO_PLAY_COLOR,
+      0.25,
       true,
       false,
     );
@@ -394,13 +403,6 @@ describe('TransitionTimelineComponent', () => {
       false,
       true,
     );
-  });
-
-  it('does not render transition with create time but no dispatch time', async () => {
-    const drawRectSpy = spyOn(component.canvasDrawer, 'drawRect');
-    const transitions = [makeTransition(undefined, time85, undefined, time10)];
-    await setTraceAndSelectionRange(transitions, [time10]);
-    expect(drawRectSpy).not.toHaveBeenCalled();
   });
 
   it('handles missing trace entries', async () => {
@@ -466,6 +468,7 @@ describe('TransitionTimelineComponent', () => {
     finishTimeNs: Timestamp | undefined,
     shellAbortTimeNs?: Timestamp,
     createTimeNs?: Timestamp,
+    sendTimeNs?: Timestamp | undefined,
   ): HierarchyTreeNode {
     return new HierarchyTreeBuilder()
       .setRootNodeFormatter(new SetFormatters())
@@ -476,6 +479,7 @@ describe('TransitionTimelineComponent', () => {
         shellAbortTimeNs,
         finishTimeNs,
         createTimeNs,
+        sendTimeNs,
         status:
           shellAbortTimeNs !== undefined ? TransitionStatus.ABORTED : undefined,
       })

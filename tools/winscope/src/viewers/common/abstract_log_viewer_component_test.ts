@@ -109,21 +109,22 @@ export abstract class AbstractLogViewerComponentTest<
         });
 
         it('handles go to current time button', () => {
-          expect(dom.find('.go-to-current-entry') !== undefined).toEqual(
-            this.hasCurrentTimeButton,
-          );
+          expect(
+            dom.find('.time-controls') !== undefined ||
+              dom.find('.time-controls-trigger') !== undefined,
+          ).toEqual(this.hasTimeControls);
         });
 
         it('passes data to log component', () => {
           const logComponent = assertDefined(component.logComponent);
           expect(logComponent.isFetchingData).toBeFalse();
-          expect(logComponent.checkScrollViewport).toBeFalse();
+          expect(logComponent.checkScrollViewportCount).toBe(0);
           expect(logComponent.selectedIndex).not.toBe(10);
           expect(logComponent.scrollToIndex).not.toBe(20);
           expect(logComponent.currentIndex).not.toBe(30);
 
           const inputData = assertDefined(component.inputData);
-          inputData.checkScrollViewport = true;
+          inputData.checkScrollViewportCount = 1;
           inputData.isFetchingData = true;
           inputData.selectedIndex = 10;
           inputData.scrollToIndex = 20;
@@ -131,7 +132,7 @@ export abstract class AbstractLogViewerComponentTest<
           dom.detectChanges();
 
           expect(logComponent.isFetchingData).toBeTrue();
-          expect(logComponent.checkScrollViewport).toBeTrue();
+          expect(logComponent.checkScrollViewportCount).toBe(1);
           expect(logComponent.selectedIndex).toBe(10);
           expect(logComponent.scrollToIndex).toBe(20);
           expect(logComponent.currentIndex).toBe(30);
@@ -300,7 +301,7 @@ export abstract class AbstractLogViewerComponentTest<
   }
 
   protected abstract readonly testProperties: boolean;
-  protected abstract readonly hasCurrentTimeButton: boolean;
+  protected abstract readonly hasTimeControls: boolean;
   protected abstract readonly testScroll: boolean;
   protected readonly hasFilters: boolean = true;
   protected readonly propertiesSectionTitle?: string;

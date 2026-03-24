@@ -23,7 +23,7 @@ import {
   LegacyFileReaderProvider,
 } from '@test/unit/fixture_utils';
 import {
-  getTimestampConverter,
+  makeConverterNoRteOffsets,
   makeRealTimestamp,
   timestampEqualityTester,
 } from '@common/time/test_helpers';
@@ -42,7 +42,7 @@ describe('FileReaderTransitions', () => {
 
   beforeAll(async () => {
     jasmine.addCustomEqualityTester(timestampEqualityTester);
-    converter = getTimestampConverter();
+    converter = makeConverterNoRteOffsets();
     [reader, readerShell, readerWm] = await getFileReaderTransitions(converter);
   });
 
@@ -60,9 +60,9 @@ describe('FileReaderTransitions', () => {
   it('provides timestamps', () => {
     const timestamps = reader.getTimestamps();
     const expected = [
-      makeRealTimestamp(1683188477607285317n),
+      makeRealTimestamp(1683188477604336464n),
       makeRealTimestamp(1683188477785406289n),
-      makeRealTimestamp(1683188479256449868n),
+      makeRealTimestamp(1683188479252119424n),
       makeRealTimestamp(1683188481345929443n),
     ];
     expect(timestamps).toEqual(expected);
@@ -109,23 +109,26 @@ describe('FileReaderTransitions', () => {
       shellHandlerMappings,
     );
 
-    const transition6Packet = packets[1];
+    const transition6Packet = assertDefined(
+      packets.find((p) => p.shellTransition?.id === 6),
+    );
     const transition6 = assertDefined(transition6Packet.shellTransition);
-    expect(transition6.id).toBe(6);
-    const dispatchTime6 = Long.fromString('57649649922341');
-    expect(transition6Packet.timestamp).toEqual(dispatchTime6);
+    const sendTime6 = Long.fromString('57649646973488');
+    expect(transition6Packet.timestamp).toEqual(sendTime6);
     expect(transition6Packet.timestampClockId).toEqual(
       ClockSnapshot.Clock.BuiltinClocks.BOOTTIME,
     );
     expect(transition6.createTimeNs).toEqual(Long.fromString('57649586217344'));
-    expect(transition6.sendTimeNs).toEqual(Long.fromString('57649646973488'));
+    expect(transition6.sendTimeNs).toEqual(sendTime6);
     expect(transition6.wmAbortTimeNs).toBeUndefined();
     expect(transition6.finishTimeNs).toEqual(Long.fromString('57650183020323'));
     expect(transition6.type).toBe(1);
-    expect(transition6.targets?.length).toBe(2);
+    expect(transition6.changes?.length).toBe(2);
     expect(transition6.flags).toBeUndefined();
     expect(transition6.startingWindowRemoveTimeNs).toBeUndefined();
-    expect(transition6.dispatchTimeNs).toEqual(dispatchTime6);
+    expect(transition6.dispatchTimeNs).toEqual(
+      Long.fromString('57649649922341'),
+    );
     expect(transition6.mergeTimeNs).toBeUndefined();
     expect(transition6.mergeRequestTimeNs).toBeUndefined();
     expect(transition6.shellAbortTimeNs).toBeUndefined();
@@ -135,13 +138,13 @@ describe('FileReaderTransitions', () => {
     const transition7Packet = packets[2];
     const transition7 = assertDefined(transition7Packet.shellTransition);
     expect(transition7.id).toBe(7);
-    const sendTime7 = Long.fromString('57649828043313');
-    expect(transition7Packet.timestamp).toEqual(sendTime7);
+    const dispatchTime7 = Long.fromString('57649828043313');
+    expect(transition7Packet.timestamp).toEqual(dispatchTime7);
     expect(transition7Packet.timestampClockId).toEqual(
       ClockSnapshot.Clock.BuiltinClocks.BOOTTIME,
     );
-    expect(transition7.sendTimeNs).toEqual(sendTime7);
-    expect(transition7.dispatchTimeNs).toBeUndefined();
+    expect(transition7.sendTimeNs).toBeUndefined();
+    expect(transition7.dispatchTimeNs).toEqual(dispatchTime7);
     expect(transition7.mergeTimeNs).toEqual(Long.fromString('57649829526223'));
     expect(transition7.shellAbortTimeNs).toEqual(
       Long.fromString('57649829445249'),
@@ -162,12 +165,12 @@ describe('FileReaderTransitions', () => {
 
   it('converts to valid perfetto trace', async () => {
     const perfettoParser = (
-      await convertToPerfettoTrace([reader], getTimestampConverter())
+      await convertToPerfettoTrace([reader], makeConverterNoRteOffsets())
     )[0];
     expect(perfettoParser.getTimestamps()).toEqual([
-      makeRealTimestamp(1683188477607285317n),
+      makeRealTimestamp(1683188477604336464n),
       makeRealTimestamp(1683188477785406289n),
-      makeRealTimestamp(1683188479256449868n),
+      makeRealTimestamp(1683188479252119424n),
       makeRealTimestamp(1683188481345929443n),
     ]);
     const entries = [
@@ -203,18 +206,18 @@ describe('FileReaderTransitions', () => {
     checkPropertyValue(windowParticipants, '0', '179781688');
     checkPropertyValue(windowParticipants, '1', '184699222');
 
-    const targets = assertDefined(
-      entryProperties.getChildByName('targets'),
+    const changes = assertDefined(
+      entryProperties.getChildByName('changes'),
     ).getAllChildren();
-    expect(targets.length).toBe(2);
-    checkPropertyValue(targets[0], 'layerId', '113');
-    checkPropertyValue(targets[0], 'mode', 'TO_FRONT');
+    expect(changes.length).toBe(2);
+    checkPropertyValue(changes[0], 'layerId', '113');
+    checkPropertyValue(changes[0], 'mode', 'TO_FRONT');
     checkPropertyValue(
-      targets[0],
+      changes[0],
       'flags',
       'FLAG_MOVED_TO_TOP | FLAG_SHOW_WALLPAPER',
     );
-    checkPropertyValue(targets[0], 'windowId', '179781688');
+    checkPropertyValue(changes[0], 'windowId', '179781688');
 
     checkEagerPropertyValue(
       entry,

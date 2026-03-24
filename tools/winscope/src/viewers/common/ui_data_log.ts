@@ -29,7 +29,7 @@ export interface UiDataLog {
   scrollToIndex: undefined | number;
   currentIndex: undefined | number;
   isFetchingData: boolean;
-  checkScrollViewport: boolean;
+  checkScrollViewportCount: number;
 
   headers: LogHeader[];
   propertyNodes?: Array<FlattenedTreeRow<UiPropertyTreeNode>> | undefined;
@@ -75,6 +75,6 @@ export type LogFieldValue =
 
 export interface ClickableProperty {
   propertyValue: string;
-  tooltip: string;
+  tooltip: string | undefined;
   onClick: () => void;
 }

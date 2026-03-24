@@ -57,7 +57,10 @@ import {TraceType} from '@trace_api/trace_type';
 import {View, Viewer, ViewType} from '@viewers/viewer';
 import {UserNotifier} from '@services/user_notifier';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
-import {makeRealTimestamp, UTC_CONVERTER} from '@common/time/test_helpers';
+import {
+  makeConverterZeroRteOffsets,
+  makeRealTimestamp,
+} from '@common/time/test_helpers';
 import {waitToBeCalled} from '@test/unit/spy_utils';
 import {TracesBuilder} from '@test/unit/trace_api/traces_builder';
 import {AppComponent} from './app_component';
@@ -80,6 +83,7 @@ import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {Mediator} from '@app/mediator';
 import {LoadedFileData} from '@app/loaded_file_data';
 import {TimelineData} from '@app/timeline_data';
+import {ParsingErrorType} from '@app/parsing_error_type';
 
 @Component({
   selector: 'trace-view',
@@ -179,6 +183,8 @@ class MockMatDrawerContent {}
 
 describe('AppComponent', () => {
   const reader = new TestFileReaderBuilder().setTimestamps([]).build();
+  const converter = makeConverterZeroRteOffsets();
+
   let fixture: ComponentFixture<AppComponent>;
   let component: AppComponent;
   let downloadTracesSpy: jasmine.Spy;
@@ -256,8 +262,12 @@ describe('AppComponent', () => {
     spyOn(LoadedFileData.prototype, 'getLostPerfettoPackets').and.returnValue(
       0,
     );
+    spyOn(
+      LoadedFileData.prototype,
+      'getTraceTypesWithParsingErrors',
+    ).and.returnValue(new Map());
     spyOn(TimelineData.prototype, 'getTimestampConverter').and.returnValue(
-      UTC_CONVERTER,
+      converter,
     );
     spyOn(TimelineData.prototype, 'hasTimestamps').and.returnValue(false);
 
@@ -378,7 +388,7 @@ describe('AppComponent', () => {
     expect(pageTitle.getTitle()).toBe('Winscope');
 
     const traces = new Traces();
-    component.timelineData.initialize(traces, undefined, UTC_CONVERTER);
+    component.timelineData.initialize(traces, undefined, converter);
     component.loadedFileData.getDownloadArchiveFilename = jasmine
       .createSpy()
       .and.returnValue('test_archive');
@@ -563,6 +573,84 @@ describe('AppComponent', () => {
     dom.detectChanges();
     await warningIcon.checkTooltip(
       '4 Perfetto packets lost during tracing - data may be incomplete',
+    );
+  });
+
+  it('shows warning icon for trace processor errors', async () => {
+    showDataLoadedElements();
+    const fileDescriptor = dom.get('.file-descriptor');
+    fileDescriptor.checkClassName('file-warning', false);
+    expect(fileDescriptor.find('.warning-icon')).toBeUndefined();
+
+    const spy = component.loadedFileData
+      .getTraceTypesWithParsingErrors as jasmine.Spy;
+    spy.and.returnValue(
+      new Map([[TraceType.PROTO_LOG, ParsingErrorType.DATA_INCOMPLETE]]),
+    );
+    dom.detectChanges();
+    fileDescriptor.checkClassName('file-warning', true);
+    const warningIcon = fileDescriptor.get('.warning-icon');
+    await warningIcon.checkTooltip(
+      'Trace processor errors occurred - data may be incomplete',
+    );
+
+    spy.and.returnValue(
+      new Map([
+        [TraceType.INPUT_METHOD_CLIENTS, ParsingErrorType.DATA_INCORRECT],
+        [TraceType.PROTO_LOG, ParsingErrorType.DATA_INCOMPLETE],
+      ]),
+    );
+    dom.detectChanges();
+    await warningIcon.checkTooltip(
+      'Trace processor errors occurred - data may be incorrect',
+    );
+  });
+
+  it('shows combined warning message for incorrect data', async () => {
+    showDataLoadedElements();
+    const fileDescriptor = dom.get('.file-descriptor');
+    fileDescriptor.checkClassName('file-warning', false);
+    expect(fileDescriptor.find('.warning-icon')).toBeUndefined();
+
+    const spy1 = component.loadedFileData
+      .getTraceTypesWithParsingErrors as jasmine.Spy;
+    spy1.and.returnValue(
+      new Map([[TraceType.PROTO_LOG, ParsingErrorType.DATA_INCORRECT]]),
+    );
+
+    const spy2 = component.loadedFileData.getLostPerfettoPackets as jasmine.Spy;
+    spy2.and.returnValue(1);
+
+    dom.detectChanges();
+
+    fileDescriptor.checkClassName('file-warning', true);
+    const warningIcon = fileDescriptor.get('.warning-icon');
+    await warningIcon.checkTooltip(
+      '1 Perfetto packet lost during tracing and trace processor errors occurred - data may be incorrect',
+    );
+  });
+
+  it('shows combined warning message for incomplete data', async () => {
+    showDataLoadedElements();
+    const fileDescriptor = dom.get('.file-descriptor');
+    fileDescriptor.checkClassName('file-warning', false);
+    expect(fileDescriptor.find('.warning-icon')).toBeUndefined();
+
+    const spy1 = component.loadedFileData
+      .getTraceTypesWithParsingErrors as jasmine.Spy;
+    spy1.and.returnValue(
+      new Map([[TraceType.PROTO_LOG, ParsingErrorType.DATA_INCOMPLETE]]),
+    );
+
+    const spy2 = component.loadedFileData.getLostPerfettoPackets as jasmine.Spy;
+    spy2.and.returnValue(1);
+
+    dom.detectChanges();
+
+    fileDescriptor.checkClassName('file-warning', true);
+    const warningIcon = fileDescriptor.get('.warning-icon');
+    await warningIcon.checkTooltip(
+      '1 Perfetto packet lost during tracing and trace processor errors occurred - data may be incomplete',
     );
   });
 
@@ -874,7 +962,7 @@ describe('AppComponent', () => {
     });
 
     it('processes bookmarks', async () => {
-      component.timelineData.initialize(new Traces(), undefined, UTC_CONVERTER);
+      component.timelineData.initialize(new Traces(), undefined, converter);
       dom.detectChanges();
       const request: RequestData = {
         artifacts: [],
@@ -897,10 +985,10 @@ describe('AppComponent', () => {
     it('processes timestamp', async () => {
       const traces = new TracesBuilder()
         .setTimestamps(TraceType.SURFACE_FLINGER, [
-          UTC_CONVERTER.makeTimestampFromNs(10n),
+          converter.makeTimestampFromNs(10n),
         ])
         .build();
-      component.timelineData.initialize(traces, undefined, UTC_CONVERTER);
+      component.timelineData.initialize(traces, undefined, converter);
       dom.detectChanges();
       component.timelineData.trySetActiveTrace(
         assertDefined(traces.getTrace(TraceType.SURFACE_FLINGER)),
@@ -930,7 +1018,7 @@ describe('AppComponent', () => {
         undefined,
       );
       spyOn(UserNotifier, 'add');
-      component.timelineData.initialize(new Traces(), undefined, UTC_CONVERTER);
+      component.timelineData.initialize(new Traces(), undefined, converter);
       dom.detectChanges();
       const request: RequestData = {
         artifacts: [],
@@ -965,7 +1053,7 @@ describe('AppComponent', () => {
       const spy = component.loadedFileData.getTraces as jasmine.Spy;
       spy.and.returnValue(traces);
 
-      component.timelineData.initialize(traces, undefined, UTC_CONVERTER);
+      component.timelineData.initialize(traces, undefined, converter);
       dom.detectChanges();
       const request: RequestData = {
         artifacts: [],
@@ -1002,7 +1090,7 @@ describe('AppComponent', () => {
 
   async function goToTraceView() {
     await buildTraces();
-    component.timelineData.initialize(new Traces(), undefined, UTC_CONVERTER);
+    component.timelineData.initialize(new Traces(), undefined, converter);
     component.dataLoaded = true;
     showDataLoadedElements();
     dom.detectChanges();
@@ -1082,7 +1170,8 @@ describe('AppComponent', () => {
         ],
         perfetto: [],
         lostPerfettoPackets: 0,
-        timestampConverter: UTC_CONVERTER,
+        traceTypesWithParsingErrors: new Map(),
+        timezoneInfo: undefined,
         traceGeometryData: new TraceGeometryData(),
         warnings: [],
       },

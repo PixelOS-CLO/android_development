@@ -36,7 +36,7 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventKey} from '@common/dom';
 import {Timestamp} from '@common/time/time';
-import {checkTooltips, DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {
   makeElapsedTimestamp,
   makeRealTimestamp,
@@ -66,6 +66,7 @@ import {PropertiesComponent} from '@viewers/components/properties_component';
 import {SearchBoxComponent} from '@viewers/components/search_box_component';
 import {SelectWithFilterComponent} from '@viewers/components/select_with_filter_component';
 import {LogComponent} from './log_component';
+import {CdkMenuModule} from '@angular/cdk/menu';
 
 describe('LogComponent', () => {
   const testColumn1: ColumnSpec = {name: 'test1', cssClass: 'test-1'};
@@ -100,6 +101,7 @@ describe('LogComponent', () => {
         MatProgressSpinnerModule,
         MatTooltipModule,
         ClipboardModule,
+        CdkMenuModule,
         TestHostComponent,
         LogComponent,
         SelectWithFilterComponent,
@@ -171,6 +173,39 @@ describe('LogComponent', () => {
     dom.findAndClick('.go-to-last-entry');
     expect(spy).toHaveBeenCalledWith(1);
     expect(clicked?.getIndex()).toBe(1);
+  });
+
+  it('does not show time controls if flag not set', () => {
+    component.showTraceEntryTimes = false;
+    dom.detectChanges();
+    expect(dom.find('.time-controls')).toBeUndefined();
+  });
+
+  it('does not show current time button if no header without filter and trace entry times flag not set', () => {
+    component.showTraceEntryTimes = false;
+    dom.detectChanges();
+    expect(dom.find('.time-controls-trigger')).toBeUndefined();
+  });
+
+  it('does not show current time button if flag not set', () => {
+    component.showTimeControls = false;
+    dom.detectChanges();
+    expect(dom.find('.time-controls-trigger')).toBeUndefined();
+  });
+
+  it('shows time controls menu if header without filter and trace entry times flag set', async () => {
+    component.headers = [new LogHeader(testColumn1)];
+    component.showTraceEntryTimes = false;
+    dom.detectChanges();
+    expect(dom.findInDocument('.time-controls')).toBeUndefined();
+    const trigger = dom.get('.time-controls-trigger');
+    trigger.dispatchEvent(new MouseEvent('mouseenter'));
+    dom.detectChanges();
+    const menu = dom.getInDocument('.context-menu');
+    expect(menu.find('.time-controls')).toBeDefined();
+    menu.dispatchEvent(new MouseEvent('mouseleave'));
+    dom.detectChanges();
+    expect(dom.findInDocument('.time-controls')).toBeUndefined();
   });
 
   it('applies select filter correctly', async () => {
@@ -394,11 +429,11 @@ describe('LogComponent', () => {
       'checkViewportSize',
     ).and.callThrough();
 
-    component.checkScrollViewport = true;
+    component.checkScrollViewportCount = 1;
     dom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(1);
 
-    component.checkScrollViewport = false;
+    component.checkScrollViewportCount = 0;
     dom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -456,7 +491,7 @@ describe('LogComponent', () => {
     await dom.whenStable();
 
     const entry = dom.get('.field-value');
-    entry.checkTooltip(tooltipMessage);
+    await entry.checkTooltip(tooltipMessage);
   });
 
   it('tooltip message correctly undefined', async () => {
@@ -466,7 +501,7 @@ describe('LogComponent', () => {
     await dom.whenStable();
 
     const entry = dom.get('.field-value');
-    entry.checkTooltip(undefined);
+    await entry.checkTooltip(undefined);
   });
 
   function setTooltipInputData(message: string | undefined) {
@@ -576,7 +611,9 @@ describe('LogComponent', () => {
           [scrollToIndex]="scrollToIndex"
           [traceType]="traceType"
           [isFetchingData]="isFetchingData"
-          [checkScrollViewport]="checkScrollViewport"
+          [checkScrollViewportCount]="checkScrollViewportCount"
+          [showTimeControls]="showTimeControls"
+          [showTraceEntryTimes]="showTraceEntryTimes"
         ></log-view>
       `,
   })
@@ -588,7 +625,9 @@ describe('LogComponent', () => {
     headers: LogHeader[] = [];
     traceType: TraceType | undefined;
     isFetchingData = false;
-    checkScrollViewport = false;
+    checkScrollViewportCount = 0;
+    showTimeControls = true;
+    showTraceEntryTimes = true;
 
     @ViewChild(LogComponent) logComponent: LogComponent | undefined;
   }

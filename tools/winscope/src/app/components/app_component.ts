@@ -120,6 +120,8 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import {TraceType} from '@trace_api/trace_type';
+import {ParsingErrorType} from '@app/parsing_error_type';
 
 /**
  * The root component of the Winscope app.
@@ -308,25 +310,33 @@ export class AppComponent implements WinscopeEventListener {
       );
     }
 
-    this.appStorage =
-      globalConfig.MODE === 'PROD'
-        ? new PersistentStore()
-        : new InMemoryStorage();
+    const isProdMode = globalConfig.isProdMode();
+
+    this.appStorage = isProdMode
+      ? new PersistentStore()
+      : new InMemoryStorage();
 
     window.onunhandledrejection = (evt) => {
       Analytics.Error.logGlobalException(evt.reason);
     };
+
+    if (isProdMode) {
+      window.addEventListener('beforeunload', (event) => {
+        if (this.dataLoaded) {
+          event.preventDefault();
+          event.returnValue = '';
+        }
+      });
+    }
   }
 
   async ngAfterViewInit() {
+    this.setComponentsToMediator();
     await this.mediator.onWinscopeEvent(new AppInitialized());
   }
 
   ngAfterViewChecked() {
-    this.mediator.setUploadTracesComponent(this.uploadTracesComponent);
-    this.mediator.setCollectTracesComponent(this.collectTracesComponent);
-    this.mediator.setTraceViewComponent(this.traceViewComponent);
-    this.mediator.setTimelineComponent(this.timelineComponent);
+    this.setComponentsToMediator();
 
     if (this.sendRefreshDumpsRequest) {
       this.sendRefreshDumpsRequest = false;
@@ -669,14 +679,35 @@ export class AppComponent implements WinscopeEventListener {
       : 'accent';
   }
 
-  packetLossWarning(): string | undefined {
-    const lostPerfettoPackets = this.loadedFileData.getLostPerfettoPackets();
-    if (lostPerfettoPackets === 0) {
+  getTraceTypesWithParsingErrors(): Map<TraceType, ParsingErrorType> {
+    return this.loadedFileData.getTraceTypesWithParsingErrors();
+  }
+
+  combinedWarning(): string | undefined {
+    const packetLoss = this.packetLossWarning();
+    const traceProcessorError = this.traceProcessorErrorWarning();
+    if (packetLoss === undefined && traceProcessorError === undefined) {
       return undefined;
     }
-    return `${lostPerfettoPackets} Perfetto packet${
-      lostPerfettoPackets > 1 ? 's' : ''
-    } lost during tracing - data may be incomplete`;
+
+    let combinedWarning = '';
+    if (packetLoss !== undefined) {
+      combinedWarning += packetLoss;
+    }
+
+    if (traceProcessorError !== undefined) {
+      if (combinedWarning.length > 0) {
+        combinedWarning += ' and ';
+        combinedWarning +=
+          traceProcessorError[0].toLowerCase() + traceProcessorError.slice(1);
+      } else {
+        combinedWarning += traceProcessorError;
+      }
+    } else {
+      combinedWarning += ' - data may be incomplete';
+    }
+
+    return combinedWarning;
   }
 
   async showFileSelectionDialog(filenames: string[]) {
@@ -704,6 +735,31 @@ export class AppComponent implements WinscopeEventListener {
           });
       });
     });
+  }
+
+  private packetLossWarning(): string | undefined {
+    const lostPerfettoPackets = this.loadedFileData.getLostPerfettoPackets();
+    if (lostPerfettoPackets === 0) {
+      return undefined;
+    }
+    return `${lostPerfettoPackets} Perfetto packet${
+      lostPerfettoPackets > 1 ? 's' : ''
+    } lost during tracing`;
+  }
+
+  private traceProcessorErrorWarning(): string | undefined {
+    const traceTypesWithParsingErrors =
+      this.loadedFileData.getTraceTypesWithParsingErrors();
+    if (traceTypesWithParsingErrors.size === 0) {
+      return undefined;
+    }
+
+    for (const [_, errorType] of traceTypesWithParsingErrors) {
+      if (errorType === ParsingErrorType.DATA_INCORRECT) {
+        return `Trace processor errors occurred - data may be incorrect`;
+      }
+    }
+    return `Trace processor errors occurred - data may be incomplete`;
   }
 
   private async onViewersLoaded(event: ViewersLoaded) {
@@ -746,6 +802,14 @@ export class AppComponent implements WinscopeEventListener {
     this.pageTitle.setTitle('Winscope');
     this.changeDetectorRef.detectChanges();
     this.updateShareState();
+    this.setComponentsToMediator();
+  }
+
+  private setComponentsToMediator() {
+    this.mediator.setUploadTracesComponent(this.uploadTracesComponent);
+    this.mediator.setCollectTracesComponent(this.collectTracesComponent);
+    this.mediator.setTraceViewComponent(this.traceViewComponent);
+    this.mediator.setTimelineComponent(this.timelineComponent);
   }
 
   private async onBugreportFileSelectionRequest(

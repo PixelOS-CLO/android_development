@@ -71,13 +71,22 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--groups-to-keep",
         required=True,
-        nargs="*",
+        nargs=1,
         default=[],
         help="Space-separated or comma-separated list of repo groups to KEEP",
     )
     parser.add_argument(
+        "--groups-build-only",
+        nargs=1,
+        default=[],
+        help=(
+            "Space-separated or comma-separated list of repo groups to KEEP on "
+            "builds but REMOVE from the generated output manifest."
+        ),
+    )
+    parser.add_argument(
         "--projects-to-keep",
-        nargs="*",
+        nargs=1,
         default=[],
         help=(
             "Space-separated list of project names to explicitly KEEP, regardless"
@@ -92,6 +101,11 @@ def get_parser() -> argparse.ArgumentParser:
             "Root directory of the source checkout. Defaults to the"
             " current working directory."
         ),
+    )
+    parser.add_argument(
+        "--output-manifest",
+        type=Path,
+        help="Path to write the filtered manifest XML file.",
     )
     parser.add_argument(
         "-n",
@@ -324,6 +338,48 @@ def remove_project_directories(
                     break
 
 
+def generate_arsp_filtered_manifest(
+    manifest_content: str, projects_to_keep_names: set[str], output_path: Path
+) -> bool:
+    """Creates a new manifest file containing only the projects we kept."""
+    try:
+        root = ET.fromstring(manifest_content)
+    except ET.ParseError as e:
+        logging.error("Error parsing manifest content: %s", e)
+        return False
+
+    allowed_tags = {"remote", "default", "repo-hooks", "project"}
+    for child in list(root):
+        if child.tag not in allowed_tags:
+            root.remove(child)
+            continue
+
+        if child.tag == "remote":
+            if child.get("name") != "arsp":
+                root.remove(child)
+        elif child.tag == "default":
+            if child.get("remote") != "arsp":
+                root.remove(child)
+        elif child.tag == "project":
+            project_name = child.get("name")
+            if project_name in projects_to_keep_names:
+                if "remote" in child.attrib:
+                    del child.attrib["remote"]
+            else:
+                root.remove(child)
+
+    tree = ET.ElementTree(root)
+    logging.info("Writing filtered manifest to: %s", output_path)
+
+    try:
+        tree.write(output_path, encoding="utf-8", xml_declaration=True)
+        logging.info("Successfully wrote filtered manifest to: %s", output_path)
+        return True
+    except OSError as e:
+        logging.error("Error writing filtered manifest to %s: %s", output_path, e)
+        return False
+
+
 def main(argv: Optional[list[str]] = None) -> Optional[int]:
     parser = get_parser()
     opts = parser.parse_args(argv)
@@ -351,19 +407,25 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
     logging.info("Found %d projects in the manifest.", len(all_projects))
 
     groups_to_keep = process_groups_to_keep(opts.groups_to_keep)
+    groups_build_only = process_groups_to_keep(opts.groups_build_only)
 
-    projects_to_remove = find_projects_to_remove(all_projects, groups_to_keep)
+    all_build_keep_groups = groups_to_keep + groups_build_only
+    projects_to_remove = find_projects_to_remove(all_projects, all_build_keep_groups)
     logging.info(
         "Identified %d projects to potentially remove based on groups.",
         len(projects_to_remove),
     )
 
     if opts.projects_to_keep:
-        keep_project_names = set(opts.projects_to_keep)
-        logging.info("Explicitly keeping projects: %s", sorted(keep_project_names))
+        keep_project_names_from_cli = set(opts.projects_to_keep)
+        logging.info(
+            "Explicitly keeping projects: %s", sorted(keep_project_names_from_cli)
+        )
         initial_remove_count = len(projects_to_remove)
         projects_to_remove = [
-            p for p in projects_to_remove if p["name"] not in keep_project_names
+            p
+            for p in projects_to_remove
+            if p["name"] not in keep_project_names_from_cli
         ]
         explicitly_kept_count = initial_remove_count - len(projects_to_remove)
         if explicitly_kept_count:
@@ -373,6 +435,21 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
             )
 
     logging.info("Final count of projects to remove: %d", len(projects_to_remove))
+
+    keep_groups_set = set(groups_to_keep)
+    cli_keep_set = set(opts.projects_to_keep)
+    keep_project_names_for_manifest = set()
+    for p in all_projects:
+        if p not in projects_to_remove:
+            if set(p["groups"]) & keep_groups_set or p["name"] in cli_keep_set:
+                keep_project_names_for_manifest.add(p["name"])
+
+    if opts.output_manifest:
+        success = generate_arsp_filtered_manifest(
+            manifest_content, keep_project_names_for_manifest, opts.output_manifest
+        )
+        if not success:
+            return 1
     if projects_to_remove:
         remove_project_directories(projects_to_remove, checkout_root, opts.dry_run)
     else:

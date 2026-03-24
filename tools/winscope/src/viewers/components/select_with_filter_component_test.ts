@@ -27,7 +27,6 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
-import {KeyboardEventCode} from '@common/dom';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {SelectWithFilterComponent} from './select_with_filter_component';
 
@@ -172,36 +171,25 @@ describe('SelectWithFilterComponent', () => {
     checkSelectValue(['0']);
   });
 
-  it('calls custom select keydown handler for CTRL+A', async () => {
-    dom.openMatSelect();
-    await dom.detectChangesAndWaitStable();
+  it('toggles all with button', async () => {
+    const toggle = () => {
+      dom.getMatSelectPanel().findAndClick('.user-option');
+    };
+    await checkToggleAll(toggle);
+  });
+
+  it('toggles all with CTRL+A', async () => {
+    await checkToggleAll(() => dom.keydownCtrlAToSelectPanel());
+  });
+
+  it('shows tooltip for all button', async () => {
+    await dom.openMatSelect();
     await dom.whenRenderingDone();
-    const keydownCtrlA = new KeyboardEvent('keydown', {
-      code: KeyboardEventCode.A,
-      ctrlKey: true,
-    });
-    const panel = dom.getMatSelectPanel();
 
-    panel.dispatchEvent(keydownCtrlA);
-    checkSelectValue(['0', '1', '2']);
-
-    panel.dispatchEvent(keydownCtrlA);
-    checkSelectValue([]);
-
-    panel.dispatchEvent(keydownCtrlA);
-    const inputEl = panel.findAndDispatchInput(filterInputField, '2'); // filters out '0' and '1' while all selected
-
-    panel.dispatchEvent(keydownCtrlA);
-    checkSelectValue(['0', '1']);
-
-    panel.dispatchEvent(keydownCtrlA);
-    checkSelectValue(['0', '1', '2']);
-
-    panel.dispatchEvent(keydownCtrlA);
-    inputEl.dispatchInput(''); // removes filter while '0' and '1' selected
-
-    panel.dispatchEvent(keydownCtrlA);
-    checkSelectValue(['0', '1', '2']);
+    const button = dom.getMatSelectPanel().get('.user-option');
+    await button.checkTooltip(
+      assertDefined(component.selectWithFilterComponent).allButtonTooltip,
+    );
   });
 
   it('does not emit second change after shift + click for adjacent options', () => {
@@ -317,6 +305,36 @@ describe('SelectWithFilterComponent', () => {
     pinnedOptions.forEach((option, index) => {
       option.checkTextExact(expOpts[index]);
     });
+  }
+
+  async function checkToggleAll(toggle: () => void) {
+    await dom.openMatSelect();
+    await dom.whenRenderingDone();
+
+    toggle();
+    checkSelectValue(['0', '1', '2']);
+
+    toggle();
+    checkSelectValue([]);
+
+    toggle();
+    // filters out '0' and '1' while all selected
+    const inputEl = dom
+      .getMatSelectPanel()
+      .findAndDispatchInput(filterInputField, '2');
+
+    toggle();
+    checkSelectValue(['0', '1']);
+
+    toggle();
+    checkSelectValue(['0', '1', '2']);
+
+    toggle();
+    // removes filter while '0' and '1' selected
+    inputEl.dispatchInput('');
+
+    toggle();
+    checkSelectValue(['0', '1', '2']);
   }
 
   @Component({

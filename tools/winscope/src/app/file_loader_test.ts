@@ -20,14 +20,15 @@ import {UserWarning} from '@messaging/user_warning';
 import {
   makeWarningCorruptedArchive,
   makeWarningNoValidFiles,
+  makeWarningTraceProcessorError,
   makeWarningUnsupportedFileFormat,
 } from './warnings';
 import {BugreportFileSelected} from '@app/misc_events';
 import {getFixtureFile} from '@test/unit/common/io_helpers';
 import {
   ASIA_TIMEZONE_INFO,
+  makeConverterNoRteOffsets,
   timestampEqualityTester,
-  UTC_CONVERTER,
 } from '@common/time/test_helpers';
 import {UserNotifierChecker} from '@test/unit/user_notifier_checker';
 import {TraceType} from '@trace_api/trace_type';
@@ -37,11 +38,12 @@ import {FileLoader, FileLoaderResult} from './file_loader';
 import {TraceFileIdentifier} from './trace_file_identifier';
 import {makeWarningInvalidPerfettoTrace} from '@parsers/helpers/warnings';
 import {FileReader} from '@trace_api/file_reader';
-import {TimestampConverter} from '@common/time/timestamp_converter';
 import {
   makeSpyRowIterator,
   makeSpyQueryResult,
 } from '@trace_processor/test_utils';
+import {TimezoneInfo} from '@common/time/time';
+import {ParsingErrorType} from './parsing_error_type';
 
 describe('FileLoader', () => {
   let legacySfFile: File;
@@ -91,7 +93,7 @@ describe('FileLoader', () => {
 
     progressListener = new ProgressListenerStub();
     spyOn(progressListener, 'onProgressUpdate');
-    fileLoader = new FileLoader(UTC_CONVERTER);
+    fileLoader = new FileLoader(makeConverterNoRteOffsets());
   });
 
   afterEach(() => {
@@ -166,7 +168,7 @@ describe('FileLoader', () => {
 
     const result = await loadFiles([bugreportArchive, otherFile]);
 
-    expectLoadResult(result, 2, [], new TimestampConverter(ASIA_TIMEZONE_INFO));
+    expectLoadResult(result, 2, [], ASIA_TIMEZONE_INFO);
     checkLoadedFileReaders(result, [
       TraceType.INPUT_METHOD_CLIENTS,
       TraceType.SURFACE_FLINGER,
@@ -181,7 +183,7 @@ describe('FileLoader', () => {
     );
 
     const result = await loadFiles([bugreportArchive]);
-    expectLoadResult(result, 1, [], new TimestampConverter(ASIA_TIMEZONE_INFO));
+    expectLoadResult(result, 1, [], ASIA_TIMEZONE_INFO);
   });
 
   it('forwards winscope events to file identifier', async () => {
@@ -265,6 +267,66 @@ describe('FileLoader', () => {
     expect(result.lostPerfettoPackets).toBe(2);
   });
 
+  it('surfaces information about trace processor errors for incomplete data', async () => {
+    let result = await loadFiles([perfettoFileProtolog]);
+    expect(result.traceTypesWithParsingErrors).toEqual(new Map());
+
+    const spyIter = makeSpyRowIterator();
+    spyIter.get.withArgs('name').and.returnValue('inputmethod_clients');
+    const queryResultObj = makeSpyQueryResult(spyIter);
+    queryResultObj.numRows.and.returnValue(1);
+
+    const spy = spyOn(TraceProcessorProxy.prototype, 'query').and.callThrough();
+    spy
+      .withArgs(
+        'SELECT name FROM stats ' +
+          "WHERE (name LIKE '%winscope%' OR name = 'android_input_event_parse_errors') AND value > 0",
+      )
+      .and.returnValue(Promise.resolve(queryResultObj));
+    result = await loadFiles([perfettoFileProtolog]);
+    expect(result.traceTypesWithParsingErrors).toEqual(
+      new Map([
+        [TraceType.INPUT_METHOD_CLIENTS, ParsingErrorType.DATA_INCOMPLETE],
+      ]),
+    );
+
+    userNotifierChecker.expectAdded([
+      makeWarningTraceProcessorError(result.traceTypesWithParsingErrors),
+    ]);
+
+    userNotifierChecker.reset();
+  });
+
+  it('surfaces information about trace processor errors for incorrect data', async () => {
+    let result = await loadFiles([perfettoFileProtolog]);
+    expect(result.traceTypesWithParsingErrors).toEqual(new Map());
+
+    const spyIter = makeSpyRowIterator();
+    spyIter.get
+      .withArgs('name')
+      .and.returnValue('winscope_protolog_view_config_collision');
+    const queryResultObj = makeSpyQueryResult(spyIter);
+    queryResultObj.numRows.and.returnValue(1);
+
+    const spy = spyOn(TraceProcessorProxy.prototype, 'query').and.callThrough();
+    spy
+      .withArgs(
+        'SELECT name FROM stats ' +
+          "WHERE (name LIKE '%winscope%' OR name = 'android_input_event_parse_errors') AND value > 0",
+      )
+      .and.returnValue(Promise.resolve(queryResultObj));
+    result = await loadFiles([perfettoFileProtolog]);
+    expect(result.traceTypesWithParsingErrors).toEqual(
+      new Map([[TraceType.PROTO_LOG, ParsingErrorType.DATA_INCORRECT]]),
+    );
+
+    userNotifierChecker.expectAdded([
+      makeWarningTraceProcessorError(result.traceTypesWithParsingErrors),
+    ]);
+
+    userNotifierChecker.reset();
+  });
+
   it('is robust to mixed valid and invalid trace files', async () => {
     const files = [jpgFile, elapsedFile];
     const result = await loadFiles(files);
@@ -308,12 +370,12 @@ describe('FileLoader', () => {
     result: FileLoaderResult,
     numberOfFileReaders: number,
     expectedWarnings: UserWarning[],
-    converter = UTC_CONVERTER,
+    timezoneInfo?: TimezoneInfo,
   ) {
     userNotifierChecker.expectAdded(expectedWarnings);
     userNotifierChecker.reset();
     expect(getAllReaders(result).length).toBe(numberOfFileReaders);
-    expect(result.timestampConverter).toEqual(converter);
+    expect(result.timezoneInfo).toEqual(timezoneInfo);
   }
 
   function checkLoadedFileReaders(

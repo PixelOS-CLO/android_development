@@ -57,6 +57,8 @@ import {ProgressListener} from '@messaging/progress_listener';
 import {makeWarningIncompleteFrameMapping} from './warnings';
 import {getResolvedUTCOffset} from '@common/time/utc_offset_resolver';
 import {TraceProcessorFactory} from '@trace_processor/trace_processor_factory';
+import {TimezoneInfo} from '@common/time/time';
+import {ParsingErrorType} from './parsing_error_type';
 
 /**
  * A class that stores and transforms trace data.
@@ -69,11 +71,14 @@ import {TraceProcessorFactory} from '@trace_processor/trace_processor_factory';
 export class LoadedFileData {
   private static readonly DEFAULT_DOWNLOAD_ARCHIVE_NAME = 'winscope';
 
+  private readonly timestampConverter = new TimestampConverter();
   private loadedFiles = new LoadedFiles<FileReaderAndParser>();
   private downloadArchiveFilename =
     LoadedFileData.DEFAULT_DOWNLOAD_ARCHIVE_NAME;
   private lostPerfettoPackets = 0;
-  private timestampConverter = new TimestampConverter(UTC_TIMEZONE_INFO);
+  private traceTypesWithParsingErrors: Map<TraceType, ParsingErrorType> =
+    new Map();
+  private timezoneInfo: TimezoneInfo = UTC_TIMEZONE_INFO;
   private traceGeometryData: TraceGeometryData = new TraceGeometryData();
   private traces: Traces | undefined;
 
@@ -100,9 +105,12 @@ export class LoadedFileData {
     );
     if (result.perfetto.length > 0) {
       this.lostPerfettoPackets = result.lostPerfettoPackets;
+      this.traceTypesWithParsingErrors = result.traceTypesWithParsingErrors;
       this.traceGeometryData = result.traceGeometryData;
     }
-    this.timestampConverter = result.timestampConverter;
+    if (result.timezoneInfo) {
+      this.timezoneInfo = result.timezoneInfo;
+    }
 
     const {legacy, nonPerfetto} = this.updateTimestamps(
       result.legacy,
@@ -170,6 +178,21 @@ export class LoadedFileData {
     if (traces.getSize() === 0) {
       return false;
     }
+    for (const trace of traces) {
+      if (this.traceTypesWithParsingErrors.has(trace.type)) {
+        if (
+          this.traceTypesWithParsingErrors.get(trace.type) ===
+          ParsingErrorType.DATA_INCORRECT
+        ) {
+          trace.setCorruptedState(true, 'Trace processor error incorrect data');
+        } else {
+          trace.setCorruptedState(
+            true,
+            'Trace processor error incomplete data',
+          );
+        }
+      }
+    }
 
     try {
       const startTimeMs = Date.now();
@@ -199,6 +222,10 @@ export class LoadedFileData {
 
   getLostPerfettoPackets(): number {
     return this.lostPerfettoPackets;
+  }
+
+  getTraceTypesWithParsingErrors(): Map<TraceType, ParsingErrorType> {
+    return this.traceTypesWithParsingErrors;
   }
 
   async tryCreateSearchTrace(
@@ -415,7 +442,9 @@ export class LoadedFileData {
 
     this.lostPerfettoPackets = result.lostPerfettoPackets;
     this.traceGeometryData = result.traceGeometryData;
-    this.timestampConverter = result.timestampConverter;
+    if (result.timezoneInfo) {
+      this.timezoneInfo = result.timezoneInfo;
+    }
 
     if (result.perfetto.length === 0) {
       return;
@@ -451,7 +480,7 @@ export class LoadedFileData {
       } else {
         const timestamp = trace.getEntry(0).getTimestamp();
         const utcOffset = await getResolvedUTCOffset(
-          UTC_TIMEZONE_INFO,
+          this.timezoneInfo,
           timestamp,
           TraceProcessorFactory.getSingleInstance(),
         );

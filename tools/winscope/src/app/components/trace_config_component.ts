@@ -19,6 +19,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
   Inject,
   Input,
@@ -85,10 +86,14 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
     new EventEmitter<TraceConfigurationMap>();
 
   private lastClickedIndex = new Map<string, number>();
+  private readonly observer = new ResizeObserver((_) => {
+    this.changeDetectorRef.detectChanges();
+  });
 
   constructor(
     @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
     @Inject(NgZone) private ngZone: NgZone,
+    @Inject(ElementRef) private elementRef: ElementRef,
   ) {
     super();
   }
@@ -105,9 +110,21 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
     this.onTraceConfigChange();
   }
 
+  ngAfterViewInit() {
+    this.observer.observe(this.elementRef.nativeElement);
+  }
+
+  ngOnDestroy() {
+    this.observer.disconnect();
+  }
+
   getTraceCheckboxContainerHeight(): string {
     const config = assertDefined(this.traceConfig);
-    return Math.ceil(Object.keys(config).length / 3) * 36 + 'px';
+    const columns = Math.min(
+      3,
+      Math.floor(this.elementRef.nativeElement.clientWidth / 160),
+    );
+    return Math.ceil(Object.keys(config).length / columns) * 36 + 'px';
   }
 
   getSortedTraceKeys(): string[] {
@@ -148,14 +165,18 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
   }
 
   onAllButtonClick(select: MatSelect, config: SelectionConfiguration) {
-    if (config.value.length !== config.options.length) {
-      config.value = config.options.map((o) => o.value);
-      select.value = config.options;
-    } else {
-      config.value = [];
-      select.value = [];
-    }
-    this.onTraceConfigChange();
+    this.onToggleAll(select, config);
+  }
+
+  allOptionsSelected(
+    select: MatSelect,
+    config: SelectionConfiguration,
+  ): boolean {
+    return (
+      config.options.filter((option) => {
+        return !this.hideOption(option.value, config.filterString ?? '');
+      }).length === (select.value?.length ?? 0)
+    );
   }
 
   onOptionClick(
@@ -237,7 +258,7 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
     return config as CheckboxConfiguration;
   }
 
-  protected override onKeydownCtrlA(
+  protected override onToggleAll(
     select: MatSelect,
     selectionConfig: SelectionConfiguration,
   ) {
@@ -245,11 +266,7 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
       return o.value;
     });
 
-    this.handleKeydownCtrlA(
-      select,
-      allOpts,
-      selectionConfig.filterString ?? '',
-    );
+    this.handleToggleAll(select, allOpts, selectionConfig.filterString ?? '');
 
     selectionConfig.value = select.value;
     this.onTraceConfigChange();

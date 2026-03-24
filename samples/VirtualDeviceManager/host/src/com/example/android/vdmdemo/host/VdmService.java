@@ -150,12 +150,14 @@ public final class VdmService extends Hilt_VdmService {
     private VirtualDeviceManager.VirtualDevice mVirtualDevice;
     private DeviceCapabilities mDeviceCapabilities;
     private Intent mPendingRemoteIntent = null;
+    private UserHandle mPendingRemoteUser = null;
     private int mNextLocalDisplayId = 0;
     private @RemoteDisplay.DisplayType int mPendingDisplayType = RemoteDisplay.DISPLAY_TYPE_APP;
     private DisplayManager mDisplayManager;
     private KeyguardManager mKeyguardManager;
     private VirtualDeviceManager mVirtualDeviceManager;
-    private ArrayList<Consumer<Boolean>> mLocalVirtualDeviceLifecycleListeners = new ArrayList<>();
+    private final ArrayList<Consumer<Boolean>> mLocalVirtualDeviceLifecycleListeners =
+            new ArrayList<>();
 
     private VirtualDeviceManager.VirtualDeviceListener mVirtualDeviceListener;
 
@@ -574,7 +576,7 @@ public final class VdmService extends Hilt_VdmService {
             }
         }
 
-        if (VdmCompat.isAtLeastB() && Flags.deviceAwareDisplayPower()) {
+        if (VdmCompat.isAtLeastB()) {
             int displayTimeout = Integer.parseInt(
                     mPreferenceController.getString(R.string.pref_display_timeout));
             virtualDeviceBuilder
@@ -609,7 +611,7 @@ public final class VdmService extends Hilt_VdmService {
                         .setPower(sensor.getPower())
                         .setResolution(sensor.getResolution())
                         .setMaximumRange(sensor.getMaxRange());
-                if (VdmCompat.isAtLeastB() && Flags.deviceAwareDisplayPower()) {
+                if (VdmCompat.isAtLeastB()) {
                     builder.setWakeUpSensor(sensor.getIsWakeUpSensor())
                             .setReportingMode(sensor.getReportingMode());
                 }
@@ -706,23 +708,24 @@ public final class VdmService extends Hilt_VdmService {
     }
 
     void startStreamingHome() {
-        startStreaming(null, RemoteDisplay.DISPLAY_TYPE_HOME);
+        startStreaming(null, null, RemoteDisplay.DISPLAY_TYPE_HOME);
     }
 
     void startMirroring() {
-        startStreaming(null, RemoteDisplay.DISPLAY_TYPE_MIRROR);
+        startStreaming(null, null, RemoteDisplay.DISPLAY_TYPE_MIRROR);
     }
 
     void startDesktop() {
-        startStreaming(null, RemoteDisplay.DISPLAY_TYPE_DESKTOP);
+        startStreaming(null, null, RemoteDisplay.DISPLAY_TYPE_DESKTOP);
     }
 
-    void startStreaming(Intent intent) {
-        startStreaming(intent, RemoteDisplay.DISPLAY_TYPE_APP);
+    void startStreaming(Intent intent, UserHandle user) {
+        startStreaming(intent, user, RemoteDisplay.DISPLAY_TYPE_APP);
     }
 
-    private void startStreaming(Intent intent, int type) {
+    private void startStreaming(Intent intent, UserHandle user, int type) {
         mPendingRemoteIntent = intent;
+        mPendingRemoteUser = user;
         if (mPendingRemoteIntent != null) {
             mPendingRemoteIntent.addFlags(
                     Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED | Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -753,8 +756,9 @@ public final class VdmService extends Hilt_VdmService {
                 dpi, mVirtualDevice, remoteIo, mPendingDisplayType, mPreferenceController);
         mDisplayRepository.addDisplay(remoteDisplay);
         if (mPendingRemoteIntent != null) {
-            remoteDisplay.launchIntent(mPendingRemoteIntent);
+            remoteDisplay.launchIntent(mPendingRemoteIntent, mPendingRemoteUser);
             mPendingRemoteIntent = null;
+            mPendingRemoteUser = null;
         }
         return remoteDisplay;
     }
@@ -768,7 +772,7 @@ public final class VdmService extends Hilt_VdmService {
     }
 
     void setPowerState(boolean poweredOn) {
-        if (VdmCompat.isAtLeastB() && Flags.deviceAwareDisplayPower() && mVirtualDevice != null) {
+        if (VdmCompat.isAtLeastB() && mVirtualDevice != null) {
             if (poweredOn) {
                 mVirtualDevice.wakeUp();
             } else {
@@ -777,10 +781,10 @@ public final class VdmService extends Hilt_VdmService {
         }
     }
 
-    void startIntentOnDisplayIndex(Intent intent, int displayIndex) {
+    void startIntentOnDisplayIndex(Intent intent, UserHandle user, int displayIndex) {
         mDisplayRepository
                 .getDisplayByIndex(displayIndex)
-                .ifPresent(d -> d.launchIntent(intent));
+                .ifPresent(display -> display.launchIntent(intent, user));
     }
 
     private void recreateVirtualDevice() {

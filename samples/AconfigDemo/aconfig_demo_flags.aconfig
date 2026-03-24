@@ -242,3 +242,27 @@ flag {
     description: "A test flag for the new templaters"
     bug: "456526598"
 }
+flag {
+    name: "test_voyager_flag_2"
+    namespace: "gantry"
+    description: "A test flag for the new templaters"
+    bug: "456526598"
+}
+flag {
+    name: "test_voyager_flag_3"
+    namespace: "gantry"
+    description: "A test flag for the new templaters"
+    bug: "456526598"
+}
+flag {
+    name: "test_voyager_flag_4"
+    namespace: "gantry"
+    description: "A test flag for the new templaters"
+    bug: "456526598"
+}
+flag {
+    name: "test_voyager_flag_5"
+    namespace: "gantry"
+    description: "A test flag for the new templaters"
+    bug: "456526598"
+}
