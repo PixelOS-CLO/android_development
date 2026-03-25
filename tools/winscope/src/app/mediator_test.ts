@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-import {AppFilesCollected, AppFilesUploaded, AppInitialized, AppRefreshDumpsRequest, AppResetRequest, AppTraceViewRequest, AppTraceViewRequestHandled,} from '@app/app_events';
 import {PlaybackSpeedChange, PlaybackStateChangeHandled, PlaybackStateChangePropagate, PlaybackStateChangeRequest,} from '@app/components/timeline/playback_events';
 import {ExpandedTimelineToggled} from '@app/components/timeline/timeline_events';
-import {ActiveSearchQueriesUpdate, BookmarksChanged, BugreportFileSelected, BugreportFileSelectionRequest, DarkModeToggled, FilterPresetApplyRequest, FilterPresetSaveRequest, NoTraceTargetsSelectedEvent,} from '@app/misc_events';
-import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@app/tabbed_view_events';
-import {ViewersLoaded, ViewersUnloaded} from '@app/viewers_events';
+import {TraceSearchInitializer} from '@app/trace_search/trace_search_initializer';
 import {assertDefined} from '@common/assert';
 import {Rect} from '@common/geometry/rect';
 import {TransformMatrix} from '@common/geometry/transform_matrix';
@@ -27,6 +24,7 @@ import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {makeRealTimestamp, makeZeroTimestamp} from '@common/time/test_helpers';
 import {CrossToolProtocol} from '@cross_tool/cross_tool_protocol';
 import {RemoteToolDownloadStart, RemoteToolFilesReceived, RemoteToolInitialized, RemoteToolTimestampReceived, RemoteToolWaitingForFiles,} from '@cross_tool/remote_tool_events';
+import {LegacyToPerfettoConverter} from '@legacy_file_readers/common/legacy_to_perfetto_converter';
 import {ProgressListener} from '@messaging/progress_listener';
 import {ProgressListenerStub} from '@messaging/progress_listener_stub';
 import {UserWarning} from '@messaging/user_warning';
@@ -51,12 +49,14 @@ import {ViewType} from '@viewers/viewer';
 import {ViewerFactory} from '@viewers/viewer_factory';
 import {ViewerStub} from '@viewers/viewer_stub';
 
+import {AppFilesCollected, AppFilesUploaded, AppInitialized, AppRefreshDumpsRequest, AppResetRequest, AppTraceViewRequest, AppTraceViewRequestHandled,} from './app_events';
 import {FileLoader} from './file_loader';
-import {LegacyToPerfettoConverter} from './legacy_to_perfetto_converter';
 import {LoadedFileData} from './loaded_file_data';
 import {Mediator} from './mediator';
+import {ActiveSearchQueriesUpdate, BookmarksChanged, BugreportFileSelected, BugreportFileSelectionRequest, DarkModeToggled, FilterPresetApplyRequest, FilterPresetSaveRequest, NoTraceTargetsSelectedEvent,} from './misc_events';
+import {TabbedViewSwitched, TabbedViewSwitchRequest,} from './tabbed_view_events';
 import {TimelineData} from './timeline_data';
-import {TraceSearchInitializer} from './trace_search/trace_search_initializer';
+import {ViewersLoaded, ViewersUnloaded} from './viewers_events';
 import {makeWarningNoTraceTargetsSelected, makeWarningNoValidFiles,} from './warnings';
 
 describe('Mediator', () => {
@@ -630,10 +630,10 @@ describe('Mediator', () => {
       expect(traceViewComponent.onWinscopeEvent).not.toHaveBeenCalled();
 
       await viewerStub0.emitAppEventForTesting(
-        new TabbedViewSwitchRequest(traceSf),
+        new TabbedViewSwitchRequest(traceSf, 'metadata'),
       );
       expect(traceViewComponent.onWinscopeEvent).toHaveBeenCalledOnceWith(
-        new TabbedViewSwitchRequest(traceSf),
+        new TabbedViewSwitchRequest(traceSf, 'metadata'),
       );
       userNotifierChecker.expectNotified([]);
     });

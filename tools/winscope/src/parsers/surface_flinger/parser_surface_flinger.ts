@@ -15,23 +15,44 @@
  */
 
 import {assertBigIntOrUndefined, assertDefined, assertStringOrUndefined,} from '@common/assert';
+import {ParserTimestampConverter} from '@common/time/timestamp_converter';
+import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {AbstractParser} from '@parsers/perfetto/abstract_parser';
 import {queryVsyncId} from '@parsers/perfetto/query_helpers';
-import {makeEntryHierarchyTrees} from '@parsers/surface_flinger/entry_hierarchy_tree_factory';
-import {RectExtractor} from '@parsers/surface_flinger/rect_extractor';
 import {CustomQueryParserResultTypeMap, CustomQueryType, VisitableParserCustomQuery,} from '@trace_api/custom_query';
 import {EntriesRange} from '@trace_api/index_types';
+import {TraceFile} from '@trace_api/trace_file';
 import {TraceType} from '@trace_api/trace_type';
 import {QueryResult, QueryResults} from '@trace_processor/query_result';
 import {RawDataQueryResult} from '@trace_processor/raw_data_query_result';
+import {TraceProcessor} from '@trace_processor/trace_processor';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {RectsForTrace} from '@tree_node/rect_extractor_result';
+
+import {makeEntryHierarchyTrees} from './entry_hierarchy_tree_factory';
+import {RectExtractor} from './rect_extractor';
 
 export class ParserSurfaceFlinger extends AbstractParser<HierarchyTreeNode> {
   protected override readonly checkInvalidTs = true;
   private visibleAndDisplayRects: RectsForTrace | undefined;
   private allVisibleRects: QueryResult | undefined;
   private allSnapshots: QueryResult | undefined;
+
+  static async createInstance(
+    traceFile: TraceFile,
+    traceProcessor: TraceProcessor,
+    timestampConverter: ParserTimestampConverter,
+    traceGeometryData: TraceGeometryData,
+  ): Promise<Array<AbstractParser<HierarchyTreeNode>>> {
+    return [
+      new ParserSurfaceFlinger(
+        traceFile,
+        traceProcessor,
+        timestampConverter,
+        traceGeometryData,
+      ),
+    ];
+  }
 
   override async getRectsMap() {
     if (!this.visibleAndDisplayRects) {

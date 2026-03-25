@@ -43,6 +43,10 @@ limitations under the License.
     [rectSpec]="data?.rectSpec"
     [allRectSpecs]="data?.allRectSpecs"
     (collapseButtonClicked)="sections.onCollapseStateChange(CollapsibleSectionType.RECTS, true)"
+    (rectsDblClick)="onRectsDblClick.emit($event)"
+    (rectTypeButtonClick)="onRectTypeButtonClick.emit($event)"
+    (highlightedIdChange)="onHighlightedIdChange.emit($event)"
+    (optionsChange)="onRectsUserOptionsChange.emit($event)"
   ></rects-view>
 
   <hierarchy-view
@@ -58,6 +62,11 @@ limitations under the License.
     [userOptions]="data?.hierarchyUserOptions ?? {}"
     [rectIdToShowState]="data?.rectIdToShowState"
     (collapseButtonClicked)="sections.onCollapseStateChange(CollapsibleSectionType.HIERARCHY, true)"
+    (filterChange)="onHierarchyFilterChange.emit($event)"
+    (highlightedNodeChange)="onHighlightedNodeChange.emit($event)"
+    (pinnedItemChange)="onHierarchyPinnedChange.emit($event)"
+    (optionsChange)="onHierarchyUserOptionsChange.emit($event)"
+    (rectShowStateChange)="onRectShowStateChange.emit($event)"
   ></hierarchy-view>
 
   @if (!arePropertiesCollapsed()) {
@@ -70,23 +79,36 @@ limitations under the License.
           Properties disabled due to playback
         </div>
       }
+      @let curatedCollapsed =
+        sections.isSectionCollapsed(CollapsibleSectionType.CURATED_PROPERTIES);
+      @let dumpCollapsed = sections.isSectionCollapsed(CollapsibleSectionType.PROPERTIES);
       <surface-flinger-property-groups
+        #propertyGroups
         class="property-groups"
-        [class.empty]="
-          !data?.curatedProperties &&
-          !sections.isSectionCollapsed(CollapsibleSectionType.PROPERTIES)
-        "
-        [class.collapsed]="sections.isSectionCollapsed(CollapsibleSectionType.CURATED_PROPERTIES)"
+        [class.empty]="!data?.curatedProperties && !dumpCollapsed"
+        [class.collapsed]="curatedCollapsed"
         [properties]="data?.curatedProperties"
         (collapseButtonClicked)="
           sections.onCollapseStateChange(CollapsibleSectionType.CURATED_PROPERTIES, true)
         "
+        (highlightedIdChange)="onHighlightedIdChange.emit($event)"
       ></surface-flinger-property-groups>
+
+      @if (!curatedCollapsed && !dumpCollapsed) {
+        <resizer
+          class="small-icon-container"
+          dragAxis="vertical"
+          [dependentView]="propertyGroups.elementRef.nativeElement"
+          [store]="currStore"
+          [storeKey]="'sfPropertiesHeight'"
+        >
+        </resizer>
+      }
 
       <properties-view
         class="properties-view"
         [class.disabled]="data?.isPlaybackPlaying || data?.isPlaybackInitializing"
-        [class.collapsed]="sections.isSectionCollapsed(CollapsibleSectionType.PROPERTIES)"
+        [class.collapsed]="dumpCollapsed"
         [title]="propertiesTitle"
         [userOptions]="data?.propertiesUserOptions ?? {}"
         [nodeRows]="data?.propertyNodes ?? []"
@@ -99,6 +121,11 @@ limitations under the License.
         (collapseButtonClicked)="
           sections.onCollapseStateChange(CollapsibleSectionType.PROPERTIES, true)
         "
+        (filterChange)="onPropertiesFilterChange.emit($event)"
+        (optionsChange)="onPropertiesUserOptionsChange.emit($event)"
+        (highlightedPropertyChange)="onHighlightedPropertyChange.emit($event)"
+        (timestampClick)="onTimestampClick.emit($event)"
+        (propagatePropertyClick)="onPropagatePropertyClick.emit($event)"
       ></properties-view>
     </div>
   }

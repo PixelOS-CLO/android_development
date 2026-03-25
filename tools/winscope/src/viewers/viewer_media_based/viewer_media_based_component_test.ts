@@ -25,9 +25,9 @@ import {Timer} from '@common/time/timer';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {getFixtureFile} from '@test/unit/common/io_helpers';
 import {NonPerfettoParserProvider} from '@test/unit/parsers/fixture_utils';
+import {waitToBeCalled} from '@test/unit/spy_utils';
 import {Parser} from '@trace_api/parser';
 import {CanvasEntry, MediaBasedTraceEntry, VideoEntry,} from '@trace/media_based/media_based_trace_entry';
-import {ViewerEvents} from '@viewers/common/viewer_events';
 
 import {ViewerMediaBasedComponent} from './viewer_media_based_component';
 
@@ -36,6 +36,7 @@ describe('ViewerMediaBasedComponent', () => {
   let dom: DOMTestHelper<ViewerMediaBasedComponent>;
   let screenshotImage: ImageBitmap;
   let screenRecordingParser: Parser<MediaBasedTraceEntry>;
+  let srFrame: MediaBasedTraceEntry;
 
   beforeAll(async () => {
     screenRecordingParser = (await new NonPerfettoParserProvider()
@@ -47,6 +48,7 @@ describe('ViewerMediaBasedComponent', () => {
       'traces/screenshot/screenshot_2.png',
     );
     screenshotImage = await createImageBitmap(screenshotFile);
+    srFrame = await screenRecordingParser.getEntry(1);
   });
 
   beforeEach(async () => {
@@ -122,8 +124,7 @@ describe('ViewerMediaBasedComponent', () => {
 
   it('shows video', async () => {
     const initialMaxWidth = getContainerMaxWidth();
-    const firstFrame = await screenRecordingParser.getEntry(0);
-    dom.setComponentInput('currentTraceEntries', [firstFrame]);
+    dom.setComponentInput('currentTraceEntries', [srFrame]);
     await dom.detectChangesAndWaitStable();
 
     const videoContainer = dom.get('.video-container');
@@ -167,10 +168,7 @@ describe('ViewerMediaBasedComponent', () => {
   });
 
   it('emits event on overlay trace change', () => {
-    let index: number | undefined;
-    dom.addEventListener(ViewerEvents.OverlayMediaBasedTraceChange, (event) => {
-      index = (event as CustomEvent).detail;
-    });
+    const emitSpy = spyOn(component.onOverlayMediaBasedTraceChange, 'emit');
     const entry0 = new CanvasEntry(makeSpyImage());
     const spy0 = spyOn(entry0.frame, 'tryDrawOnCanvas');
     const entry1 = new CanvasEntry(makeSpyImage());
@@ -183,7 +181,7 @@ describe('ViewerMediaBasedComponent', () => {
 
     dom.openMatSelect();
     dom.getMatSelectPanel().findAndClickByIndex('mat-option', 1);
-    expect(index).toEqual(1);
+    expect(emitSpy).toHaveBeenCalledOnceWith(1);
     expect(spy0).toHaveBeenCalledTimes(1);
     expect(spy1).toHaveBeenCalledTimes(1);
   });
@@ -249,33 +247,27 @@ describe('ViewerMediaBasedComponent', () => {
   });
 
   it('emits event on double click', () => {
-    let index: number | undefined;
-    dom.addEventListener(ViewerEvents.OverlayDblClick, (event) => {
-      index = (event as CustomEvent).detail;
-    });
+    const emitSpy = spyOn(component.onOverlayDblClick, 'emit');
     expect(dom.find('.info-icon')).toBeUndefined();
     const container = dom.get('.container');
     container.doubleClick();
-    expect(index).toBeUndefined();
+    expect(emitSpy).not.toHaveBeenCalled();
 
     dom.setComponentInput('enableDoubleClick', true);
     dom.detectChanges();
     expect(dom.find('.info-icon')).toBeDefined();
     container.doubleClick();
-    expect(index).toBe(0);
+    expect(emitSpy).toHaveBeenCalledOnceWith(0);
   });
 
   it('does not emit event on double click if in playback mode', () => {
-    let index: number | undefined;
-    dom.addEventListener(ViewerEvents.OverlayDblClick, (event) => {
-      index = (event as CustomEvent).detail;
-    });
+    const emitSpy = spyOn(component.onOverlayDblClick, 'emit');
     dom.setComponentInput('enableDoubleClick', true);
     dom.setComponentInput('isInPlaybackMode', true);
     dom.detectChanges();
     const container = dom.get('.container');
     container.doubleClick();
-    expect(index).toBeUndefined();
+    expect(emitSpy).not.toHaveBeenCalled();
   });
 
   it('shows loading message', async () => {
@@ -324,6 +316,37 @@ describe('ViewerMediaBasedComponent', () => {
     dom.detectChanges();
     dom.openMatSelect();
     expect(dom.isMatSelectOpen()).toBeFalse();
+  });
+
+  it('keeps canvas alive when switching to video until video seek time reached', async () => {
+    dom.setComponentInput('currentTraceEntries', [
+      new CanvasEntry(screenshotImage),
+    ]);
+    dom.detectChanges();
+    expect(dom.find('canvas')).toBeDefined();
+
+    const seekSpy = spyOn(component, 'onVideoSeeked');
+    dom.setComponentInput('currentTraceEntries', [srFrame]);
+    dom.detectChanges();
+    expect(dom.find('canvas')).toBeDefined();
+    expect(dom.find('video')).toBeDefined();
+
+    await waitToBeCalled(seekSpy, 1);
+    seekSpy.and.callThrough();
+    component.onVideoSeeked();
+    expect(dom.find('canvas')).toBeUndefined();
+  });
+
+  it('does not keep canvas alive if no entries with frames alive', () => {
+    dom.setComponentInput('currentTraceEntries', [
+      new CanvasEntry(screenshotImage),
+    ]);
+    dom.detectChanges();
+    expect(dom.find('canvas')).toBeDefined();
+
+    dom.setComponentInput('currentTraceEntries', []);
+    dom.detectChanges();
+    expect(dom.find('canvas')).toBeUndefined();
   });
 
   function getContainerMaxWidth(): number {

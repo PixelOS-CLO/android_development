@@ -18,12 +18,12 @@ import {assertDefined} from '@common/assert';
 import {INVALID_TIME_NS} from '@common/time/time';
 import {getLogger, Logger} from '@compat/logging';
 import {PerfettoClockSnapshot, PerfettoTrace, PerfettoTracePacket,} from '@compat/protobuf';
-import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
 import {UserNotifier} from '@services/user_notifier';
 import {FileReader} from '@trace_api/file_reader';
 import {TraceFile} from '@trace_api/trace_file';
 
 import {getReaderWithLatestRealToBootTimeOffset, getReaderWithLatestRealToMonotonicTimeOffset,} from './file_reader_helpers';
+import {LegacyFileReader} from './legacy_file_reader';
 import {makeWarningFailedToConvertLegacyTraces} from './warnings';
 
 /**
@@ -85,7 +85,7 @@ export class LegacyToPerfettoConverter {
     // timestamp syncing. The packets for these traces will be parsed by
     // TP with the "has_invalid_elapsed_ts" column set to true.
     const hasValidTs = (packet: PerfettoTracePacket) => {
-      return packet.hasTimestamp() && packet.getTimestamp() !== '0';
+      return packet.hasTimestamp() && packet.getTimestamp()?.toString() !== '0';
     };
     const nonZeroTs = trace
       .getPacketList()

@@ -24,7 +24,7 @@ import {SetFormatters} from '@parsers/operations/set_formatters';
 import {queryArgs} from '@parsers/perfetto/query_helpers';
 import {QueryResult, RowIterator} from '@trace_processor/query_result';
 import {TraceProcessor} from '@trace_processor/trace_processor';
-import {PERFETTO_TRACE_PACKET_ROOT} from '@trace/proto_utils/tampered_message_type';
+import {Registry, TamperedProtoField,} from '@trace/proto_utils/tampered_message_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {LazyPropertiesStrategyType, PropertiesProvider,} from '@tree_node/properties_provider';
 import {PropertiesProviderBuilder} from '@tree_node/properties_provider_builder';
@@ -39,8 +39,8 @@ import {extractRect} from './rect_extractor';
  * Creates node id for a ViewCapture view. Used to construct nodes and rects
  * in separate operations.
  */
-export function makeTreeNodeId(row: RowIterator) {
-  return 'ViewNode' + assertBigInt(row.get('node_id'));
+export function makeTreeNodeId(row: RowIterator, windowName: string) {
+  return windowName + 'ViewNode' + assertBigInt(row.get('node_id'));
 }
 
 /**
@@ -61,6 +61,7 @@ export function makeEntryHierarchyTrees(
   visibleRects: RectsForTrace,
   traceProcessor: TraceProcessor | undefined,
   traceGeometryData: TraceGeometryData,
+  windowName: string,
 ): HierarchyTreeNode[] {
   const trees: HierarchyTreeNode[] = [];
 
@@ -86,6 +87,7 @@ export function makeEntryHierarchyTrees(
       visibleRect,
       traceProcessor,
       traceGeometryData,
+      windowName,
     );
     currViews.push(viewAndRect.view);
     currRects.set(nodeId, viewAndRect.rect);
@@ -103,8 +105,9 @@ function makeViewAndRect(
   visibleRect: TraceRect | undefined,
   traceProcessor: TraceProcessor | undefined,
   traceGeometryData: TraceGeometryData,
+  windowName: string,
 ): {view: PropertiesProvider; rect: TraceRect} {
-  const view = makeViewPropertyProvider(viewRow, traceProcessor);
+  const view = makeViewPropertyProvider(viewRow, windowName, traceProcessor);
   const viewProperties = view.getEagerProperties();
   const rect =
     visibleRect ??
@@ -151,9 +154,10 @@ function buildHierarchyTree(
 
 function makeViewPropertyProvider(
   row: RowIterator,
+  windowName: string,
   traceProcessor: TraceProcessor | undefined,
 ): PropertiesProvider {
-  const rootId = makeTreeNodeId(row);
+  const rootId = makeTreeNodeId(row, windowName);
   const rootName = makeTreeNodeName(row);
 
   const eagerProperties = makeViewEagerPropertiesTree(row, rootId, rootName);
@@ -214,20 +218,26 @@ function makeViewLazyPropertiesStrategy(
       .setData(argsData.iter({}))
       .setRootId(rootId)
       .setRootName(rootName)
-      .setRootMessageType(assertDefined(PROTO_VIEW_FIELD.resolve()))
+      .setRootMessageType(assertDefined(getProtoViewField()?.resolve()))
       .build();
   };
 }
 
-const PROTO_VIEW_FIELD = assertDefined(
-  assertDefined(
-    PERFETTO_TRACE_PACKET_ROOT.lookupType(
-      'perfetto.protos.TracePacket',
-    )?.fields['winscopeExtensions']?.resolve(),
-  ).fields['.perfetto.protos.WinscopeExtensionsImpl.viewcapture']?.resolve()
-    ?.fields['views'],
-);
+function getProtoViewField(): TamperedProtoField {
+  const winscopeExtensions = Registry.getInstance().getWinscopeExtensionsType();
+  const viewcapture = assertDefined(
+    winscopeExtensions.fields[
+      '.perfetto.protos.WinscopeExtensionsImpl.viewcapture'
+    ]?.resolve(),
+  );
+  return assertDefined(viewcapture.fields['views']);
+}
+
 const OPERATIONS = {
-  AddDefaults: new AddDefaults(PROTO_VIEW_FIELD),
-  SetFormatters: new SetFormatters(PROTO_VIEW_FIELD),
+  get AddDefaults() {
+    return new AddDefaults(getProtoViewField());
+  },
+  get SetFormatters() {
+    return new SetFormatters(getProtoViewField());
+  },
 };
