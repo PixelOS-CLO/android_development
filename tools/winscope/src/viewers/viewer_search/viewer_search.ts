@@ -28,11 +28,7 @@ import {Presenter} from './presenter';
 import {UiData} from './ui_data';
 import {ViewerSearchComponent} from './viewer_search_component';
 
-export class ViewerSearch extends AbstractViewer<
-  QueryResult,
-  UiData,
-  Presenter
-> {
+export class ViewerSearch extends AbstractViewer<QueryResult, UiData> {
   static readonly DEPENDENCIES: TraceType[] = [TraceType.SEARCH];
 
   private traces: Traces | undefined;
@@ -47,10 +43,6 @@ export class ViewerSearch extends AbstractViewer<
 
   override getTraces(): Array<Trace<QueryResult>> {
     return assertDefined(this.traces).getTraces(TraceType.SEARCH);
-  }
-
-  override getViewType(): ViewType {
-    return ViewType.GLOBAL_SEARCH;
   }
 
   protected override createPresenter(
@@ -68,42 +60,7 @@ export class ViewerSearch extends AbstractViewer<
     return TraceType.SEARCH;
   }
 
-  protected override addOutputListeners(component: ViewerSearchComponent) {
-    component.onLogFilterChange.subscribe(async (event) => {
-      await this.presenter.onSelectFilterChange(event.uid, event.detail);
-    });
-    component.onLogTextFilterChange.subscribe(async (event) => {
-      await this.presenter.onLogTextFilterChange(event.uid, event.detail);
-    });
-    component.onLogEntryClick.subscribe(async (event) => {
-      await this.presenter.onLogEntryClick(event.uid, event.detail);
-    });
-    component.onResultTimestampClick.subscribe(async (event) => {
-      await this.presenter.onTimestampClick(event.uid, event.detail);
-    });
-    component.onArrowDownPress.subscribe(async (event) => {
-      await this.presenter.onArrowDownPress(event);
-    });
-    component.onArrowUpPress.subscribe(async (event) => {
-      await this.presenter.onArrowUpPress(event);
-    });
-    component.globalSearchSectionClick.subscribe(async () => {
-      await this.presenter.onGlobalSearchSectionClick();
-    });
-    component.searchQueryChange.subscribe(async (event) => {
-      await this.presenter.onSearchQueryClick(event.query, event.uid);
-    });
-    component.saveQuery.subscribe(async (event) => {
-      this.presenter.onSaveQueryClick(event.query, event.name);
-    });
-    component.clearQueryChange.subscribe(async (event) => {
-      await this.presenter.onClearQueryClick(event);
-    });
-    component.addQueryChange.subscribe((event) => {
-      this.presenter.addSearch(event);
-    });
-    component.deleteSavedQuery.subscribe((event) => {
-      this.presenter.onDeleteSavedQueryClick(event);
-    });
+  override getViewType(): ViewType {
+    return ViewType.GLOBAL_SEARCH;
   }
 }

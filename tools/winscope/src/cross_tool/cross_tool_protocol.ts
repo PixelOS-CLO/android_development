@@ -19,6 +19,7 @@ import {assertDefined, assertUnreachable} from '@common/assert';
 import {Timestamp} from '@common/time/time';
 import {RemoteToolTimestampConverter} from '@common/time/timestamp_converter';
 import {getLogger, Logger} from '@compat/logging';
+import {RemoteToolFilesReceived, RemoteToolInitialized, RemoteToolTimestampReceived, RemoteToolWaitingForFiles,} from '@cross_tool/remote_tool_events';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {EmitEvent, WinscopeEventEmitter,} from '@messaging/winscope_event_emitter';
 import {WinscopeEventListener} from '@messaging/winscope_event_listener';
@@ -26,7 +27,6 @@ import {TracePositionUpdate} from '@trace_api/trace_events';
 
 import {Message, MessageBugReport, MessageFiles, MessagePong, MessageTestFailureInfo, MessageTimestamp, MessageType, TimestampType,} from './messages';
 import {isAllowed, isOriginAllowedTimestampSync, isUnauthorizedOriginExpected,} from './origin_allow_list';
-import {RemoteToolFilesReceived, RemoteToolInitialized, RemoteToolTimestampReceived, RemoteToolWaitingForFiles,} from './remote_tool_events';
 
 class RemoteTool {
   timestampType?: TimestampType;

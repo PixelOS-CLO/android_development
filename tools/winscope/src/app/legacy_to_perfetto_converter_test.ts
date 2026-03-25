@@ -17,12 +17,12 @@
 import {assertDefined} from '@common/assert';
 import {makeRealTimestamp} from '@common/time/test_helpers';
 import {PerfettoClockSnapshot, PerfettoTrace, PerfettoTracePacket,} from '@compat/protobuf';
-import {TestLegacyFileReaderBuilder} from '@test/unit/legacy_file_readers/test_legacy_file_reader_builder';
+import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
+import {TestLegacyFileReaderBuilder} from '@test/unit/test_legacy_file_reader_builder';
 import {UserNotifierChecker} from '@test/unit/user_notifier_checker';
 import {FileReader} from '@trace_api/file_reader';
 import {TraceFile} from '@trace_api/trace_file';
 
-import {LegacyFileReader} from './legacy_file_reader';
 import {ClockSnapshot, LegacyToPerfettoConverter,} from './legacy_to_perfetto_converter';
 import {makeWarningFailedToConvertLegacyTraces} from './warnings';
 
@@ -55,7 +55,9 @@ describe('LegacyToPerfettoConverter', () => {
     ]);
     const trace = await checkAndDecodePerfettoFile(assertDefined(perfettoFile));
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
       [
         makeExpectedClockSnapshot({
@@ -65,7 +67,7 @@ describe('LegacyToPerfettoConverter', () => {
         }),
         packetB1,
         packetB2,
-      ].map((p: PerfettoTracePacket) => p.toObject()),
+      ].map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     );
   });
 
@@ -78,10 +80,12 @@ describe('LegacyToPerfettoConverter', () => {
     );
     const trace = await checkAndDecodePerfettoFile(assertDefined(perfettoFile));
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
       [perfettoSnapshot, emptyPacket, packetB1, packetM1].map(
-        (p: PerfettoTracePacket) => p.toObject(),
+        (p: PerfettoTracePacket) => p.toObject(false) as unknown,
       ),
     );
   });
@@ -104,10 +108,12 @@ describe('LegacyToPerfettoConverter', () => {
     const trace = await checkAndDecodePerfettoFile(perfettoFile);
 
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
       [perfettoSnapshot, existingPacket, packetB0].map(
-        (p: PerfettoTracePacket) => p.toObject(),
+        (p: PerfettoTracePacket) => p.toObject(false) as unknown,
       ),
     );
     expect(packetB0.getTimestamp()?.toString()).toEqual('50');
@@ -129,10 +135,12 @@ describe('LegacyToPerfettoConverter', () => {
     );
     const trace = await checkAndDecodePerfettoFile(assertDefined(perfettoFile));
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
-      [perfettoSnapshot, emptyPacket, packetM1].map((p: PerfettoTracePacket) =>
-        p.toObject(),
+      [perfettoSnapshot, emptyPacket, packetM1].map(
+        (p: PerfettoTracePacket) => p.toObject(false) as unknown,
       ),
     );
   });
@@ -179,7 +187,9 @@ describe('LegacyToPerfettoConverter', () => {
       .convert();
     const trace = await checkAndDecodePerfettoFile(assertDefined(perfettoFile));
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
       [
         makeExpectedClockSnapshot({
@@ -193,7 +203,7 @@ describe('LegacyToPerfettoConverter', () => {
           monotonic: 11n,
         }),
         packetM1,
-      ].map((p: PerfettoTracePacket) => p.toObject()),
+      ].map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     );
   });
 
@@ -210,9 +220,13 @@ describe('LegacyToPerfettoConverter', () => {
       monotonic: 0n,
     });
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
-      [clockSnapshot, packet].map((p: PerfettoTracePacket) => p.toObject()),
+      [clockSnapshot, packet].map(
+        (p: PerfettoTracePacket) => p.toObject(false) as unknown,
+      ),
     );
   });
 
@@ -229,9 +243,13 @@ describe('LegacyToPerfettoConverter', () => {
       monotonic: 0n,
     });
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
-      [clockSnapshot, packet].map((p: PerfettoTracePacket) => p.toObject()),
+      [clockSnapshot, packet].map(
+        (p: PerfettoTracePacket) => p.toObject(false) as unknown,
+      ),
     );
   });
 
@@ -327,10 +345,12 @@ describe('LegacyToPerfettoConverter', () => {
       );
     }
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
-      [...snapshotPackets, ...packets].map((p: PerfettoTracePacket) =>
-        p.toObject(),
+      [...snapshotPackets, ...packets].map(
+        (p: PerfettoTracePacket) => p.toObject(false) as unknown,
       ),
     );
   }
@@ -363,10 +383,12 @@ describe('LegacyToPerfettoConverter', () => {
       );
     }
     expect(
-      trace.getPacketList().map((p: PerfettoTracePacket) => p.toObject()),
+      trace
+        .getPacketList()
+        .map((p: PerfettoTracePacket) => p.toObject(false) as unknown),
     ).toEqual(
-      [...snapshotPackets, ...packets].map((p: PerfettoTracePacket) =>
-        p.toObject(),
+      [...snapshotPackets, ...packets].map(
+        (p: PerfettoTracePacket) => p.toObject(false) as unknown,
       ),
     );
   }

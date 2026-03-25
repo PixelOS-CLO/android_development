@@ -29,13 +29,6 @@ export function makeUiRects(
 ): UiRect[] {
   const traceRects = extractRects(hierarchyRoot);
   return traceRects.map((traceRect) => {
-    let name = traceRect.name;
-    if (name.startsWith('VRI-')) {
-      name = name.substring(4);
-    }
-    const hasContent = viewCapturePackageNames.includes(
-      name.substring(0, name.indexOf('/')),
-    );
     return new UiRectBuilder()
       .setX(traceRect.x)
       .setY(traceRect.y)
@@ -50,7 +43,11 @@ export function makeUiRects(
       .setGroupId(traceRect.groupId)
       .setIsClickable(!traceRect.isDisplay)
       .setCornerRadii(traceRect.cornerRadii)
-      .setHasContent(hasContent)
+      .setHasContent(
+        viewCapturePackageNames.includes(
+          traceRect.name.substring(0, traceRect.name.indexOf('/')),
+        ),
+      )
       .setDepth(traceRect.depth)
       .setOpacity(traceRect.opacity)
       .build();

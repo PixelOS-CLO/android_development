@@ -19,17 +19,13 @@ import {Trace} from '@trace_api/trace';
 import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {AbstractLogViewer} from '@viewers/abstract_log_viewer';
+import {AbstractViewer} from '@viewers/abstract_viewer';
 
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';
 import {ViewerProtologComponent} from './viewer_protolog_component';
 
-export class ViewerProtoLog extends AbstractLogViewer<
-  HierarchyTreeNode,
-  UiData,
-  Presenter
-> {
+export class ViewerProtoLog extends AbstractViewer<HierarchyTreeNode, UiData> {
   static readonly DEPENDENCIES: TraceType[] = [TraceType.PROTO_LOG];
 
   constructor(trace: Trace<HierarchyTreeNode>, traces: Traces, store: Store) {

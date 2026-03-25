@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component} from '@angular/core';
+import {Component, viewChild} from '@angular/core';
+import {TraceType} from '@trace_api/trace_type';
 import {CollapsibleSectionType} from '@viewers/common/collapsible_section_type';
 import {CollapsibleSections} from '@viewers/common/collapsible_sections';
 import {CollapsedSectionsComponent} from '@viewers/components/collapsed_sections_component';
 import {LogComponent} from '@viewers/components/log_component';
-import {LogViewerComponent} from '@viewers/components/log_viewer_component';
 import {PropertiesComponent} from '@viewers/components/properties_component';
+import {ViewerComponent} from '@viewers/components/viewer_component';
 
 import {TransactionsHeightPredictor} from './transactions_height_predictor';
 import {UiData} from './ui_data';
@@ -37,8 +38,13 @@ import {UiData} from './ui_data';
   templateUrl: './viewer_transactions_component.ng.html',
   styleUrls: ['./viewer_transactions_component.css'],
 })
-export class ViewerTransactionsComponent extends LogViewerComponent<UiData> {
+export class ViewerTransactionsComponent extends ViewerComponent<UiData> {
+  logComponent = viewChild(LogComponent);
+
+  CollapsibleSectionType = CollapsibleSectionType;
+
   propertiesTitle = 'PROPERTIES - PROTO DUMP';
+  TraceType = TraceType;
   sections = new CollapsibleSections([
     {
       type: CollapsibleSectionType.PROPERTIES,

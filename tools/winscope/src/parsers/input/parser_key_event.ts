@@ -15,45 +15,23 @@
  */
 
 import {assertDefined} from '@common/assert';
-import {ParserTimestampConverter} from '@common/time/timestamp_converter';
-import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {SetFormatters} from '@parsers/operations/set_formatters';
 import {TranslateIntDef} from '@parsers/operations/translate_intdef';
-import {AbstractParser} from '@parsers/perfetto/abstract_parser';
-import {TraceFile} from '@trace_api/trace_file';
 import {TraceType} from '@trace_api/trace_type';
-import {TraceProcessor} from '@trace_processor/trace_processor';
 import {InputEventType} from '@trace/input/input_event_type';
-import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 
 import {AbstractInputEventParser} from './abstract_input_event_parser';
 
 export class ParserKeyEvent extends AbstractInputEventParser {
-  private readonly keyEventField =
-    this.wrapperProto.fields['dispatcherKeyEvent'];
-
-  static async createInstance(
-    traceFile: TraceFile,
-    traceProcessor: TraceProcessor,
-    timestampConverter: ParserTimestampConverter,
-    traceGeometryData: TraceGeometryData,
-  ): Promise<Array<AbstractParser<HierarchyTreeNode>>> {
-    return [
-      new ParserKeyEvent(
-        traceFile,
-        traceProcessor,
-        timestampConverter,
-        traceGeometryData,
-      ),
-    ];
-  }
+  private static readonly KEY_EVENT_FIELD =
+    AbstractInputEventParser.WRAPPER_PROTO.fields['dispatcherKeyEvent'];
 
   protected override readonly eventMessageType = assertDefined(
-    this.keyEventField.resolve(),
+    ParserKeyEvent.KEY_EVENT_FIELD.resolve(),
   );
   protected override readonly eventOps = [
-    new SetFormatters(this.keyEventField),
-    new TranslateIntDef(this.keyEventField),
+    new SetFormatters(ParserKeyEvent.KEY_EVENT_FIELD),
+    new TranslateIntDef(ParserKeyEvent.KEY_EVENT_FIELD),
   ];
   protected override readonly hierarchyTreeRootId = 'AndroidKeyEvent';
   protected override readonly eventType = InputEventType.KEY;

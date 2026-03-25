@@ -15,54 +15,35 @@
  */
 
 import {assertDefined} from '@common/assert';
-import {ParserTimestampConverter} from '@common/time/timestamp_converter';
-import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {AbstractParser} from '@parsers/perfetto/abstract_parser';
 import {queryArgsForEntry} from '@parsers/perfetto/query_helpers';
-import {TraceFile} from '@trace_api/trace_file';
 import {TraceType} from '@trace_api/trace_type';
-import {TraceProcessor} from '@trace_processor/trace_processor';
-import {Registry} from '@trace/proto_utils/tampered_message_type';
+import {PERFETTO_TRACE_PACKET_ROOT} from '@trace/proto_utils/tampered_message_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 
 import {HierarchyTreeFactory} from './hierarchy_tree_factory';
 import {makeOperations} from './operations_factory';
 
 export class ParserInputMethodClients extends AbstractParser<HierarchyTreeNode> {
-  private readonly entryField = assertDefined(
+  private static readonly ENTRY_FIELD = assertDefined(
     assertDefined(
-      Registry.getInstance()
-        .getType('perfetto.protos.TracePacket')
-        ?.fields['winscopeExtensions']?.resolve(),
+      PERFETTO_TRACE_PACKET_ROOT.lookupType(
+        'perfetto.protos.TracePacket',
+      )?.fields['winscopeExtensions']?.resolve(),
     ).fields['.perfetto.protos.WinscopeExtensionsImpl.inputmethodClients'],
   );
-  private readonly clientField = assertDefined(this.entryField.resolve())
-    .fields['client'];
-  private readonly hierarchyTreeFactory = new HierarchyTreeFactory(
-    this.entryField,
-    this.clientField,
-    makeOperations(this.entryField, this.clientField, [
-      'viewRootImpl',
-      'inputMethodManager',
-      'editorInfo',
-    ]),
+  private static readonly CLIENT_FIELD = assertDefined(
+    ParserInputMethodClients.ENTRY_FIELD.resolve(),
+  ).fields['client'];
+  private static readonly HIERARCHY_TREE_FACTORY = new HierarchyTreeFactory(
+    ParserInputMethodClients.ENTRY_FIELD,
+    ParserInputMethodClients.CLIENT_FIELD,
+    makeOperations(
+      ParserInputMethodClients.ENTRY_FIELD,
+      ParserInputMethodClients.CLIENT_FIELD,
+      ['viewRootImpl', 'inputMethodManager', 'editorInfo'],
+    ),
   );
-
-  static async createInstance(
-    traceFile: TraceFile,
-    traceProcessor: TraceProcessor,
-    timestampConverter: ParserTimestampConverter,
-    traceGeometryData: TraceGeometryData,
-  ): Promise<Array<AbstractParser<HierarchyTreeNode>>> {
-    return [
-      new ParserInputMethodClients(
-        traceFile,
-        traceProcessor,
-        timestampConverter,
-        traceGeometryData,
-      ),
-    ];
-  }
 
   override getTraceType(): TraceType {
     return TraceType.INPUT_METHOD_CLIENTS;
@@ -75,7 +56,9 @@ export class ParserInputMethodClients extends AbstractParser<HierarchyTreeNode> 
       this.entryIndexToRowIdMap,
       index,
     );
-    return this.hierarchyTreeFactory.makeHierarchyTree(argsData);
+    return ParserInputMethodClients.HIERARCHY_TREE_FACTORY.makeHierarchyTree(
+      argsData,
+    );
   }
 
   protected override getStdLibModuleName(): string | undefined {

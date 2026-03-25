@@ -22,7 +22,7 @@ import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {TreeNode} from '@tree_node/tree_node';
 import {ImeAdditionalProperties} from '@viewers/common/ime_additional_properties';
 import {ImeContainerProperties, InputMethodSurfaceProperties,} from '@viewers/common/ime_utils';
-import {AdditionalPropertySelectedDetail} from '@viewers/common/viewer_event_details';
+import {AdditionalPropertySelectedDetail, ViewerEvents,} from '@viewers/common/viewer_events';
 
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 import {CoordinatesTableComponent} from './coordinates_table_component';
@@ -45,9 +45,6 @@ export class ImeAdditionalPropertiesComponent {
   highlightedItem = input<string>('');
 
   collapseButtonClicked = output();
-  readonly highlightedIdChange = output<string>();
-  readonly additionalPropertySelected =
-    output<AdditionalPropertySelectedDetail>();
 
   constructor(@Inject(ElementRef) private elementRef: ElementRef) {}
 
@@ -247,12 +244,25 @@ export class ImeAdditionalPropertiesComponent {
   }
 
   private updateHighlightedItem(newId: string) {
-    this.highlightedIdChange.emit(newId);
+    const event: CustomEvent = new CustomEvent(
+      ViewerEvents.HighlightedIdChange,
+      {
+        bubbles: true,
+        detail: {id: newId},
+      },
+    );
+    this.elementRef.nativeElement.dispatchEvent(event);
   }
 
   private updateAdditionalPropertySelected(item: TreeNode, name: string) {
-    this.additionalPropertySelected.emit(
-      new AdditionalPropertySelectedDetail(name, item),
+    const detail = new AdditionalPropertySelectedDetail(name, item);
+    const event: CustomEvent = new CustomEvent(
+      ViewerEvents.AdditionalPropertySelected,
+      {
+        bubbles: true,
+        detail,
+      },
     );
+    this.elementRef.nativeElement.dispatchEvent(event);
   }
 }

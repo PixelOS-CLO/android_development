@@ -176,42 +176,35 @@ export class Presenter extends AbstractLogViewerPresenter<
     ) {
       const entry = this.trace.getEntry(traceIndex);
       const entryNode = assertDefined(entryNodes.at(traceIndex));
-      const vsyncId = assertDefined(
-        entryNode.getEagerPropertyByName('vsyncId')?.formattedValue(),
-      );
+      const vsyncId = entryNode
+        .getEagerPropertyByName('vsyncId')
+        ?.getValue<number>();
 
       for (const transactionNode of entryNode.getAllChildren()) {
         const transactionType = assertDefined(
           transactionNode.getEagerPropertyByName('transactionType'),
         ).formattedValue();
-        const transactionId =
-          transactionNode
-            .getEagerPropertyByName('transactionId')
-            ?.formattedValue() ?? Presenter.VALUE_NA;
-        const pid =
-          transactionNode.getEagerPropertyByName('pid')?.formattedValue() ??
-          Presenter.VALUE_NA;
-        const uid =
-          transactionNode.getEagerPropertyByName('uid')?.formattedValue() ??
-          Presenter.VALUE_NA;
-        const process =
-          transactionNode
-            .getEagerPropertyByName('processName')
-            ?.formattedValue() ?? Presenter.VALUE_NA;
-        const flags =
-          transactionNode.getEagerPropertyByName('flagsId')?.formattedValue() ??
-          Presenter.VALUE_NA;
-
+        const transactionId = transactionNode
+          .getEagerPropertyByName('transactionId')
+          ?.formattedValue();
+        const pid = transactionNode
+          .getEagerPropertyByName('pid')
+          ?.formattedValue();
+        const uid = transactionNode
+          .getEagerPropertyByName('uid')
+          ?.formattedValue();
+        const process = transactionNode
+          .getEagerPropertyByName('processName')
+          ?.formattedValue();
         const layerId = transactionNode
           .getEagerPropertyByName('layerId')
           ?.formattedValue();
         const displayId = transactionNode
           .getEagerPropertyByName('displayId')
           ?.formattedValue();
-        const layerOrDisplayId =
-          (layerId?.length ?? 0) > 0
-            ? assertDefined(layerId)
-            : (displayId ?? Presenter.VALUE_NA);
+        const flags = transactionNode
+          .getEagerPropertyByName('flagsId')
+          ?.formattedValue();
 
         let getPropertiesTree: LazyPropertiesStrategyType | undefined;
         switch (transactionType) {
@@ -229,15 +222,35 @@ export class Presenter extends AbstractLogViewerPresenter<
             break;
         }
 
+        const layerOrDisplayId =
+          (layerId?.length ?? 0) > 0
+            ? assertDefined(layerId)
+            : (displayId ?? Presenter.VALUE_NA);
+
         const fields: LogField[] = [
-          new LogField(Presenter.COLUMNS.id, transactionId),
-          new LogField(Presenter.COLUMNS.vsyncId, vsyncId),
-          new LogField(Presenter.COLUMNS.pid, pid),
-          new LogField(Presenter.COLUMNS.uid, uid),
-          new LogField(Presenter.COLUMNS.process, process),
-          new LogField(Presenter.COLUMNS.type, transactionType),
-          new LogField(Presenter.COLUMNS.layerOrDisplayId, layerOrDisplayId),
-          new LogField(Presenter.COLUMNS.flags, flags),
+          {
+            spec: Presenter.COLUMNS.id,
+            value: transactionId ?? Presenter.VALUE_NA,
+          },
+          {spec: Presenter.COLUMNS.vsyncId, value: assertDefined(vsyncId)},
+          {spec: Presenter.COLUMNS.pid, value: pid ?? Presenter.VALUE_NA},
+          {spec: Presenter.COLUMNS.uid, value: uid ?? Presenter.VALUE_NA},
+          {
+            spec: Presenter.COLUMNS.process,
+            value: process ?? Presenter.VALUE_NA,
+          },
+          {
+            spec: Presenter.COLUMNS.type,
+            value: transactionType,
+          },
+          {
+            spec: Presenter.COLUMNS.layerOrDisplayId,
+            value: layerOrDisplayId,
+          },
+          {
+            spec: Presenter.COLUMNS.flags,
+            value: flags ?? Presenter.VALUE_NA,
+          },
         ];
         entries.push(new TransactionsEntry(entry, fields, getPropertiesTree));
       }

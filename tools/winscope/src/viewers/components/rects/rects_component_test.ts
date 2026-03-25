@@ -38,17 +38,18 @@ import {TraceType} from '@trace_api/trace_type';
 import {VISIBLE_CHIP} from '@viewers/common/chip';
 import {DisplayIdentifier} from '@viewers/common/display_identifier';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
+import {RectDblClickDetail, ViewerEvents} from '@viewers/common/viewer_events';
 import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
+import {RectLegendOption, TraceRectType,} from '@viewers/components/rects/rect_spec';
+import {RectsComponent} from '@viewers/components/rects/rects_component';
+import {UiRect} from '@viewers/components/rects/ui_rect';
 import {UserOptionsComponent} from '@viewers/components/user_options_component';
 
 import {Camera} from './camera';
 import {Canvas} from './canvas';
 import {ColorType} from './color_type';
 import {RectLabel} from './rect_label';
-import {RectLegendOption, TraceRectType} from './rect_spec';
-import {RectsComponent} from './rects_component';
 import {ShadingMode} from './shading_mode';
-import {UiRect} from './ui_rect';
 import {UiRectBuilder} from './ui_rect_builder';
 import {UiRect3D} from './ui_rect3d';
 
@@ -547,16 +548,19 @@ describe('RectsComponent', () => {
     dom.detectChanges();
 
     const testString = 'test_id';
-    const highlightedIdSpy = spyOn(component.highlightedIdChange, 'emit');
+    let id: string | undefined;
+    dom.addEventListener(ViewerEvents.HighlightedIdChange, (event) => {
+      id = (event as CustomEvent).detail.id;
+    });
 
     const spy = spyOn(Canvas.prototype, 'getClickedRectId').and.returnValue(
       undefined,
     );
     dom.findAndClick(largeRectsCanvasSelector);
-    expect(highlightedIdSpy).not.toHaveBeenCalled();
+    expect(id).toBeUndefined();
     spy.and.returnValue(testString);
     dom.findAndClick(largeRectsCanvasSelector);
-    expect(highlightedIdSpy).toHaveBeenCalledOnceWith(testString);
+    expect(id).toEqual(testString);
   });
 
   it('pans view without emitting rect id', () => {
@@ -570,7 +574,10 @@ describe('RectsComponent', () => {
 
     const testString = 'test_id';
     spyOn(Canvas.prototype, 'getClickedRectId').and.returnValue(testString);
-    const highlightedIdSpy = spyOn(component.highlightedIdChange, 'emit');
+    let id: string | undefined;
+    dom.addEventListener(ViewerEvents.HighlightedIdChange, (event) => {
+      id = (event as CustomEvent).detail.id;
+    });
 
     panView();
     expect(updateViewPositionSpy).toHaveBeenCalledTimes(1);
@@ -585,10 +592,10 @@ describe('RectsComponent', () => {
     expect(boundingBoxAfter).toEqual(boundingBoxBefore);
 
     dom.findAndClick(largeRectsCanvasSelector);
-    expect(highlightedIdSpy).not.toHaveBeenCalled();
+    expect(id).toBeUndefined();
 
     dom.findAndClick(largeRectsCanvasSelector);
-    expect(highlightedIdSpy).toHaveBeenCalledOnceWith(testString);
+    expect(id).toBe(testString);
   });
 
   it('handles window resize', async () => {
@@ -727,15 +734,18 @@ describe('RectsComponent', () => {
     const spy = spyOn(Canvas.prototype, 'getClickedRectId').and.returnValue(
       undefined,
     );
-    const rectsDblClickSpy = spyOn(component.rectsDblClick, 'emit');
+    let detail: RectDblClickDetail | undefined;
+    dom.addEventListener(ViewerEvents.RectsDblClick, (event) => {
+      detail = (event as CustomEvent).detail;
+    });
 
     const canvas = dom.get(largeRectsCanvasSelector);
     canvas.doubleClick();
-    expect(rectsDblClickSpy).not.toHaveBeenCalled();
+    expect(detail).toBeUndefined();
     spy.and.returnValue(testString);
 
     canvas.doubleClick();
-    expect(rectsDblClickSpy).toHaveBeenCalledOnceWith(testString);
+    expect(detail).toEqual(new RectDblClickDetail(testString));
   });
 
   it('handles mini rect double click', () => {
@@ -743,10 +753,13 @@ describe('RectsComponent', () => {
     dom.detectChanges();
     resetSpies();
 
-    const miniRectsDblClickSpy = spyOn(component.miniRectsDblClick, 'emit');
+    let miniRectDoubleClick = false;
+    dom.addEventListener(ViewerEvents.MiniRectsDblClick, (_) => {
+      miniRectDoubleClick = true;
+    });
 
     dom.get('.mini-rects-canvas').doubleClick();
-    expect(miniRectsDblClickSpy).toHaveBeenCalledTimes(1);
+    expect(miniRectDoubleClick).toBeTrue();
   });
 
   it('does not render more that selected label if over 30 rects', () => {
@@ -791,7 +804,10 @@ describe('RectsComponent', () => {
   });
 
   it('handles rect type button click', async () => {
-    const spy = spyOn(component.rectTypeButtonClick, 'emit');
+    let clicked: TraceRectType | undefined;
+    dom.addEventListener(ViewerEvents.RectTypeButtonClick, (event) => {
+      clicked = (event as CustomEvent).detail.type;
+    });
     expect(dom.find('.rect-type-toggle')).toBeUndefined();
 
     dom.setComponentInput('rectSpec', {
@@ -816,9 +832,9 @@ describe('RectsComponent', () => {
     buttons[1].checkTextExact('touch_app');
     await checkTooltips(buttons, ['Show layers', 'Show input windows']);
     buttons[0].click();
-    expect(spy).not.toHaveBeenCalled();
+    expect(clicked).toBeUndefined();
     buttons[1].click();
-    expect(spy).toHaveBeenCalledOnceWith(TraceRectType.INPUT_WINDOWS);
+    expect(clicked).toEqual(TraceRectType.INPUT_WINDOWS);
   });
 
   it('shows warning for any rect type set after the first', async () => {
@@ -912,16 +928,6 @@ describe('RectsComponent', () => {
     wrapperEl.style.width = '';
     dom.detectChanges(); // button disappears now that options all fit in available space
     expect(legendEl.find('.rect-legend-expand-button')).toBeUndefined();
-  });
-
-  it('handles change in user options', () => {
-    const userOptions = assertDefined(
-      dom.findByDirective(UserOptionsComponent),
-    );
-    const spy = spyOn(component.optionsChange, 'emit');
-    const options = {opt: {name: 'opt', enabled: true}};
-    userOptions.optionsChange.emit(options);
-    expect(spy).toHaveBeenCalledOnceWith(options);
   });
 
   function resetSpies() {

@@ -18,11 +18,11 @@ import {assertDefined} from '@common/assert';
 import {NOT_IMPLEMENTED_ERROR} from '@common/errors';
 import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {makeEntryHierarchyTrees as sfMakeEntryHierarchyTrees} from '@parsers/surface_flinger/entry_hierarchy_tree_factory';
+import {makeEntryHierarchyTrees as vcMakeEntryHierarchyTrees} from '@parsers/view_capture/entry_hierarchy_tree_factory';
 import {makeEntryHierarchyTrees as wmMakeEntryHierarchyTrees} from '@parsers/window_manager/entry_hierarchy_tree_factory';
 import {TraceType} from '@trace_api/trace_type';
 import {createQueryResult} from '@trace_processor/perfetto/query_result';
 import {QueryResult} from '@trace_processor/query_result';
-import {Registry} from '@trace/proto_utils/tampered_message_type';
 import {RectsForTrace} from '@tree_node/rect_extractor_result';
 
 interface WorkerMessage {
@@ -36,8 +36,6 @@ interface WorkerMessage {
 }
 
 addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
-  await Registry.getInstance().loadDefaultDescriptors();
-
   const traceGeometryData = event.data.traceGeometryData;
   Object.setPrototypeOf(traceGeometryData, TraceGeometryData.prototype);
 
@@ -78,6 +76,13 @@ function buildTraceEntryValue(
       );
     case TraceType.WINDOW_MANAGER:
       return wmMakeEntryHierarchyTrees(
+        nodeResults,
+        rectsMap,
+        undefined,
+        traceGeometryData,
+      );
+    case TraceType.VIEW_CAPTURE:
+      return vcMakeEntryHierarchyTrees(
         nodeResults,
         rectsMap,
         undefined,

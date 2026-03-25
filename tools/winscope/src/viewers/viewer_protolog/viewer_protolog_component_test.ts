@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import {assertDefined} from '@common/assert';
 import {makeElapsedTimestamp} from '@common/time/test_helpers';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
@@ -23,9 +22,7 @@ import {ProtologColumnType} from '@trace/protolog/protolog_column_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {AbstractLogViewerComponentTest} from '@viewers/common/abstract_log_viewer_component_test';
 import {LogSelectFilter} from '@viewers/common/log_filters';
-import {TextFilter} from '@viewers/common/text_filter';
-import {LogField, LogHeader} from '@viewers/common/ui_data_log';
-import {LogTextFilterChangeDetail} from '@viewers/common/viewer_event_details';
+import {LogHeader} from '@viewers/common/ui_data_log';
 import {VirtualScrollViewportComponent} from '@viewers/components/scroll/virtual_scroll_viewport_component';
 
 import {ProtologEntry, UiData} from './ui_data';
@@ -37,27 +34,6 @@ class ViewerProtologComponentTest extends AbstractLogViewerComponentTest<ViewerP
   protected override readonly testScroll = true;
   protected override readonly initialEntries = 7;
 
-  protected override executeSpecializedTests(): void {
-    describe('Specialized tests', () => {
-      let component: ViewerProtologComponent;
-
-      beforeEach(async () => {
-        component = (await this.setUpTestEnvironment())[2];
-      });
-
-      it('binds log text filter change to output signal', () => {
-        const logComponent = assertDefined(component.logComponent());
-        const spy = spyOn(component.onLogTextFilterChange, 'emit');
-        const detail = new LogTextFilterChangeDetail(
-          new LogHeader(this.testSpec),
-          new TextFilter(),
-        );
-        logComponent.logTextFilterChange.emit(detail);
-        expect(spy).toHaveBeenCalledOnceWith(detail);
-      });
-    });
-  }
-
   protected override checkTimestampInTable(
     dom: DOMTestHelper<ViewerProtologComponent>,
   ): void {
@@ -65,7 +41,7 @@ class ViewerProtologComponentTest extends AbstractLogViewerComponentTest<ViewerP
     entryTimestamp.checkTextExact('10ns');
   }
 
-  protected override async setUpTestEnvironment(): Promise<
+  protected async setUpTestEnvironment(): Promise<
     [
       DOMTestHelper<ViewerProtologComponent>,
       VirtualScrollViewportComponent,
@@ -92,22 +68,22 @@ class ViewerProtologComponentTest extends AbstractLogViewerComponentTest<ViewerP
           this.testField,
           this.testField,
           this.testField,
-          new LogField(
-            {
+          {
+            spec: {
               name: 'Test Column Text',
               cssClass: 'text',
               columnType: ProtologColumnType.MESSAGE,
             },
-            i % 2 === 0 ? shortMessage : longMessage,
-          ),
-          new LogField(
-            {
+            value: i % 2 === 0 ? shortMessage : longMessage,
+          },
+          {
+            spec: {
               name: 'Test Column Location',
               cssClass: 'source-file',
               columnType: ProtologColumnType.LOCATION,
             },
-            'file1',
-          ),
+            value: 'file1',
+          },
         ]),
       );
     }

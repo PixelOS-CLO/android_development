@@ -190,38 +190,29 @@ export class FileReaderTransitions implements LegacyFileReader {
       }
       if (
         entry.hasStartingWindowRemoveTimeNs() &&
-        entry.getStartingWindowRemoveTimeNs()?.toString() !== '0'
+        entry.getStartingWindowRemoveTimeNs() !== '0'
       ) {
         shellTransition.setStartingWindowRemoveTimeNs(
           assertDefined(entry.getStartingWindowRemoveTimeNs()),
         );
       }
-      if (
-        entry.hasDispatchTimeNs() &&
-        entry.getDispatchTimeNs()?.toString() !== '0'
-      ) {
+      if (entry.hasDispatchTimeNs() && entry.getDispatchTimeNs() !== '0') {
         shellTransition.setDispatchTimeNs(
           assertDefined(entry.getDispatchTimeNs()),
         );
       }
-      if (
-        entry.hasMergeTimeNs() &&
-        entry.getMergeTimeNs()?.toString() !== '0'
-      ) {
+      if (entry.hasMergeTimeNs() && entry.getMergeTimeNs() !== '0') {
         shellTransition.setMergeTimeNs(assertDefined(entry.getMergeTimeNs()));
       }
       if (
         entry.hasMergeRequestTimeNs() &&
-        entry.getMergeRequestTimeNs()?.toString() !== '0'
+        entry.getMergeRequestTimeNs() !== '0'
       ) {
         shellTransition.setMergeRequestTimeNs(
           assertDefined(entry.getMergeRequestTimeNs()),
         );
       }
-      if (
-        entry.hasShellAbortTimeNs() &&
-        entry.getShellAbortTimeNs()?.toString() !== '0'
-      ) {
+      if (entry.hasShellAbortTimeNs() && entry.getShellAbortTimeNs() !== '0') {
         shellTransition.setShellAbortTimeNs(
           assertDefined(entry.getShellAbortTimeNs()),
         );
@@ -281,16 +272,13 @@ export class FileReaderTransitions implements LegacyFileReader {
     // Entry timestamps are defined as send time - if this is null and shell
     // dispatch time is not null we fall back on shell dispatch time
     let ns: string | undefined;
-    if (
-      transition.hasSendTimeNs() &&
-      transition.getSendTimeNs()?.toString() !== '0'
-    ) {
-      ns = transition.getSendTimeNs()?.toString();
+    if (transition.hasSendTimeNs() && transition.getSendTimeNs() !== '0') {
+      ns = transition.getSendTimeNs();
     } else if (
       transition.hasDispatchTimeNs() &&
-      transition.getDispatchTimeNs()?.toString() !== '0'
+      transition.getDispatchTimeNs() !== '0'
     ) {
-      ns = transition.getDispatchTimeNs()?.toString();
+      ns = transition.getDispatchTimeNs();
     }
 
     if (!ns) {
@@ -304,43 +292,37 @@ export class FileReaderTransitions implements LegacyFileReader {
     transition2: PerfettoShellTransition,
   ): PerfettoShellTransition {
     assertTrue(transition1.getId() === transition2.getId());
-    const mergedTransition = transition1.clone();
+    const mergedTransition = transition1.cloneMessage();
 
     if (
       transition2.hasCreateTimeNs() &&
-      transition2.getCreateTimeNs()?.toString() !== '0'
+      transition2.getCreateTimeNs() !== '0'
     ) {
       mergedTransition.setCreateTimeNs(
         assertDefined(transition2.getCreateTimeNs()),
       );
     }
-    if (
-      transition2.hasSendTimeNs() &&
-      transition2.getSendTimeNs()?.toString() !== '0'
-    ) {
+    if (transition2.hasSendTimeNs() && transition2.getSendTimeNs() !== '0') {
       mergedTransition.setSendTimeNs(
         assertDefined(transition2.getSendTimeNs()),
       );
     }
     if (
       transition2.hasDispatchTimeNs() &&
-      transition2.getDispatchTimeNs()?.toString() !== '0'
+      transition2.getDispatchTimeNs() !== '0'
     ) {
       mergedTransition.setDispatchTimeNs(
         assertDefined(transition2.getDispatchTimeNs()),
       );
     }
-    if (
-      transition2.hasMergeTimeNs() &&
-      transition2.getMergeTimeNs()?.toString() !== '0'
-    ) {
+    if (transition2.hasMergeTimeNs() && transition2.getMergeTimeNs() !== '0') {
       mergedTransition.setMergeTimeNs(
         assertDefined(transition2.getMergeTimeNs()),
       );
     }
     if (
       transition2.hasMergeRequestTimeNs() &&
-      transition2.getMergeRequestTimeNs()?.toString() !== '0'
+      transition2.getMergeRequestTimeNs() !== '0'
     ) {
       mergedTransition.setMergeRequestTimeNs(
         assertDefined(transition2.getMergeRequestTimeNs()),
@@ -348,7 +330,7 @@ export class FileReaderTransitions implements LegacyFileReader {
     }
     if (
       transition2.hasShellAbortTimeNs() &&
-      transition2.getShellAbortTimeNs()?.toString() !== '0'
+      transition2.getShellAbortTimeNs() !== '0'
     ) {
       mergedTransition.setShellAbortTimeNs(
         assertDefined(transition2.getShellAbortTimeNs()),
@@ -356,7 +338,7 @@ export class FileReaderTransitions implements LegacyFileReader {
     }
     if (
       transition2.hasWmAbortTimeNs() &&
-      transition2.getWmAbortTimeNs()?.toString() !== '0'
+      transition2.getWmAbortTimeNs() !== '0'
     ) {
       mergedTransition.setWmAbortTimeNs(
         assertDefined(transition2.getWmAbortTimeNs()),
@@ -364,7 +346,7 @@ export class FileReaderTransitions implements LegacyFileReader {
     }
     if (
       transition2.hasFinishTimeNs() &&
-      transition2.getFinishTimeNs()?.toString() !== '0'
+      transition2.getFinishTimeNs() !== '0'
     ) {
       mergedTransition.setFinishTimeNs(
         assertDefined(transition2.getFinishTimeNs()),
@@ -372,7 +354,7 @@ export class FileReaderTransitions implements LegacyFileReader {
     }
     if (
       transition2.hasStartTransactionId() &&
-      transition2.getStartTransactionId()?.toString() !== '0'
+      transition2.getStartTransactionId() !== '0'
     ) {
       mergedTransition.setStartTransactionId(
         assertDefined(transition2.getStartTransactionId()),
@@ -380,7 +362,7 @@ export class FileReaderTransitions implements LegacyFileReader {
     }
     if (
       transition2.hasFinishTransactionId() &&
-      transition2.getFinishTransactionId()?.toString() !== '0'
+      transition2.getFinishTransactionId() !== '0'
     ) {
       mergedTransition.setFinishTransactionId(
         assertDefined(transition2.getFinishTransactionId()),
@@ -397,7 +379,7 @@ export class FileReaderTransitions implements LegacyFileReader {
     }
     if (
       transition2.hasStartingWindowRemoveTimeNs() &&
-      transition2.getStartingWindowRemoveTimeNs()?.toString() !== '0'
+      transition2.getStartingWindowRemoveTimeNs() !== '0'
     ) {
       mergedTransition.setStartingWindowRemoveTimeNs(
         assertDefined(transition2.getStartingWindowRemoveTimeNs()),

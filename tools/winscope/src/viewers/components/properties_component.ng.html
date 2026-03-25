@@ -33,7 +33,7 @@ limitations under the License.
     <user-options
       class="view-controls"
       [userOptions]="userOptions()"
-      (optionsChange)="optionsChange.emit($event)"
+      [eventType]="ViewerEvents.PropertiesUserOptionsChange"
       [traceType]="traceType()"
       [logCallback]="Analytics.Navigation.logPropertiesSettingsChanged"
     >
@@ -59,13 +59,11 @@ limitations under the License.
 @if (showPropertiesTree()) {
   <tree-view
     class="tree"
-    [nodeRows]="nodeRows()"
+    [nodeRows]="$any(nodeRows())"
     [useStoredExpandedState]="!!store()"
     [itemsClickable]="true"
     [highlightedItem]="highlightedProperty()"
     (highlightedChange)="onHighlightedPropertyChange($any($event))"
-    (timestampClick)="onTimestampClick($event)"
-    (propagatePropertyClick)="onPropagatePropertyClick($event)"
   ></tree-view>
 }
 @if (showPlaceholderText()) {

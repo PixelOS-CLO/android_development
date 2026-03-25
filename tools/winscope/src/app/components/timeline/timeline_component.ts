@@ -27,8 +27,8 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {DomSanitizer, SafeUrl} from '@angular/platform-browser';
-import {ExpandedTimelineComponent} from '@app/components/timeline/expanded-timeline/expanded_timeline_component';
-import {HoverPositionUpdate, MiniTimelineComponent,} from '@app/components/timeline/mini-timeline/mini_timeline_component';
+import {PlaybackSpeedChange, PlaybackStateChangeHandled, PlaybackStateChangeRequest,} from '@app/components/timeline/playback_events';
+import {ExpandedTimelineToggled} from '@app/components/timeline/timeline_events';
 import {BookmarksChanged, DarkModeToggled} from '@app/misc_events';
 import {TabbedViewSwitched} from '@app/tabbed_view_events';
 import {TimelineData} from '@app/timeline_data';
@@ -37,7 +37,6 @@ import {isInputTextField, KeyboardEventKey, KeyboardEventKeyCode,} from '@common
 import {Store} from '@common/store/store';
 import {parseBigIntStrippingUnit} from '@common/string_helpers';
 import {TimeRange, Timestamp} from '@common/time/time';
-import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {UserTimestamp} from '@common/time/user_timestamp';
 import {getLogger} from '@compat/logging';
 import {Analytics} from '@logging/analytics';
@@ -56,9 +55,9 @@ import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {Thumbnail} from '@trace/media_based/thumbnail';
 import {PlaybackState} from '@viewers/common/playback/playback_state';
 
+import {ExpandedTimelineComponent} from './expanded-timeline/expanded_timeline_component';
+import {HoverPositionUpdate, MiniTimelineComponent,} from './mini-timeline/mini_timeline_component';
 import {PlaybackControlsComponent} from './playback_component';
-import {PlaybackSpeedChange, PlaybackStateChangeHandled, PlaybackStateChangeRequest,} from './playback_events';
-import {ExpandedTimelineToggled} from './timeline_events';
 
 /**
  * A component for displaying the timeline view.
@@ -557,14 +556,9 @@ export class TimelineComponent
     const target = event.target as HTMLInputElement;
     const timelineData = this.timelineData();
 
-    const valueNs = parseBigIntStrippingUnit(target.value);
-    const isBoottime = valueNs < TIME_UNIT_TO_NANO.d * 365n * 3n; // ~ 3 years, no Android smartphone had winscope traces back in 1973 yet.
-
-    const timestamp = isBoottime
-      ? timelineData
-          .getTimestampConverter()
-          .makeTimestampFromBootTimeNs(valueNs)
-      : timelineData.getTimestampConverter().makeTimestampFromNs(valueNs);
+    const timestamp = timelineData
+      .getTimestampConverter()
+      .makeTimestampFromNs(parseBigIntStrippingUnit(target.value));
 
     Analytics.Navigation.logTimeInput('ns');
     await this.updatePosition(
@@ -793,9 +787,11 @@ export class TimelineComponent
     const converter = timelineData.getTimestampConverter();
 
     const timestamp = converter.makeTimestampFromNs(currentTimestampNs);
-    const formattedCurrentTimestamp = timestamp.format(
-      converter.canMakeRealTimestamps(),
-    );
+    let formattedCurrentTimestamp = timestamp.format();
+    const parser = new UserTimestamp(formattedCurrentTimestamp);
+    if (converter.canMakeRealTimestamps()) {
+      formattedCurrentTimestamp = assertDefined(parser.extractTime());
+    }
 
     this.selectedTimeFormControl.setValue(formattedCurrentTimestamp);
     this.selectedNsFormControl.setValue(`${currentTimestampNs} ns`);

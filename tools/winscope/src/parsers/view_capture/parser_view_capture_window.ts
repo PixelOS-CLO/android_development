@@ -17,6 +17,7 @@
 import {ParserTimestampConverter} from '@common/time/timestamp_converter';
 import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {AbstractParser} from '@parsers/perfetto/abstract_parser';
+import {extractAllRects} from '@parsers/view_capture/rect_extractor';
 import {CustomQueryParserResultTypeMap, CustomQueryType, VisitableParserCustomQuery,} from '@trace_api/custom_query';
 import {EntriesRange} from '@trace_api/index_types';
 import {TraceFile} from '@trace_api/trace_file';
@@ -27,7 +28,6 @@ import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {RectsForTrace} from '@tree_node/rect_extractor_result';
 
 import {makeEntryHierarchyTrees, makeTreeNodeId, makeTreeNodeName,} from './entry_hierarchy_tree_factory';
-import {extractAllRects} from './rect_extractor';
 
 /**
  * A parser for a single window in a Perfetto ViewCapture trace.
@@ -85,7 +85,6 @@ export class ParserViewCaptureWindow extends AbstractParser<HierarchyTreeNode> {
       visibleRects,
       this.traceProcessor,
       this.traceGeometryData,
-      this.windowName,
     );
   }
 
@@ -157,7 +156,7 @@ export class ParserViewCaptureWindow extends AbstractParser<HierarchyTreeNode> {
       this.visibleRects = extractAllRects(
         visibleRectsResult.iter({}),
         this.traceGeometryData,
-        (row: RowIterator) => makeTreeNodeId(row, this.windowName),
+        (row: RowIterator) => makeTreeNodeId(row),
         (row: RowIterator) => makeTreeNodeName(row),
       );
     }

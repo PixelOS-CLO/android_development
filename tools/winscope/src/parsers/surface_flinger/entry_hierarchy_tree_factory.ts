@@ -25,24 +25,24 @@ import {AddDefaults} from '@parsers/operations/add_defaults';
 import {SetFormatters} from '@parsers/operations/set_formatters';
 import {TranslateIntDef} from '@parsers/operations/translate_intdef';
 import {queryArgs} from '@parsers/perfetto/query_helpers';
-import {ZOrderPathsComputation} from '@parsers/surface_flinger/computations/z_order_paths_computation';
-import {AddCompositionType} from '@parsers/surface_flinger/operations/add_composition_type';
-import {AddDisplayProperties} from '@parsers/surface_flinger/operations/add_display_properties';
-import {TranslateFlags} from '@parsers/surface_flinger/operations/translate_flags';
-import {UpdateCornerRadii} from '@parsers/surface_flinger/operations/update_corner_radii';
-import {UpdateTransforms} from '@parsers/surface_flinger/operations/update_transforms';
 import {QueryResult, RowIterator} from '@trace_processor/query_result';
 import {TraceProcessor} from '@trace_processor/trace_processor';
 import {EnumFormatter, LAYER_ID_FORMATTER} from '@trace/formatters';
-import {Registry, TamperedProtoField,} from '@trace/proto_utils/tampered_message_type';
+import {PERFETTO_TRACE_PACKET_ROOT} from '@trace/proto_utils/tampered_message_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {LazyPropertiesStrategyType, PropertiesProvider,} from '@tree_node/properties_provider';
 import {PropertiesProviderBuilder} from '@tree_node/properties_provider_builder';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {NodeRects, RectsForTrace, SnapshotRects,} from '@tree_node/rect_extractor_result';
 
+import {ZOrderPathsComputation} from './computations/z_order_paths_computation';
 import {DENYLIST_PROPERTIES} from './denylist_properties';
 import {HierarchyTreeBuilderSf} from './hierarchy_tree_builder_sf';
+import {AddCompositionType} from './operations/add_composition_type';
+import {AddDisplayProperties} from './operations/add_display_properties';
+import {TranslateFlags} from './operations/translate_flags';
+import {UpdateCornerRadii} from './operations/update_corner_radii';
+import {UpdateTransforms} from './operations/update_transforms';
 import {RectExtractor} from './rect_extractor';
 
 export function makeEntryHierarchyTrees(
@@ -361,7 +361,7 @@ function makeLayerLazyPropertiesStrategy(
       .setRootName(layerName)
       .setDenyList(DENYLIST_PROPERTIES)
       .setDuplicateCount(duplicateCount)
-      .setRootMessageType(assertDefined(getLayerField().resolve()))
+      .setRootMessageType(assertDefined(LAYER_FIELD.resolve()))
       .build();
   };
 }
@@ -377,27 +377,22 @@ function makeEntryLazyPropertiesStrategy(): LazyPropertiesStrategyType {
       .setRootId('LayerTraceEntry')
       .setRootName('root')
       .setDenyList(DENYLIST_PROPERTIES)
-      .setRootMessageType(assertDefined(getEntryField().resolve()))
+      .setRootMessageType(assertDefined(ENTRY_FIELD.resolve()))
       .build();
   };
 }
 
-function getEntryField(): TamperedProtoField {
-  return Registry.getInstance().getTracePacketType().fields[
-    'surfaceflingerLayersSnapshot'
-  ];
-}
-
-function getLayerField(): TamperedProtoField {
-  return assertDefined(getEntryField().resolve()?.fields['layers']?.resolve())
-    .fields['layers'];
-}
+const ENTRY_FIELD = assertDefined(
+  PERFETTO_TRACE_PACKET_ROOT.lookupType('perfetto.protos.TracePacket'),
+).fields['surfaceflingerLayersSnapshot'];
+const LAYER_FIELD = assertDefined(
+  ENTRY_FIELD.resolve()?.fields['layers']?.resolve(),
+).fields['layers'];
 
 const HWC_COMPOSITION_TYPE_INVERTED = Object.entries(
   PerfettoHwcCompositionType,
 ).reduce(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (acc, [key, value]: [string, any]) => {
+  (acc, [key, value]: [string, number]) => {
     acc[value] = key;
     return acc;
   },
@@ -410,38 +405,24 @@ const CUSTOM_FORMATTERS = new Map([
   ['hwcCompositionType', new EnumFormatter(HWC_COMPOSITION_TYPE_INVERTED)],
 ]);
 
-class Operations {
-  static get SetFormattersLayer() {
-    return new SetFormatters(getLayerField(), CUSTOM_FORMATTERS);
-  }
-  static get TranslateIntDefLayer() {
-    return new TranslateIntDef(getLayerField());
-  }
-  static get AddDefaultsLayer() {
-    return new AddDefaults(getLayerField(), undefined, DENYLIST_PROPERTIES);
-  }
-  static get SetFormattersEntry() {
-    return new SetFormatters(getEntryField(), CUSTOM_FORMATTERS);
-  }
-  static get TranslateIntDefEntry() {
-    return new TranslateIntDef(getEntryField());
-  }
-  static get AddDefaultsEntry() {
-    return new AddDefaults(getEntryField(), undefined, DENYLIST_PROPERTIES);
-  }
-  static get UpdateTransforms() {
-    return new UpdateTransforms();
-  }
-  static get TranslateFlags() {
-    return new TranslateFlags();
-  }
-  static get AddDisplayProperties() {
-    return new AddDisplayProperties();
-  }
-  static get AddCompositionType() {
-    return new AddCompositionType();
-  }
-  static get UpdateCornerRadii() {
-    return new UpdateCornerRadii();
-  }
-}
+const Operations = {
+  SetFormattersLayer: new SetFormatters(LAYER_FIELD, CUSTOM_FORMATTERS),
+  TranslateIntDefLayer: new TranslateIntDef(LAYER_FIELD),
+  AddDefaultsLayer: new AddDefaults(
+    LAYER_FIELD,
+    undefined,
+    DENYLIST_PROPERTIES,
+  ),
+  SetFormattersEntry: new SetFormatters(ENTRY_FIELD, CUSTOM_FORMATTERS),
+  TranslateIntDefEntry: new TranslateIntDef(ENTRY_FIELD),
+  AddDefaultsEntry: new AddDefaults(
+    ENTRY_FIELD,
+    undefined,
+    DENYLIST_PROPERTIES,
+  ),
+  UpdateTransforms: new UpdateTransforms(),
+  TranslateFlags: new TranslateFlags(),
+  AddDisplayProperties: new AddDisplayProperties(),
+  AddCompositionType: new AddCompositionType(),
+  UpdateCornerRadii: new UpdateCornerRadii(),
+};

@@ -31,7 +31,7 @@ import {TraceRect} from '@tree_node/trace_rect';
 import {ContainerType} from './container_type';
 import {DENYLIST_PROPERTIES} from './denylist_properties';
 import {HierarchyTreeBuilderWm} from './hierarchy_tree_builder_wm';
-import {WmOperationLists} from './operation_lists';
+import {WM_OPERATION_LISTS} from './operation_lists';
 import {extractRect} from './rect_extractor';
 import {TAMPERED_PROTOS_LATEST} from './tampered_protos_latest';
 
@@ -129,7 +129,7 @@ function makeEntryProperties(
     .build();
   const argSetId = assertDefined(snapshotResult.get('snapshot_arg_set_id'));
   const operations = assertDefined(
-    WmOperationLists.get(ContainerType.WindowManagerService),
+    WM_OPERATION_LISTS.get(ContainerType.WindowManagerService),
   );
   const entryProps = new PropertiesProviderBuilder()
     .setEagerProperties(eagerProperties)
@@ -157,7 +157,7 @@ function makeEntryLazyPropertiesStrategy(
       .setRootId('WindowManager')
       .setRootName('root')
       .setDenyList(DENYLIST_PROPERTIES)
-      .setRootMessageType(getEntryType())
+      .setRootMessageType(ENTRY_TYPE)
       .build();
   };
 }
@@ -194,7 +194,7 @@ function makeContainerPropertyProvider(
   const containerType = assertString(
     row.get('container_type'),
   ) as ContainerType;
-  const operations = assertDefined(WmOperationLists.get(containerType));
+  const operations = assertDefined(WM_OPERATION_LISTS.get(containerType));
 
   const propertiesBuilder = new PropertiesProviderBuilder()
     .setEagerProperties(eagerProperties)
@@ -251,7 +251,7 @@ function makeContainerLazyPropertiesStrategy(
       .setRootId(rootId)
       .setRootName(rootName)
       .setDenyList(DENYLIST_PROPERTIES)
-      .setRootMessageType(getContainerType())
+      .setRootMessageType(CONTAINER_TYPE)
       .build();
   };
 }
@@ -280,12 +280,8 @@ function buildHierarchyTree(
   return tree;
 }
 
-function getContainerType() {
-  return assertDefined(
-    TAMPERED_PROTOS_LATEST.windowContainerChildField.resolve(),
-  );
-}
+const CONTAINER_TYPE = assertDefined(
+  TAMPERED_PROTOS_LATEST.windowContainerChildField.resolve(),
+);
 
-function getEntryType() {
-  return assertDefined(TAMPERED_PROTOS_LATEST.entryField.resolve());
-}
+const ENTRY_TYPE = assertDefined(TAMPERED_PROTOS_LATEST.entryField.resolve());

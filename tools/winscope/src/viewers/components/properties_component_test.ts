@@ -24,18 +24,15 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {assertDefined} from '@common/assert';
 import {FilterFlag} from '@common/filter_flag';
 import {PersistentStore} from '@common/store/persistent_store';
-import {makeElapsedTimestamp} from '@common/time/test_helpers';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
-import {makeUiPropertyNode} from '@test/unit/ui_tree_node_utils';
 import {TraceType} from '@trace_api/trace_type';
 import {TextFilter} from '@viewers/common/text_filter';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
 import {flattenNodesToRows} from '@viewers/common/ui_tree_node_helpers';
-import {TimestampClickDetail} from '@viewers/common/viewer_event_details';
+import {ViewerEvents} from '@viewers/common/viewer_events';
 
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 import {PropertiesComponent} from './properties_component';
@@ -80,6 +77,7 @@ describe('PropertiesComponent', () => {
     const fixture = TestBed.createComponent(PropertiesComponent);
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
+
     dom.setComponentInput('store', new PersistentStore());
     dom.setComponentInput('userOptions', {
       showDiff: {
@@ -91,6 +89,7 @@ describe('PropertiesComponent', () => {
     dom.setComponentInput('textFilter', new TextFilter());
     dom.setComponentInput('traceType', TraceType.SURFACE_FLINGER);
     dom.setComponentInput('nodeRows', []);
+
     dom.detectChanges();
   });
 
@@ -108,7 +107,17 @@ describe('PropertiesComponent', () => {
   });
 
   it('renders tree in proto dump upon selected item', () => {
-    makeAndSetTreeInput();
+    const tree = new PropertyTreeBuilder()
+      .setRootId('selectedItem')
+      .setName('property')
+      .setValue(undefined)
+      .build();
+    tree.setIsRoot(true);
+    dom.setComponentInput(
+      'nodeRows',
+      flattenNodesToRows([UiPropertyTreeNode.from(tree)], false, false, ''),
+    );
+    dom.detectChanges();
     expect(dom.find('tree-view')).toBeDefined();
   });
 
@@ -120,30 +129,35 @@ describe('PropertiesComponent', () => {
   });
 
   it('handles node click', async () => {
-    const uiTree = makeAndSetTreeInput();
-    await dom.whenStable();
-    const spy = spyOn(component.highlightedPropertyChange, 'emit');
+    const tree = new PropertyTreeBuilder()
+      .setRootId('selectedItem')
+      .setName('property')
+      .setValue(undefined)
+      .build();
+    tree.setIsRoot(true);
+    dom.setComponentInput(
+      'nodeRows',
+      flattenNodesToRows([UiPropertyTreeNode.from(tree)], false, false, ''),
+    );
+    await dom.detectChangesAndWaitStable();
+
+    let highlightedItem: string | undefined;
+    dom.addEventListener(ViewerEvents.HighlightedPropertyChange, (event) => {
+      highlightedItem = (event as CustomEvent).detail.id;
+    });
+
     dom.findAndClick('tree-node');
-    expect(spy).toHaveBeenCalledOnceWith(uiTree.id);
+    expect(highlightedItem).toEqual(tree.id);
   });
 
   it('handles change in filter', () => {
-    const spy = spyOn(component.filterChange, 'emit');
+    let textFilter: TextFilter | undefined;
+    dom.addEventListener(ViewerEvents.PropertiesFilterChange, (event) => {
+      textFilter = (event as CustomEvent).detail;
+    });
     dom.findAndClick('.search-box button');
     dom.findAndDispatchInput('.title-section', 'Root');
-    expect(spy).toHaveBeenCalledWith(
-      new TextFilter('Root', [FilterFlag.MATCH_CASE]),
-    );
-  });
-
-  it('handles change in user options', () => {
-    const userOptions = assertDefined(
-      dom.findByDirective(UserOptionsComponent),
-    );
-    const spy = spyOn(component.optionsChange, 'emit');
-    const options = {opt: {name: 'opt', enabled: true}};
-    userOptions.optionsChange.emit(options);
-    expect(spy).toHaveBeenCalledOnceWith(options);
+    expect(textFilter).toEqual(new TextFilter('Root', [FilterFlag.MATCH_CASE]));
   });
 
   it('handles collapse button click', () => {
@@ -151,41 +165,4 @@ describe('PropertiesComponent', () => {
     dom.findAndClick('collapsible-section-title button');
     expect(spy).toHaveBeenCalled();
   });
-
-  it('propagates timestamp click', () => {
-    makeAndSetTreeInput();
-    const tree = assertDefined(dom.findByDirective(TreeComponent));
-    const tsSpy = spyOn(component.timestampClick, 'emit');
-    const tsDetail = new TimestampClickDetail(
-      undefined,
-      makeElapsedTimestamp(2n),
-    );
-    tree.timestampClick.emit(tsDetail);
-    expect(tsSpy).toHaveBeenCalledOnceWith(tsDetail);
-  });
-
-  it('propagates property', () => {
-    makeAndSetTreeInput();
-    const tree = assertDefined(dom.findByDirective(TreeComponent));
-    const propSpy = spyOn(component.propagatePropertyClick, 'emit');
-    const propDetail = makeUiPropertyNode('id', 'name', false);
-    tree.propagatePropertyClick.emit(propDetail);
-    expect(propSpy).toHaveBeenCalledOnceWith(propDetail);
-  });
-
-  function makeAndSetTreeInput(): UiPropertyTreeNode {
-    const tree = new PropertyTreeBuilder()
-      .setRootId('selectedItem')
-      .setName('property')
-      .setValue(undefined)
-      .build();
-    tree.setIsRoot(true);
-    const uiTree = UiPropertyTreeNode.from(tree);
-    dom.setComponentInput(
-      'nodeRows',
-      flattenNodesToRows([uiTree], false, false, ''),
-    );
-    dom.detectChanges();
-    return uiTree;
-  }
 });

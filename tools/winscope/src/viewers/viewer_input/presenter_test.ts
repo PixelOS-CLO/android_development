@@ -43,6 +43,7 @@ import {LogSelectFilter} from '@viewers/common/log_filters';
 import {TextFilter} from '@viewers/common/text_filter';
 import {LogField, LogHeader} from '@viewers/common/ui_data_log';
 import {UserOptions} from '@viewers/common/user_options';
+import {ViewerEvents} from '@viewers/common/viewer_events';
 import {TraceRectType} from '@viewers/components/rects/rect_spec';
 
 import {Presenter} from './presenter';
@@ -224,54 +225,55 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
     expect(uiData.selectedIndex).toBeUndefined();
     const curEntry = uiData.entries[0];
     const expectedFields: LogField[] = [
-      new LogField(
-        uiData.headers[0].spec,
-        'MOTION',
-        undefined,
-        undefined,
-        true,
-      ),
-      new LogField(uiData.headers[1].spec, 'TOUCHSCREEN'),
-      new LogField(uiData.headers[2].spec, 'DOWN'),
-      new LogField(uiData.headers[3].spec, 4),
-      new LogField(uiData.headers[4].spec, 0),
-      new LogField(uiData.headers[5].spec, [
-        '[',
-        {
-          propertyValue: '212',
-          tooltip: this.wrappedName('win-212'),
-          onClick: () => {},
-        },
-        ', ',
-        {
-          propertyValue: '64',
-          tooltip: undefined,
-          onClick: () => {},
-        },
-        ', ',
-        {
-          propertyValue: '82',
-          tooltip: this.wrappedName('win-82'),
-          onClick: () => {},
-        },
-        ', ',
-        {
-          propertyValue: '75',
-          tooltip: this.wrappedName('win-75'),
-          onClick: () => {},
-        },
-        ']',
-      ]),
-      new LogField(
-        uiData.headers[6].spec,
-        [
+      {
+        spec: uiData.headers[0].spec,
+        value: 'MOTION',
+        propagateEntryTimestamp: true,
+      },
+      {spec: uiData.headers[1].spec, value: 'TOUCHSCREEN'},
+      {spec: uiData.headers[2].spec, value: 'DOWN'},
+      {spec: uiData.headers[3].spec, value: 4},
+      {spec: uiData.headers[4].spec, value: 0},
+      {
+        spec: uiData.headers[5].spec,
+        value: [
+          '[',
+          {
+            propertyValue: '212',
+            tooltip: this.wrappedName('win-212'),
+            onClick: () => {},
+          },
+          ', ',
+          {
+            propertyValue: '64',
+            tooltip: undefined,
+            onClick: () => {},
+          },
+          ', ',
+          {
+            propertyValue: '82',
+            tooltip: this.wrappedName('win-82'),
+            onClick: () => {},
+          },
+          ', ',
+          {
+            propertyValue: '75',
+            tooltip: this.wrappedName('win-75'),
+            onClick: () => {},
+          },
+          ']',
+        ],
+      },
+      {
+        spec: uiData.headers[6].spec,
+        value: [
           this.wrappedName('win-212'),
           this.wrappedName('64'),
           this.wrappedName('win-82'),
           this.wrappedName('win-75'),
           this.wrappedName('win-zero-not-98'),
         ].join(', '),
-      ),
+      },
     ];
     expectedFields.forEach((field) => {
       expect(curEntry.fields).toContain(field);
@@ -386,6 +388,55 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
       beforeEach(async () => {
         uiData = UiData.createEmpty();
         await this.setUpTestEnvironment();
+      });
+
+      it('adds event listeners', async () => {
+        const element = document.createElement('div');
+        const presenter = await this.createPresenter(
+          (uiDataLog) => (uiData = uiDataLog as UiData),
+          false,
+        );
+        presenter.addEventListeners(element);
+
+        const testId = 'testId';
+
+        let spy: jasmine.Spy = spyOn(presenter, 'onHighlightedPropertyChange');
+        element.dispatchEvent(
+          new CustomEvent(ViewerEvents.HighlightedPropertyChange, {
+            detail: {id: testId},
+          }),
+        );
+        expect(spy).toHaveBeenCalledWith(testId);
+
+        spy = spyOn(presenter, 'onHighlightedIdChange');
+        element.dispatchEvent(
+          new CustomEvent(ViewerEvents.HighlightedIdChange, {
+            detail: {id: testId},
+          }),
+        );
+        expect(spy).toHaveBeenCalledWith(testId);
+
+        spy = spyOn(presenter, 'onRectsUserOptionsChange');
+        const userOptions = {};
+        element.dispatchEvent(
+          new CustomEvent(ViewerEvents.RectsUserOptionsChange, {
+            detail: {userOptions},
+          }),
+        );
+        expect(spy).toHaveBeenCalledWith(userOptions);
+
+        spy = spyOn(presenter, 'onRectDoubleClick');
+        element.dispatchEvent(new CustomEvent(ViewerEvents.RectsDblClick));
+        expect(spy).toHaveBeenCalled();
+
+        spy = spyOn(presenter, 'onDispatchPropertiesFilterChange');
+        const filter = new TextFilter();
+        element.dispatchEvent(
+          new CustomEvent(ViewerEvents.DispatchPropertiesFilterChange, {
+            detail: filter,
+          }),
+        );
+        expect(spy).toHaveBeenCalledWith(filter);
       });
 
       it('updates selected entry', async () => {
@@ -617,9 +668,9 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
         );
         expect(uiData.highlightedProperty).toBe('');
         const id = '4';
-        presenter.onHighlightedPropertyChange(id, false);
+        presenter.onHighlightedPropertyChange(id);
         expect(uiData.highlightedProperty).toBe(id);
-        presenter.onHighlightedPropertyChange(id, false);
+        presenter.onHighlightedPropertyChange(id);
         expect(uiData.highlightedProperty).toBe('');
       });
 
@@ -629,7 +680,14 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
           parser,
           this.layerIdToName,
         );
-        presenter.onHighlightedPropertyChange('2', false);
+
+        const element = document.createElement('div');
+        presenter.addEventListeners(element);
+        element.dispatchEvent(
+          new CustomEvent(ViewerEvents.HighlightedPropertyChange, {
+            detail: {id: '2'},
+          }),
+        );
         await presenter.onLogEntryClick(testLogId);
         expect(uiData.highlightedProperty).toBe('2');
       });

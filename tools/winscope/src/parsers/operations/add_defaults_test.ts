@@ -14,25 +14,23 @@
  * limitations under the License.
  */
 import {assertDefined} from '@common/assert';
-import {getFakeProtoDescriptors} from '@compat/test/protobuf';
+import {fakeProtoDescriptors} from '@compat/test/protobuf';
 import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
 import {DEFAULT_PROPERTY_FORMATTER} from '@trace/formatters';
-import {Registry, TamperedMessageType, TamperedProtoField,} from '@trace/proto_utils/tampered_message_type';
+import {PERFETTO_TRACE_PACKET_ROOT, registerDescriptors, TamperedMessageType, TamperedProtoField,} from '@trace/proto_utils/tampered_message_type';
 import {PropertySource, PropertyTreeNode} from '@tree_node/property_tree_node';
 
 import {AddDefaults} from './add_defaults';
 
 describe('AddDefaults', () => {
+  registerDescriptors(fakeProtoDescriptors);
   let propertyRoot: PropertyTreeNode;
   let operation: AddDefaults;
   let rootField: TamperedProtoField;
 
-  beforeAll(async () => {
-    Registry.getInstance().parseDescriptors(await getFakeProtoDescriptors());
-  });
   beforeEach(() => {
     rootField = (
-      Registry.getInstance().getType(
+      PERFETTO_TRACE_PACKET_ROOT.lookupType(
         'winscope.test.RootMessage',
       ) as TamperedMessageType
     ).fields['entry'];
@@ -50,7 +48,7 @@ describe('AddDefaults', () => {
     const defaultNode = assertDefined(
       propertyRoot.getChildByName('number_32bit'),
     );
-    expect(defaultNode.getValue<number>()).toBe(0);
+    expect(defaultNode.getValue()).toBe(0);
     checkAllNodesAreDefault(propertyRoot);
   });
 
@@ -60,18 +58,14 @@ describe('AddDefaults', () => {
     expect(propertyRoot.getAllChildren().length).toBe(24);
     checkAllNodesAreDefault(propertyRoot);
     expect(
-      assertDefined(propertyRoot.getChildByName('array')).getValue<number[]>(),
+      assertDefined(propertyRoot.getChildByName('array')).getValue(),
     ).toEqual([]);
     expect(
-      assertDefined(
-        propertyRoot.getChildByName('number_32bit'),
-      ).getValue<number>(),
+      assertDefined(propertyRoot.getChildByName('number_32bit')).getValue(),
     ).toBe(0);
     expect(
-      assertDefined(propertyRoot.getChildByName('number_64bit'))
-        .getValue()
-        ?.toString(),
-    ).toBe('0');
+      assertDefined(propertyRoot.getChildByName('number_64bit')).getValue(),
+    ).toBe(0n);
     expect(
       assertDefined(propertyRoot.getChildByName('boolValue')).getValue(),
     ).toBeFalse();
@@ -103,7 +97,7 @@ describe('AddDefaults', () => {
     const defaultNode = assertDefined(
       propertyRoot.getChildByName('number_32bit'),
     );
-    expect(defaultNode.getValue<number>()).toBe(0);
+    expect(defaultNode.getValue()).toBe(0);
     checkAllNodesAreDefault(propertyRoot);
   });
 

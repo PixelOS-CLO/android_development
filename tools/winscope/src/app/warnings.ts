@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import {BugreportData, BuildType} from '@app/trace_file_identifier';
 import {TimeRange} from '@common/time/time';
 import {TimeDuration} from '@common/time/time_duration';
 import {UserWarning} from '@messaging/user_warning';
@@ -21,7 +22,6 @@ import {TRACE_INFO} from '@trace_api/trace_info';
 import {TraceType} from '@trace_api/trace_type';
 
 import {ParsingErrorType} from './parsing_error_type';
-import {BugreportData, BuildType} from './trace_file_identifier';
 
 /**
  * A warning for when not all transitions in a trace can be parsed.
@@ -207,6 +207,17 @@ export function makeWarningUnsupportedFileFormat(descriptor: string) {
   return new UserWarning(
     'unsupported format',
     `${descriptor}: unsupported format`,
+  );
+}
+
+/**
+ * A warning for when legacy to perfetto trace conversion fails.
+ */
+export function makeWarningFailedToConvertLegacyTraces(errorMessage: string) {
+  return new UserWarning(
+    'failed to convert legacy trace',
+    `Legacy to perfetto conversion failed: ${errorMessage}
+Discarding legacy traces.`,
   );
 }
 

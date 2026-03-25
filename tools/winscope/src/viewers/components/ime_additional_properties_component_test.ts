@@ -21,6 +21,7 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {makeHierarchyNode, makePropertyNode,} from '@test/unit/tree_node/tree_node_test_helpers';
 import {ImeAdditionalProperties} from '@viewers/common/ime_additional_properties';
+import {AdditionalPropertySelectedDetail, ViewerEvents,} from '@viewers/common/viewer_events';
 
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 import {CoordinatesTableComponent} from './coordinates_table_component';
@@ -110,12 +111,14 @@ describe('ImeAdditionalPropertiesComponent', () => {
 
   it('emits update additional property tree event on wm state button click', () => {
     const button = dom.get('.wm-state-button');
-    const spy = spyOn(component.additionalPropertySelected, 'emit');
+    let detail: AdditionalPropertySelectedDetail | undefined;
+    dom.addEventListener(ViewerEvents.AdditionalPropertySelected, (event) => {
+      detail = (event as CustomEvent).detail;
+    });
 
     button.checkClassName('selected', false);
     button.click();
-    expect(spy).toHaveBeenCalledTimes(1);
-    const detail = spy.calls.mostRecent().args[0];
+
     expect(detail?.name).toEqual('Window Manager State');
 
     dom.setComponentInput('highlightedItem', detail?.treeNode.id);
@@ -125,26 +128,34 @@ describe('ImeAdditionalPropertiesComponent', () => {
 
   it('propagates new ime container layer on button click', () => {
     const button = dom.get('.ime-container-button');
-    const spy = spyOn(component.highlightedIdChange, 'emit');
+    let id: string | undefined;
+    dom.addEventListener(ViewerEvents.HighlightedIdChange, (event) => {
+      id = (event as CustomEvent).detail.id;
+    });
 
     button.checkClassName('selected', false);
     button.click();
-    expect(spy).toHaveBeenCalledOnceWith('123');
 
-    dom.setComponentInput('highlightedItem', '123');
+    expect(id).toBe('123');
+
+    dom.setComponentInput('highlightedItem', id);
     dom.detectChanges();
     button.checkClassName('selected', true);
   });
 
   it('propagates new input method surface layer on button click', () => {
     const button = dom.get('.input-method-surface-button');
-    const spy = spyOn(component.highlightedIdChange, 'emit');
+    let id: string | undefined;
+    dom.addEventListener(ViewerEvents.HighlightedIdChange, (event) => {
+      id = (event as CustomEvent).detail.id;
+    });
 
     button.checkClassName('selected', false);
     button.click();
-    expect(spy).toHaveBeenCalledOnceWith('456');
 
-    dom.setComponentInput('highlightedItem', '456');
+    expect(id).toBe('456');
+
+    dom.setComponentInput('highlightedItem', id);
     dom.detectChanges();
     button.checkClassName('selected', true);
   });
@@ -163,12 +174,15 @@ describe('ImeAdditionalPropertiesComponent', () => {
     dom.setComponentInput('isImeManagerService', true);
     dom.detectChanges();
     const button = dom.get('.ime-control-target-button');
-    const spy = spyOn(component.additionalPropertySelected, 'emit');
+    let detail: AdditionalPropertySelectedDetail | undefined;
+    dom.addEventListener(ViewerEvents.AdditionalPropertySelected, (event) => {
+      detail = (event as CustomEvent).detail;
+    });
 
     button.checkClassName('selected', false);
     button.click();
-    expect(spy).toHaveBeenCalledTimes(1);
-    const detail = spy.calls.mostRecent().args[0];
+
+    expect(detail).toBeDefined();
     expect(detail?.name).toBe('Ime Control Target');
 
     dom.setComponentInput('highlightedItem', detail?.treeNode.id);

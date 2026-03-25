@@ -19,16 +19,15 @@ import {Trace} from '@trace_api/trace';
 import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {AbstractHierarchyViewer} from '@viewers/abstract_hierarchy_viewer';
+import {AbstractViewer} from '@viewers/abstract_viewer';
 
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';
 import {ViewerSurfaceFlingerComponent} from './viewer_surface_flinger_component';
 
-export class ViewerSurfaceFlinger extends AbstractHierarchyViewer<
+export class ViewerSurfaceFlinger extends AbstractViewer<
   HierarchyTreeNode,
-  UiData,
-  Presenter
+  UiData
 > {
   static readonly DEPENDENCIES: TraceType[] = [TraceType.SURFACE_FLINGER];
 
@@ -43,16 +42,5 @@ export class ViewerSurfaceFlinger extends AbstractHierarchyViewer<
     notifyViewCallback: (uiData: UiData) => void,
   ): Presenter {
     return new Presenter(trace, traces, store, notifyViewCallback);
-  }
-
-  protected override addViewerSpecificListeners(
-    component: ViewerSurfaceFlingerComponent,
-  ) {
-    component.onRectsDblClick.subscribe(async (detail) => {
-      await this.presenter.onRectDoubleClick(detail);
-    });
-    component.onRectTypeButtonClick.subscribe((detail) => {
-      this.presenter.onRectTypeButtonClicked(detail);
-    });
   }
 }

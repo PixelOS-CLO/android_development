@@ -83,17 +83,11 @@ describe('EntryHierarchyTreeFactory', () => {
       const trees = makeHierarchyTrees();
       expect(trees.length).toBe(2);
       expect(
-        trees[0]
-          .getEagerPropertyByName('focusedDisplayId')
-          ?.getValue()
-          ?.toString(),
-      ).toEqual('14');
+        trees[0].getEagerPropertyByName('focusedDisplayId')?.getValue(),
+      ).toEqual(14n);
       expect(
-        trees[1]
-          .getEagerPropertyByName('focusedDisplayId')
-          ?.getValue()
-          ?.toString(),
-      ).toEqual('12');
+        trees[1].getEagerPropertyByName('focusedDisplayId')?.getValue(),
+      ).toEqual(12n);
 
       const displayContent = assertDefined(
         trees[0].getChildByName('Container1'),

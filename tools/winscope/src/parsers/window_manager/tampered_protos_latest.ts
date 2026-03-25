@@ -15,46 +15,32 @@
  */
 
 import {assertDefined} from '@common/assert';
-import {Registry} from '@trace/proto_utils/tampered_message_type';
+import {PERFETTO_TRACE_PACKET_ROOT} from '@trace/proto_utils/tampered_message_type';
 
-function getEntryField() {
-  return assertDefined(
-    Registry.getInstance().getWinscopeExtensionsType().fields[
-      '.perfetto.protos.WinscopeExtensionsImpl.windowmanager'
-    ],
-  );
-}
+const entryField = assertDefined(
+  assertDefined(
+    PERFETTO_TRACE_PACKET_ROOT.lookupType(
+      'perfetto.protos.TracePacket',
+    )?.fields['winscopeExtensions']?.resolve(),
+  ).fields['.perfetto.protos.WinscopeExtensionsImpl.windowmanager'],
+);
 
-function getWindowManagerServiceField() {
-  return assertDefined(getEntryField().resolve()).fields[
-    'windowManagerService'
-  ];
-}
+const windowManagerServiceField = assertDefined(entryField.resolve()).fields[
+  'windowManagerService'
+];
 
-function getRootWindowContainerField() {
-  return assertDefined(getWindowManagerServiceField().resolve()).fields[
-    'rootWindowContainer'
-  ];
-}
+const rootWindowContainerField = assertDefined(
+  windowManagerServiceField.resolve(),
+).fields['rootWindowContainer'];
 
-function getWindowContainerField() {
-  return assertDefined(getRootWindowContainerField().resolve()).fields[
-    'windowContainer'
-  ];
-}
+const windowContainerField = assertDefined(rootWindowContainerField.resolve())
+  .fields['windowContainer'];
 
-function getWindowContainerChildField() {
-  return assertDefined(getWindowContainerField().resolve()).fields['children'];
-}
+const windowContainerChildField = assertDefined(windowContainerField.resolve())
+  .fields['children'];
 
 export const TAMPERED_PROTOS_LATEST = {
-  get entryField() {
-    return getEntryField();
-  },
-  get rootWindowContainerField() {
-    return getRootWindowContainerField();
-  },
-  get windowContainerChildField() {
-    return getWindowContainerChildField();
-  },
+  entryField,
+  rootWindowContainerField,
+  windowContainerChildField,
 };

@@ -77,19 +77,15 @@ describe('PerfettoParserWindowManager', () => {
     const state = assertDefined(
       entry.findDfs((node) => node.name.includes(title)),
     );
-    expect(state.getEagerPropertyByName('token')?.getValue<number>()).toBe(
-      160447612,
+    expect(state.getEagerPropertyByName('token')?.getValue()).toBe(160447612);
+    expect(state.getEagerPropertyByName('title')?.getValue()).toBe(title);
+    expect(state.getEagerPropertyByName('containerType')?.getValue()).toBe(
+      'WindowState',
     );
-    expect(state.getEagerPropertyByName('title')?.getValue<string>()).toBe(
-      title,
-    );
-    expect(
-      state.getEagerPropertyByName('containerType')?.getValue<string>(),
-    ).toBe('WindowState');
     expect(state.getEagerPropertyByName('isVisible')?.getValue()).toBeTrue();
-    expect(
-      state.getEagerPropertyByName('parentToken')?.getValue<number>(),
-    ).toBe(193718205);
+    expect(state.getEagerPropertyByName('parentToken')?.getValue()).toBe(
+      193718205,
+    );
 
     const task = assertDefined(
       state
@@ -101,9 +97,9 @@ describe('PerfettoParserWindowManager', () => {
     );
     expect(task.name).toBe('2');
     expect(task.getEagerPropertyByName('isVisible')?.getValue()).toBeFalse();
-    expect(
-      task.getEagerPropertyByName('containerType')?.getValue<string>(),
-    ).toBe('Task');
+    expect(task.getEagerPropertyByName('containerType')?.getValue()).toBe(
+      'Task',
+    );
   });
 
   it('provides rects', async () => {

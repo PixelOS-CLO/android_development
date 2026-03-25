@@ -15,22 +15,18 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {assertDefined} from '@common/assert';
-import {getPerfettoTraceDescriptors} from '@compat/protobuf';
-import {DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorSet,} from '@compat/protobuf';
+import {descriptors} from '@protos/perfetto/trace/descriptors';
+import * as jspb from 'google-protobuf';
+import * as descriptor_pb from 'google-protobuf/google/protobuf/descriptor_pb';
 
-// Avoid ExtensionFieldInfo as its constructor is private in some platforms and fails to build
+const typedefExtension = new jspb.ExtensionFieldInfo<string>(
+  60001,
+  {typedef: 0}, // pseudo-object to hold field info, key doesn't matter much for binary?
 
-const typedefExtension = {
-  ma: 60001,
-  Ba: {typedef: 0},
-  la: null,
-  Na: null,
-  na: 0,
-  F() {
-    return false;
-  },
-} as any;
+  null as any,
+  null as any,
+  0,
+);
 
 export class TamperedProtoField {
   constructor(
@@ -40,7 +36,7 @@ export class TamperedProtoField {
     public repeated: boolean,
     public parent: TamperedMessageType,
     public defaultValue: any = undefined,
-    public intDefType: string | undefined = undefined,
+    public options: {[key: string]: any} = {},
   ) {}
 
   resolve(): TamperedMessageType | undefined {
@@ -60,11 +56,11 @@ export class TamperedMessageType {
   ) {}
 
   lookupType(name: string): TamperedMessageType | undefined {
-    return Registry.getInstance().getType(name);
+    return registry.getType(name);
   }
 
   lookupEnum(name: string): ProtobufEnum | undefined {
-    return Registry.getInstance().getEnum(name);
+    return registry.getEnum(name);
   }
 }
 
@@ -78,29 +74,18 @@ export class ProtobufEnum {
   ) {}
 }
 
-export class Registry {
-  private static instance: Registry | undefined;
+class Registry {
   types = new Map<string, TamperedMessageType>();
   enums = new Map<string, ProtobufEnum>();
 
-  private defaultDescriptorsLoaded = false;
-
-  async loadDefaultDescriptors() {
-    if (this.defaultDescriptorsLoaded) return;
-    const descriptors = await getPerfettoTraceDescriptors();
+  constructor() {
     this.parseDescriptors(descriptors);
-    this.defaultDescriptorsLoaded = true;
   }
 
-  static getInstance(): Registry {
-    const instance = Registry.instance ?? new Registry();
-    if (!Registry.instance) {
-      Registry.instance = instance;
-    }
-    return instance;
-  }
-
-  parseDescriptors(fileDescriptorSet: FileDescriptorSet) {
+  parseDescriptors(bin: Uint8Array) {
+    const fileDescriptorSet =
+      descriptor_pb.FileDescriptorSet.deserializeBinary(bin);
+    // Pass 1: Types and Enums
     for (const file of fileDescriptorSet.getFileList()) {
       const packageName = file.getPackage() || '';
       for (const msg of file.getMessageTypeList()) {
@@ -111,6 +96,7 @@ export class Registry {
       }
     }
 
+    // Pass 2: Extensions
     for (const file of fileDescriptorSet.getFileList()) {
       const packageName = file.getPackage() || '';
       this.parseExtensions(file.getExtensionList(), packageName);
@@ -120,7 +106,10 @@ export class Registry {
     }
   }
 
-  private parseMessageTypes(msg: DescriptorProto, parentName: string) {
+  private parseMessageTypes(
+    msg: descriptor_pb.DescriptorProto,
+    parentName: string,
+  ) {
     const name = msg.getName()!;
     const fullName = parentName ? `${parentName}.${name}` : name;
 
@@ -153,58 +142,58 @@ export class Registry {
 
       // Mapping FieldDescriptorProto.Type to protobufjs string types
       switch (field.getType()) {
-        case FieldDescriptorProto.Type.TYPE_DOUBLE:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_DOUBLE:
           fieldType = 'double';
           break;
-        case FieldDescriptorProto.Type.TYPE_FLOAT:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_FLOAT:
           fieldType = 'float';
           break;
-        case FieldDescriptorProto.Type.TYPE_INT64:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_INT64:
           fieldType = 'int64';
           break;
-        case FieldDescriptorProto.Type.TYPE_UINT64:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_UINT64:
           fieldType = 'uint64';
           break;
-        case FieldDescriptorProto.Type.TYPE_INT32:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_INT32:
           fieldType = 'int32';
           break;
-        case FieldDescriptorProto.Type.TYPE_FIXED64:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_FIXED64:
           fieldType = 'fixed64';
           break;
-        case FieldDescriptorProto.Type.TYPE_FIXED32:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_FIXED32:
           fieldType = 'fixed32';
           break;
-        case FieldDescriptorProto.Type.TYPE_BOOL:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_BOOL:
           fieldType = 'bool';
           break;
-        case FieldDescriptorProto.Type.TYPE_STRING:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_STRING:
           fieldType = 'string';
           break;
-        case FieldDescriptorProto.Type.TYPE_GROUP:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_GROUP:
           fieldType = 'group';
           break; // deprecated
-        case FieldDescriptorProto.Type.TYPE_MESSAGE:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_MESSAGE:
           fieldType = field.getTypeName()!;
           break;
-        case FieldDescriptorProto.Type.TYPE_BYTES:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_BYTES:
           fieldType = 'bytes';
           break;
-        case FieldDescriptorProto.Type.TYPE_UINT32:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_UINT32:
           fieldType = 'uint32';
           break;
-        case FieldDescriptorProto.Type.TYPE_ENUM:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_ENUM:
           fieldType = field.getTypeName()!;
           break;
-        case FieldDescriptorProto.Type.TYPE_SFIXED32:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_SFIXED32:
           fieldType = 'sfixed32';
           break;
-        case FieldDescriptorProto.Type.TYPE_SFIXED64:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_SFIXED64:
           fieldType = 'sfixed64';
           break;
-        case FieldDescriptorProto.Type.TYPE_SINT32:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_SINT32:
           fieldType = 'sint32';
           break;
-        case FieldDescriptorProto.Type.TYPE_SINT64:
+        case descriptor_pb.FieldDescriptorProto.Type.TYPE_SINT64:
           fieldType = 'sint64';
           break;
         default:
@@ -212,15 +201,18 @@ export class Registry {
       }
 
       const repeated =
-        field.getLabel() === FieldDescriptorProto.Label.LABEL_REPEATED;
+        field.getLabel() ===
+        descriptor_pb.FieldDescriptorProto.Label.LABEL_REPEATED;
 
-      let intDefType: string | undefined;
+      const options: {[key: string]: any} = {};
       if (field.hasOptions()) {
-        const fieldOptions = assertDefined(field.getOptions());
+        const fieldOptions = field.getOptions()!;
         try {
           const val = fieldOptions.getExtension(typedefExtension);
           if (val) {
-            intDefType = val as string;
+            options['(.android_common.typedef)'] = val;
+            options['(.perfetto.protos.typedef)'] = val;
+            options['(.android.typedef)'] = val;
           }
         } catch {
           // ignore
@@ -263,13 +255,16 @@ export class Registry {
         repeated,
         type,
         defaultValue,
-        intDefType,
+        options,
       );
       type.fields[fieldName] = pbField;
     }
   }
 
-  private parseMessageExtensions(msg: DescriptorProto, parentName: string) {
+  private parseMessageExtensions(
+    msg: descriptor_pb.DescriptorProto,
+    parentName: string,
+  ) {
     const name = msg.getName()!;
     const fullName = parentName ? `${parentName}.${name}` : name;
 
@@ -280,7 +275,10 @@ export class Registry {
     }
   }
 
-  private parseEnum(enm: EnumDescriptorProto, parentName: string) {
+  private parseEnum(
+    enm: descriptor_pb.EnumDescriptorProto,
+    parentName: string,
+  ) {
     const name = enm.getName()!;
     const fullName = parentName ? `${parentName}.${name}` : name;
 
@@ -295,7 +293,7 @@ export class Registry {
   }
 
   private parseExtensions(
-    extensions: readonly FieldDescriptorProto[],
+    extensions: descriptor_pb.FieldDescriptorProto[],
     parentName: string,
   ) {
     for (const ext of extensions) {
@@ -307,58 +305,58 @@ export class Registry {
         let fieldType = 'string';
 
         switch (ext.getType()) {
-          case FieldDescriptorProto.Type.TYPE_DOUBLE:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_DOUBLE:
             fieldType = 'double';
             break;
-          case FieldDescriptorProto.Type.TYPE_FLOAT:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_FLOAT:
             fieldType = 'float';
             break;
-          case FieldDescriptorProto.Type.TYPE_INT64:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_INT64:
             fieldType = 'int64';
             break;
-          case FieldDescriptorProto.Type.TYPE_UINT64:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_UINT64:
             fieldType = 'uint64';
             break;
-          case FieldDescriptorProto.Type.TYPE_INT32:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_INT32:
             fieldType = 'int32';
             break;
-          case FieldDescriptorProto.Type.TYPE_FIXED64:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_FIXED64:
             fieldType = 'fixed64';
             break;
-          case FieldDescriptorProto.Type.TYPE_FIXED32:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_FIXED32:
             fieldType = 'fixed32';
             break;
-          case FieldDescriptorProto.Type.TYPE_BOOL:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_BOOL:
             fieldType = 'bool';
             break;
-          case FieldDescriptorProto.Type.TYPE_STRING:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_STRING:
             fieldType = 'string';
             break;
-          case FieldDescriptorProto.Type.TYPE_GROUP:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_GROUP:
             fieldType = 'group';
             break;
-          case FieldDescriptorProto.Type.TYPE_MESSAGE:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_MESSAGE:
             fieldType = ext.getTypeName()!;
             break;
-          case FieldDescriptorProto.Type.TYPE_BYTES:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_BYTES:
             fieldType = 'bytes';
             break;
-          case FieldDescriptorProto.Type.TYPE_UINT32:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_UINT32:
             fieldType = 'uint32';
             break;
-          case FieldDescriptorProto.Type.TYPE_ENUM:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_ENUM:
             fieldType = ext.getTypeName()!;
             break;
-          case FieldDescriptorProto.Type.TYPE_SFIXED32:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_SFIXED32:
             fieldType = 'sfixed32';
             break;
-          case FieldDescriptorProto.Type.TYPE_SFIXED64:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_SFIXED64:
             fieldType = 'sfixed64';
             break;
-          case FieldDescriptorProto.Type.TYPE_SINT32:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_SINT32:
             fieldType = 'sint32';
             break;
-          case FieldDescriptorProto.Type.TYPE_SINT64:
+          case descriptor_pb.FieldDescriptorProto.Type.TYPE_SINT64:
             fieldType = 'sint64';
             break;
           default:
@@ -366,16 +364,27 @@ export class Registry {
         }
 
         const repeated =
-          ext.getLabel() === FieldDescriptorProto.Label.LABEL_REPEATED;
+          ext.getLabel() ===
+          descriptor_pb.FieldDescriptorProto.Label.LABEL_REPEATED;
         const pbField = new TamperedProtoField(
           name,
           fieldId,
           fieldType,
           repeated,
           extendedType,
-          undefined,
-          undefined,
+          undefined, // Extensions usually don't have default values in the same way? Or check hasDefaultValue
+          {},
         );
+
+        // Register with fully qualified name (with leading dot if it had one? parentName usually has no leading dot relative to package?)
+        // The parser expects '.perfetto.protos.WinscopeExtensionsImpl.androidInputEvent'
+        // parentName for WinscopeExtensionsImpl extensions is 'perfetto.protos.WinscopeExtensionsImpl'
+        // so fullName is 'perfetto.protos.WinscopeExtensionsImpl.android_input_event' ?
+        // or 'perfetto.protos.WinscopeExtensionsImpl.androidInputEvent' if we camelCase?
+
+        // We should PROBABLY not camelCase keys for extensions if they are looked up by FULL qualified name which might rely on original name?
+        // But abstract_input_event_parser uses '.perfetto.protos.WinscopeExtensionsImpl.androidInputEvent' <-- camelCased!
+        // So we should camelCase the name part.
 
         let camelName = name;
         if (camelName.includes('_')) {
@@ -396,21 +405,17 @@ export class Registry {
   }
 
   getType(name: string): TamperedMessageType | undefined {
+    // protobufjs lookup is complex.
     // If name starts with '.', it's absolute.
     if (name.startsWith('.')) return this.types.get(name);
+
+    // If relativeTo is provided, try to resolve relative
+    // But typically in Winscope we use full names or specific known types.
+    // Let's try absolute match first (assuming name might be fully qualified without dot)
     if (this.types.has(name)) return this.types.get(name);
     if (this.types.has('.' + name)) return this.types.get('.' + name);
 
     return undefined;
-  }
-
-  getTracePacketType(): TamperedMessageType {
-    return assertDefined(this.getType('perfetto.protos.TracePacket'));
-  }
-
-  getWinscopeExtensionsType(): TamperedMessageType {
-    const tracePacket = this.getTracePacketType();
-    return assertDefined(tracePacket.fields['winscopeExtensions']?.resolve());
   }
 
   getEnum(name: string): ProtobufEnum | undefined {
@@ -419,4 +424,16 @@ export class Registry {
     if (this.enums.has('.' + name)) return this.enums.get('.' + name);
     return undefined;
   }
+}
+
+const registry = new Registry();
+
+export const PERFETTO_TRACE_PACKET_ROOT = {
+  lookupType(name: string): TamperedMessageType | undefined {
+    return registry.getType(name);
+  },
+};
+
+export function registerDescriptors(bin: Uint8Array) {
+  registry.parseDescriptors(bin);
 }

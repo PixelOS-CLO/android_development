@@ -21,6 +21,7 @@ import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {makeElapsedTimestamp, makeRealTimestamp, makeZeroTimestamp,} from '@common/time/test_helpers';
 import {Timer} from '@common/time/timer';
 import {SetFormatters} from '@parsers/operations/set_formatters';
+import {MockPresenter} from '@test/unit/mock_log_viewer_presenter';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {makeEmptyTrace} from '@test/unit/trace_api/trace_test_helpers';
 import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
@@ -31,13 +32,12 @@ import {TraceType} from '@trace_api/trace_type';
 import {DEFAULT_PROPERTY_FORMATTER} from '@trace/formatters';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {PropertySource} from '@tree_node/property_tree_node';
-import {MockPresenter} from '@viewers/common/mock_log_viewer_presenter';
 import {TextFilter} from '@viewers/common/text_filter';
 
 import {LogSelectFilter, LogTextFilter} from './log_filters';
-import {UiDataLog} from './ui_data_log';
+import {LogHeader, UiDataLog} from './ui_data_log';
 import {UserOptions} from './user_options';
-import {TimestampClickDetail} from './viewer_event_details';
+import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail, ViewerEvents,} from './viewer_events';
 
 describe('AbstractLogViewerPresenter', () => {
   let uiData: UiDataLog;
@@ -104,6 +104,109 @@ describe('AbstractLogViewerPresenter', () => {
     });
   });
 
+  it('adds event listeners', async () => {
+    const element = makeElement();
+    presenter.addEventListeners(element);
+
+    const testHeader = new LogHeader(
+      {name: 'Test Column', cssClass: 'test-class'},
+      new LogSelectFilter([]),
+    );
+
+    let spy: jasmine.Spy = spyOn(presenter, 'onSelectFilterChange');
+    const filterDetail = new LogFilterChangeDetail(testHeader, ['']);
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.LogFilterChange, {
+        detail: filterDetail,
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith(testHeader, filterDetail.value);
+
+    spy = spyOn(presenter, 'onTextFilterChange');
+    const textFilterDetail = new LogTextFilterChangeDetail(
+      testHeader,
+      new TextFilter(),
+    );
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.LogTextFilterChange, {
+        detail: textFilterDetail,
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith(testHeader, textFilterDetail.filter);
+
+    spy = spyOn(presenter, 'onLogEntryClick');
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.LogEntryClick, {
+        detail: 0,
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith(0);
+
+    spy = spyOn(presenter, 'onArrowDownPress');
+    element.dispatchEvent(new CustomEvent(ViewerEvents.ArrowDownPress));
+    expect(spy).toHaveBeenCalled();
+
+    spy = spyOn(presenter, 'onArrowUpPress');
+    element.dispatchEvent(new CustomEvent(ViewerEvents.ArrowUpPress));
+    expect(spy).toHaveBeenCalled();
+
+    await sendPositionUpdate(positionUpdate, true);
+    spy = spyOn(presenter, 'onLogTimestampClick');
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.TimestampClick, {
+        detail: new TimestampClickDetail(uiData.entries[0].traceEntry),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith(uiData.entries[0].traceEntry);
+
+    spy = spyOn(presenter, 'onRawTimestampClick');
+    const ts = makeZeroTimestamp();
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.TimestampClick, {
+        detail: new TimestampClickDetail(undefined, ts),
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith(ts);
+
+    spy = spyOn(presenter, 'onPropertiesUserOptionsChange');
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.PropertiesUserOptionsChange, {
+        detail: {userOptions: {}},
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith({});
+
+    spy = spyOn(presenter, 'onPropertiesFilterChange');
+    const filter = new TextFilter();
+    element.dispatchEvent(
+      new CustomEvent(ViewerEvents.PropertiesFilterChange, {
+        detail: filter,
+      }),
+    );
+    expect(spy).toHaveBeenCalledWith(filter);
+
+    spy = spyOn(presenter, 'onPositionChangeByKeyPress');
+    pressLeftArrowKey();
+    pressRightArrowKey();
+    pressUpArrowKey();
+    expect(spy).not.toHaveBeenCalled();
+
+    document.body.append(element);
+    pressLeftArrowKey();
+    expect(spy).toHaveBeenCalledTimes(1);
+    pressRightArrowKey();
+    expect(spy).toHaveBeenCalledTimes(2);
+    pressUpArrowKey();
+    expect(spy).toHaveBeenCalledTimes(2);
+
+    const inputElement = document.createElement('input');
+    inputElement.type = 'text';
+    pressLeftArrowKey(inputElement);
+    pressRightArrowKey(inputElement);
+    pressUpArrowKey(inputElement);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
   it('initializes entries and filters with options', async () => {
     expect(uiData.scrollToIndex).toBeUndefined();
     expect(uiData.currentIndex).toBeUndefined();
@@ -112,7 +215,7 @@ describe('AbstractLogViewerPresenter', () => {
     expect(uiData.propertyNodes).toBeUndefined();
     expect(uiData.headers).toEqual([]);
 
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
 
     expect(uiData.scrollToIndex).toBeDefined();
     expect(uiData.currentIndex).toBeDefined();
@@ -129,11 +232,50 @@ describe('AbstractLogViewerPresenter', () => {
   });
 
   it('processes trace position update and updates ui data', async () => {
-    await sendPositionUpdate(secondPositionUpdate);
+    await sendPositionUpdate(secondPositionUpdate, true);
     expect(uiData.currentIndex).toBe(1);
     expect(assertDefined(uiData.propertyNodes?.at(0)).node.id).toEqual(
       (await getPropertiesTree(1)).id,
     );
+  });
+
+  it('allows arrow keydown event to propagate if presenter trace not active or current index not defined', async () => {
+    const element = makeElement();
+    document.body.append(element);
+    presenter.addEventListeners(element);
+    const listenerSpy = jasmine.createSpy();
+    document.addEventListener('keydown', listenerSpy);
+
+    await sendPositionUpdate(
+      new TracePositionUpdate(
+        TracePosition.fromTimestamp(makeElapsedTimestamp(-1n)),
+      ),
+      true,
+    );
+    expect(uiData.currentIndex).toBeUndefined();
+
+    pressRightArrowKey();
+    expect(listenerSpy).toHaveBeenCalledTimes(1);
+
+    await presenter.onAppEvent(
+      new ActiveTraceChanged(
+        assertDefined(positionUpdate.position.entry).getFullTrace(),
+      ),
+    );
+    pressRightArrowKey();
+    expect(listenerSpy).toHaveBeenCalledTimes(2);
+
+    await sendPositionUpdate(positionUpdate);
+    pressRightArrowKey();
+    expect(listenerSpy).toHaveBeenCalledTimes(2);
+
+    await presenter.onAppEvent(
+      new ActiveTraceChanged(makeEmptyTrace(TraceType.TRANSACTIONS)),
+    );
+    pressRightArrowKey();
+    expect(listenerSpy).toHaveBeenCalledTimes(3);
+
+    document.removeEventListener('keydown', listenerSpy);
   });
 
   it('propagates position with next trace entry of different timestamp on right arrow key press', async () => {
@@ -143,7 +285,7 @@ describe('AbstractLogViewerPresenter', () => {
 
     const emitEventSpy = jasmine.createSpy();
     presenter.setEmitEvent(emitEventSpy);
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
 
     await presenter.onPositionChangeByKeyPress(
       makeKeydownEvent(KeyboardEventKey.ARROW_RIGHT),
@@ -170,7 +312,7 @@ describe('AbstractLogViewerPresenter', () => {
 
     const emitEventSpy = jasmine.createSpy();
     presenter.setEmitEvent(emitEventSpy);
-    await sendPositionUpdate(lastEntryPositionUpdate);
+    await sendPositionUpdate(lastEntryPositionUpdate, true);
 
     await presenter.onPositionChangeByKeyPress(
       makeKeydownEvent(KeyboardEventKey.ARROW_RIGHT),
@@ -186,7 +328,7 @@ describe('AbstractLogViewerPresenter', () => {
 
     const emitEventSpy = jasmine.createSpy();
     presenter.setEmitEvent(emitEventSpy);
-    await sendPositionUpdate(lastEntryPositionUpdate);
+    await sendPositionUpdate(lastEntryPositionUpdate, true);
 
     const prevIndex = assertDefined(uiData.currentIndex) - 1;
     spyOn(
@@ -210,7 +352,7 @@ describe('AbstractLogViewerPresenter', () => {
 
     const emitEventSpy = jasmine.createSpy();
     presenter.setEmitEvent(emitEventSpy);
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
 
     await presenter.onPositionChangeByKeyPress(
       makeKeydownEvent(KeyboardEventKey.ARROW_LEFT),
@@ -219,7 +361,7 @@ describe('AbstractLogViewerPresenter', () => {
   });
 
   it('filters entries on select filter change', async () => {
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
     const header = uiData.headers[1];
 
     await presenter.onSelectFilterChange(header, ['0']);
@@ -239,7 +381,7 @@ describe('AbstractLogViewerPresenter', () => {
   });
 
   it('filters entries on text filter change', async () => {
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
     const header = uiData.headers[0];
     const filter = header.filter as LogTextFilter;
 
@@ -263,7 +405,7 @@ describe('AbstractLogViewerPresenter', () => {
   });
 
   it('updates indices when filters change', async () => {
-    await sendPositionUpdate(lastEntryPositionUpdate);
+    await sendPositionUpdate(lastEntryPositionUpdate, true);
     presenter.onLogEntryClick(1);
     expect(uiData.currentIndex).toBe(3);
     expect(uiData.selectedIndex).toBe(1);
@@ -283,7 +425,7 @@ describe('AbstractLogViewerPresenter', () => {
   });
 
   it('updates properties tree when entry clicked', async () => {
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
 
     const expectedId = (await getPropertiesTree(2)).id;
 
@@ -300,7 +442,7 @@ describe('AbstractLogViewerPresenter', () => {
   });
 
   it('updates properties tree when changed by key press', async () => {
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
     await presenter.onLogEntryClick(0);
 
     await presenter.onArrowDownPress();
@@ -334,39 +476,37 @@ describe('AbstractLogViewerPresenter', () => {
   });
 
   it('emits event on log timestamp click', async () => {
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
     const spy = jasmine.createSpy();
     presenter.setEmitEvent(spy);
 
-    await presenter.onTimestampClick(
-      new TimestampClickDetail(uiData.entries[0].traceEntry),
-    );
+    await presenter.onLogTimestampClick(uiData.entries[0].traceEntry);
     expect(spy).toHaveBeenCalledWith(
       TracePositionUpdate.fromTraceEntry(uiData.entries[0].traceEntry, true),
     );
   });
 
   it('emits event on raw timestamp click', async () => {
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
     const spy = jasmine.createSpy();
     presenter.setEmitEvent(spy);
 
     const ts = makeZeroTimestamp();
-    await presenter.onTimestampClick(new TimestampClickDetail(undefined, ts));
+    await presenter.onRawTimestampClick(ts);
     expect(spy).toHaveBeenCalledWith(
       TracePositionUpdate.fromTimestamp(ts, true),
     );
   });
 
   it('filters properties tree', async () => {
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
     expect(assertDefined(uiData.propertyNodes).length).toBe(4);
     await presenter.onPropertiesFilterChange(new TextFilter('pass'));
     expect(assertDefined(uiData.propertyNodes).length).toBe(3);
   });
 
   it('shows/hides defaults', async () => {
-    await sendPositionUpdate(positionUpdate);
+    await sendPositionUpdate(positionUpdate, true);
     expect(assertDefined(uiData.propertyNodes).length).toBe(4);
     const userOptions: UserOptions = {
       showDefaults: {
@@ -383,41 +523,6 @@ describe('AbstractLogViewerPresenter', () => {
     expect(uiData.isDarkMode).toBeFalse();
     await presenter.onAppEvent(new DarkModeToggled(true));
     expect(uiData.isDarkMode).toBeTrue();
-  });
-
-  it('allows arrow keydown event to propagate if presenter trace not active or current index not defined', async () => {
-    await sendPositionUpdate(
-      new TracePositionUpdate(
-        TracePosition.fromTimestamp(makeElapsedTimestamp(-1n)),
-      ),
-    );
-    expect(uiData.currentIndex).toBeUndefined();
-
-    const event = new KeyboardEvent('keydown', {
-      key: KeyboardEventKey.ARROW_RIGHT,
-    });
-    const spy = spyOn(event, 'stopImmediatePropagation');
-
-    await presenter.onPositionChangeByKeyPress(event);
-    expect(spy).not.toHaveBeenCalled();
-
-    await presenter.onAppEvent(
-      new ActiveTraceChanged(
-        assertDefined(positionUpdate.position.entry).getFullTrace(),
-      ),
-    );
-    await presenter.onPositionChangeByKeyPress(event);
-    expect(spy).not.toHaveBeenCalled();
-
-    await sendPositionUpdate(positionUpdate, false);
-    await presenter.onPositionChangeByKeyPress(event);
-    expect(spy).toHaveBeenCalledTimes(1);
-
-    await presenter.onAppEvent(
-      new ActiveTraceChanged(makeEmptyTrace(TraceType.TRANSACTIONS)),
-    );
-    await presenter.onPositionChangeByKeyPress(event);
-    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it('is robust to empty trace', async () => {
@@ -465,9 +570,40 @@ describe('AbstractLogViewerPresenter', () => {
     expect(copiedUiData?.checkScrollViewportCount).toBe(1);
   });
 
+  function makeElement(): HTMLElement {
+    const element = document.createElement('div');
+    element.style.height = '5px';
+    element.style.width = '5px';
+    return element;
+  }
+
+  function pressLeftArrowKey(target?: EventTarget) {
+    pressKey(KeyboardEventKey.ARROW_LEFT, target);
+  }
+
+  function pressRightArrowKey(target?: EventTarget) {
+    pressKey(KeyboardEventKey.ARROW_RIGHT, target);
+  }
+
+  function pressUpArrowKey(target?: EventTarget) {
+    pressKey(KeyboardEventKey.ARROW_UP, target);
+  }
+
+  function pressKey(key: string, target?: EventTarget) {
+    const event = makeKeydownEvent(key);
+    if (target) {
+      spyOnProperty(event, 'target').and.returnValue(target);
+    }
+    document.dispatchEvent(event);
+  }
+
+  function makeKeydownEvent(key: string) {
+    return new KeyboardEvent('keydown', {key});
+  }
+
   async function sendPositionUpdate(
     update: TracePositionUpdate,
-    isFirst = true,
+    isFirst = false,
     p = presenter,
   ) {
     await assertDefined(p).onAppEvent(update);
@@ -480,9 +616,5 @@ describe('AbstractLogViewerPresenter', () => {
 
   async function getPropertiesTree(index: number) {
     return await assertDefined(uiData.entries[index].getPropertiesTree)();
-  }
-
-  function makeKeydownEvent(key: string) {
-    return new KeyboardEvent('keydown', {key});
   }
 });

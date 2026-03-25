@@ -38,8 +38,8 @@ import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {UserNotifierChecker} from '@test/unit/user_notifier_checker';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
-import {LogEntry, LogField, LogHeader} from '@viewers/common/ui_data_log';
-import {SaveQueryClickDetail, SearchQueryClickDetail,} from '@viewers/common/viewer_event_details';
+import {LogEntry, LogHeader} from '@viewers/common/ui_data_log';
+import {AddQueryClickDetail, ClearQueryClickDetail, DeleteSavedQueryClickDetail, SaveQueryClickDetail, SearchQueryClickDetail, ViewerEvents,} from '@viewers/common/viewer_events';
 import {CollapsedSectionsComponent} from '@viewers/components/collapsed_sections_component';
 import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
 import {LogComponent} from '@viewers/components/log_component';
@@ -68,16 +68,16 @@ describe('ViewerSearchComponent', () => {
     {
       traceEntry: trace.getEntry(0),
       fields: [
-        new LogField(headers[0].spec, 'value 1'),
-        new LogField(headers[1].spec, 'value "2"'),
+        {spec: headers[0].spec, value: 'value 1'},
+        {spec: headers[1].spec, value: 'value "2"'},
       ],
       getPropertiesTree: undefined,
     },
     {
       traceEntry: trace.getEntry(1),
       fields: [
-        new LogField(headers[0].spec, 'value 3\nwith newline'),
-        new LogField(headers[1].spec, makeRealTimestamp(300n)),
+        {spec: headers[0].spec, value: 'value 3\nwith newline'},
+        {spec: headers[1].spec, value: makeRealTimestamp(300n)},
       ],
       getPropertiesTree: undefined,
     },
@@ -161,7 +161,7 @@ describe('ViewerSearchComponent', () => {
   });
 
   it('handles search via search query click', () => {
-    runSearchAndCheckHandled(runSearchByQueryButton, 1);
+    runSearchAndCheckHandled(runSearchByQueryButton);
   });
 
   it('handles search via run query from saved without creating new active search', async () => {
@@ -169,7 +169,7 @@ describe('ViewerSearchComponent', () => {
     inputData.savedSearches = [new ListedSearch(testQuery, 'saved1')];
     dom.detectChanges();
     await changeTab(1);
-    runSearchAndCheckHandled(() => dom.findAndClick(listedSearchSelector), 1);
+    runSearchAndCheckHandled(() => dom.findAndClick(listedSearchSelector));
   });
 
   it('handles search via run query from recents without creating new active search', async () => {
@@ -177,7 +177,7 @@ describe('ViewerSearchComponent', () => {
     inputData.recentSearches = [new ListedSearch(testQuery)];
     dom.detectChanges();
     await changeTab(2);
-    runSearchAndCheckHandled(() => dom.findAndClick(listedSearchSelector), 1);
+    runSearchAndCheckHandled(() => dom.findAndClick(listedSearchSelector));
   });
 
   it('handles search via run query from saved creating new active search', async () => {
@@ -287,7 +287,12 @@ describe('ViewerSearchComponent', () => {
   });
 
   it('adds search sections', () => {
-    const spy = spyOn(component.addQueryChange, 'emit');
+    const spy = jasmine.createSpy();
+    dom.addEventListener(ViewerEvents.AddQueryClick, (event) => {
+      const detail: AddQueryClickDetail = (event as CustomEvent).detail;
+      expect(detail).toBeFalsy();
+      spy();
+    });
 
     const addButton = dom.get('.add-button');
     expect(dom.find('.clear-button')).toBeUndefined();
@@ -314,7 +319,11 @@ describe('ViewerSearchComponent', () => {
   });
 
   it('handles multiple results', async () => {
-    const clearQuerySpy = spyOn(component.clearQueryChange, 'emit');
+    let uid: number | undefined;
+    dom.addEventListener(ViewerEvents.ClearQueryClick, (event) => {
+      const detail: ClearQueryClickDetail = (event as CustomEvent).detail;
+      uid = detail.uid;
+    });
 
     const data = structuredClone(assertDefined(component.inputData()));
     data.currentSearches[0].result = new SearchResult([], []);
@@ -328,7 +337,7 @@ describe('ViewerSearchComponent', () => {
     resultTabs[1].checkTextExact('Query 2');
 
     dom.findAndClick('.clear-button');
-    expect(clearQuerySpy).toHaveBeenCalledOnceWith(1);
+    expect(uid).toBe(1);
 
     const spy = spyOn(activeSections[1].getHTMLElement(), 'scrollIntoView');
 
@@ -357,7 +366,10 @@ describe('ViewerSearchComponent', () => {
   });
 
   it('emits event on save query click', () => {
-    const saveQuerySpy = spyOn(component.saveQuery, 'emit');
+    let detail: SaveQueryClickDetail | undefined;
+    dom.addEventListener(ViewerEvents.SaveQueryClick, (event) => {
+      detail = (event as CustomEvent).detail;
+    });
     const testName = 'Query 1';
     const data = structuredClone(assertDefined(component.inputData()));
     data.savedSearches.push(new ListedSearch(testQuery, testName));
@@ -368,26 +380,24 @@ describe('ViewerSearchComponent', () => {
     const input = saveField.get('input');
     input.dispatchInput(testName);
     saveQueryButton.click();
-    expect(saveQuerySpy).not.toHaveBeenCalled(); // name already exists
+    expect(detail).toBeUndefined(); // name already exists
 
     const testName2 = 'Query 2';
     input.dispatchInput(testName2);
     input.keydownEnter(); // save by enter key
-    expect(saveQuerySpy).toHaveBeenCalledOnceWith(
-      new SaveQueryClickDetail(testQuery, testName2),
-    );
+    expect(detail).toEqual(new SaveQueryClickDetail(testQuery, testName2));
 
     const testName3 = 'Query 3';
     input.dispatchInput(testName3);
     saveQueryButton.click(); // save by click
-    expect(saveQuerySpy).toHaveBeenCalledTimes(2);
-    expect(saveQuerySpy).toHaveBeenCalledWith(
-      new SaveQueryClickDetail(testQuery, testName3),
-    );
+    expect(detail).toEqual(new SaveQueryClickDetail(testQuery, testName3));
   });
 
   it('emits event on delete saved query click', async () => {
-    const deleteSavedQuerySpy = spyOn(component.deleteSavedQuery, 'emit');
+    let detail: DeleteSavedQueryClickDetail | undefined;
+    dom.addEventListener(ViewerEvents.DeleteSavedQueryClick, (event) => {
+      detail = (event as CustomEvent).detail;
+    });
     const search = new ListedSearch(testQuery);
     const data = structuredClone(assertDefined(component.inputData()));
     data.savedSearches = [search];
@@ -395,14 +405,15 @@ describe('ViewerSearchComponent', () => {
 
     await changeTab(1);
     dom.findAndClickByIndex(listedSearchSelector, 2);
-    expect(deleteSavedQuerySpy).toHaveBeenCalledOnceWith(search);
+    expect(detail).toEqual(new DeleteSavedQueryClickDetail(search));
   });
 
   it('handles trace search initialization', () => {
     let data = structuredClone(assertDefined(component.inputData()));
     data.initialized = false;
     updateInputDataAndDetectChanges(data);
-    const spy = spyOn(component.globalSearchSectionClick, 'emit');
+    const spy = jasmine.createSpy();
+    dom.addEventListener(ViewerEvents.GlobalSearchSectionClick, (_) => spy());
     const globalSearch = dom.get('.global-search');
     expect(globalSearch.find('.message-with-spinner')).toBeUndefined();
 
@@ -473,23 +484,29 @@ describe('ViewerSearchComponent', () => {
     const data = structuredClone(assertDefined(component.inputData()));
     data.currentSearches[0].query = testQuery;
     data.currentSearches[0].result = new SearchResult([], []);
-    const addQuerySpy = spyOn(component.addQueryChange, 'emit');
+    let query: string | undefined;
+    dom.addEventListener(ViewerEvents.AddQueryClick, (event) => {
+      const detail: AddQueryClickDetail = (event as CustomEvent).detail;
+      query = detail.query;
+    });
     updateInputDataAndDetectChanges(data);
 
     await changeTab(tabIndex);
     dom.findAndClick(listedSearchSelector);
-    expect(addQuerySpy).toHaveBeenCalledOnceWith(testQuery);
+    expect(query).toEqual(testQuery);
     await changeTab(0);
-    runSearchAndCheckHandled(addCurrentSearchWithResult, 2);
+    runSearchAndCheckHandled(addCurrentSearchWithResult);
     expect(dom.findAll('active-search').length).toBe(2);
   }
 
-  function runSearchAndCheckHandled(runSearch: () => void, uid: number) {
-    const searchQuerySpy = spyOn(component.searchQueryChange, 'emit');
+  function runSearchAndCheckHandled(runSearch: () => void) {
+    let query: string | undefined;
+    dom.addEventListener(ViewerEvents.SearchQueryClick, (event) => {
+      const detail: SearchQueryClickDetail = (event as CustomEvent).detail;
+      query = detail.query;
+    });
     runSearch();
-    expect(searchQuerySpy).toHaveBeenCalledOnceWith(
-      new SearchQueryClickDetail(testQuery, uid),
-    );
+    expect(query).toEqual(testQuery);
     dom.get(searchQuerySelector).checkDisabled(true);
     const runningQueryMessage = dom.get('.running-query-message');
     runningQueryMessage.checkTextExact('timer Calculating results');
@@ -501,11 +518,15 @@ describe('ViewerSearchComponent', () => {
     data.currentSearches[0].result = new SearchResult([], []);
     updateInputDataAndDetectChanges(data);
 
-    const spy = spyOn(component.addQueryChange, 'emit');
+    let query: string | undefined;
+    dom.addEventListener(ViewerEvents.AddQueryClick, (event) => {
+      const detail: AddQueryClickDetail = (event as CustomEvent).detail;
+      query = detail.query;
+    });
 
     await changeTabAndClickEdit(tabIndex);
     expect(component.matTabGroups().at(0)?.selectedIndex).toEqual(tabIndex);
-    expect(spy).toHaveBeenCalledOnceWith(testQuery);
+    expect(query).toEqual(testQuery);
 
     data = structuredClone(assertDefined(component.inputData()));
     data.currentSearches.push(new CurrentSearch(2, testQuery));

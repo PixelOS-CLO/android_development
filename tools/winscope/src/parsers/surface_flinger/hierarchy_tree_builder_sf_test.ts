@@ -181,11 +181,9 @@ describe('HierarchyTreeBuilderSf', () => {
     const recursiveRootId = assertDefined(
       recursiveRootProps.getChildByName('layerId'),
     );
-    expect(recursiveRootId.getValue()?.toString()).toBe('2');
+    expect(recursiveRootId.getValue()).toBe(2n);
     expect(recursiveRootId.formattedValue()).toBe('2');
-    expect(
-      recursiveRootProps.getChildByName('detail')?.getValue<string>(),
-    ).toBe(
+    expect(recursiveRootProps.getChildByName('detail')?.getValue()).toBe(
       'This node was artificially created by Winscope as a parent for all recursive layers',
     );
   });

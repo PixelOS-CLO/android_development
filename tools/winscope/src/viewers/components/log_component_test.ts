@@ -16,7 +16,7 @@
 
 import {Clipboard, ClipboardModule} from '@angular/cdk/clipboard';
 import {CdkMenuModule} from '@angular/cdk/menu';
-import {CdkVirtualScrollViewport, ScrollingModule,} from '@angular/cdk/scrolling';
+import {CdkVirtualScrollViewport, ScrollingModule, } from '@angular/cdk/scrolling';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
@@ -31,23 +31,25 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventKey} from '@common/dom';
-import {makeElapsedTimestamp, makeRealTimestamp,} from '@common/time/test_helpers';
+import {makeElapsedTimestamp, makeRealTimestamp, } from '@common/time/test_helpers';
 import {Timestamp} from '@common/time/time';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
+import {TraceEntry} from '@trace_api/trace';
+import {TraceType} from '@trace_api/trace_type';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {LogSelectFilter, LogTextFilter} from '@viewers/common/log_filters';
 import {TextFilter} from '@viewers/common/text_filter';
-import {ColumnSpec, LogEntry, LogField, LogHeader,} from '@viewers/common/ui_data_log';
-import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail,} from '@viewers/common/viewer_event_details';
+import {ColumnSpec, LogEntry, LogField, LogHeader, } from '@viewers/common/ui_data_log';
+import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail, ViewerEvents, } from '@viewers/common/viewer_events';
+import {CollapsedSectionsComponent} from '@viewers/components/collapsed_sections_component';
+import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
 import {PropertiesComponent} from '@viewers/components/properties_component';
 import {SearchBoxComponent} from '@viewers/components/search_box_component';
 import {SelectWithFilterComponent} from '@viewers/components/select_with_filter_component';
 
-import {CollapsedSectionsComponent} from './collapsed_sections_component';
-import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 import {LogComponent} from './log_component';
-import {VirtualRow, VirtualScrollViewportComponent,} from './scroll/virtual_scroll_viewport_component';
+import {VirtualRow, VirtualScrollViewportComponent, } from './scroll/virtual_scroll_viewport_component';
 
 describe('LogComponent', () => {
   const testColumn1: ColumnSpec = {name: 'test1', cssClass: 'test-1'};
@@ -116,12 +118,13 @@ describe('LogComponent', () => {
 
   it('emits event and scrolls to first entry on button click', () => {
     const spy = spyOn(component.virtualScrollViewport(), 'scrollToIndex');
-    const timestampSpy = spyOn(component.timestampClick, 'emit');
+    let clicked: TraceEntry<unknown> | undefined;
+    dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
+      clicked = (event as CustomEvent).detail.entry;
+    });
     dom.findAndClick('.go-to-first-entry');
     expect(spy).toHaveBeenCalledWith(0);
-    expect(timestampSpy).toHaveBeenCalledOnceWith(
-      new TimestampClickDetail(component.entries()[0].traceEntry),
-    );
+    expect(clicked?.getIndex()).toBe(0);
   });
 
   it('scrolls to current entry on button click', () => {
@@ -134,12 +137,13 @@ describe('LogComponent', () => {
 
   it('emits event and scrolls to last entry on button click', () => {
     const spy = spyOn(component.virtualScrollViewport(), 'scrollToIndex');
-    const timestampSpy = spyOn(component.timestampClick, 'emit');
+    let clicked: TraceEntry<unknown> | undefined;
+    dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
+      clicked = (event as CustomEvent).detail.entry;
+    });
     dom.findAndClick('.go-to-last-entry');
     expect(spy).toHaveBeenCalledWith(1);
-    expect(timestampSpy).toHaveBeenCalledOnceWith(
-      new TimestampClickDetail(component.entries()[1].traceEntry),
-    );
+    expect(clicked?.getIndex()).toBe(1);
   });
 
   it('does not show time controls if flag not set', () => {
@@ -177,26 +181,25 @@ describe('LogComponent', () => {
 
   it('applies select filter correctly', async () => {
     const allEntries = component.entries().slice();
-    spyOn(component.logFilterChange, 'emit').and.callFake(
-      (detail: LogFilterChangeDetail) => {
-        if (detail.value.length === 0) {
-          dom.setComponentInput('entries', allEntries);
-          return;
-        }
-        dom.setComponentInput(
-          'entries',
-          allEntries.filter((entry) => {
-            const entryValue = assertDefined(
-              entry.fields.find((f) => f.spec === detail.header.spec),
-            ).value.toString();
-            if (Array.isArray(detail.value)) {
-              return detail.value.includes(entryValue);
-            }
-            return entryValue.includes(detail.value);
-          }),
-        );
-      },
-    );
+    dom.addEventListener(ViewerEvents.LogFilterChange, (event) => {
+      const detail: LogFilterChangeDetail = (event as CustomEvent).detail;
+      if (detail.value.length === 0) {
+        dom.setComponentInput('entries', allEntries);
+        return;
+      }
+      dom.setComponentInput(
+        'entries',
+        allEntries.filter((entry) => {
+          const entryValue = assertDefined(
+            entry.fields.find((f) => f.spec === detail.header.spec),
+          ).value.toString();
+          if (Array.isArray(detail.value)) {
+            return detail.value.includes(entryValue);
+          }
+          return entryValue.includes(detail.value);
+        }),
+      );
+    });
     expect(dom.findAll('.entry').length).toBe(2);
     await dom.openMatSelect();
 
@@ -210,23 +213,22 @@ describe('LogComponent', () => {
 
   it('applies text filter correctly', async () => {
     const allEntries = component.entries().slice();
-    spyOn(component.logTextFilterChange, 'emit').and.callFake(
-      (detail: LogTextFilterChangeDetail) => {
-        if (detail.filter.filterString.length === 0) {
-          dom.setComponentInput('entries', allEntries);
-          return;
-        }
-        dom.setComponentInput(
-          'entries',
-          allEntries.filter((entry) => {
-            const entryValue = assertDefined(
-              entry.fields.find((f) => f.spec === detail.header.spec),
-            ).value.toString();
-            return entryValue.includes(detail.filter.filterString);
-          }),
-        );
-      },
-    );
+    dom.addEventListener(ViewerEvents.LogTextFilterChange, (event) => {
+      const detail: LogTextFilterChangeDetail = (event as CustomEvent).detail;
+      if (detail.filter.filterString.length === 0) {
+        dom.setComponentInput('entries', allEntries);
+        return;
+      }
+      dom.setComponentInput(
+        'entries',
+        allEntries.filter((entry) => {
+          const entryValue = assertDefined(
+            entry.fields.find((f) => f.spec === detail.header.spec),
+          ).value.toString();
+          return entryValue.includes(detail.filter.filterString);
+        }),
+      );
+    });
     expect(dom.findAll('.entry').length).toBe(2);
 
     const inputEl = dom.get('.headers input');
@@ -245,20 +247,26 @@ describe('LogComponent', () => {
   });
 
   it('emits event on arrow key press', () => {
-    const arrowDownSpy = spyOn(component.arrowDownPress, 'emit');
-    const arrowUpSpy = spyOn(component.arrowUpPress, 'emit');
+    let downArrowPressedTimes = 0;
+    dom.addEventListener(ViewerEvents.ArrowDownPress, (_) => {
+      downArrowPressedTimes++;
+    });
+    let upArrowPressedTimes = 0;
+    dom.addEventListener(ViewerEvents.ArrowUpPress, (_) => {
+      upArrowPressedTimes++;
+    });
 
     dom.keydownArrowUp(true);
-    expect(arrowUpSpy).toHaveBeenCalledOnceWith();
+    expect(upArrowPressedTimes).toBe(1);
 
     dom.keydownArrowDown(true);
-    expect(arrowDownSpy).toHaveBeenCalledOnceWith();
+    expect(downArrowPressedTimes).toBe(1);
 
     dom.keydownArrowUp(true);
-    expect(arrowUpSpy).toHaveBeenCalledTimes(2);
+    expect(upArrowPressedTimes).toBe(2);
 
     dom.keydownArrowDown(true);
-    expect(arrowDownSpy).toHaveBeenCalledTimes(2);
+    expect(downArrowPressedTimes).toBe(2);
   });
 
   it('propagates entry on trace entry timestamp click', () => {
@@ -281,11 +289,13 @@ describe('LogComponent', () => {
     dom.detectChanges();
     await dom.whenRenderingDone();
 
-    const spy = spyOn(component.timestampClick, 'emit');
+    let timestamp: Timestamp | undefined;
+    dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
+      const detail: TimestampClickDetail = (event as CustomEvent).detail;
+      timestamp = detail.timestamp;
+    });
     dom.findAndClick(`.${testColumn3.cssClass} button`);
-    expect(spy).toHaveBeenCalledOnceWith(
-      new TimestampClickDetail(undefined, makeElapsedTimestamp(2n)),
-    );
+    expect(timestamp).toBeDefined();
   });
 
   it('does not show button for propagateEntryTimestamp field if entry timestamp invalid', () => {
@@ -303,7 +313,8 @@ describe('LogComponent', () => {
   });
 
   it('changes css class on entry click and does not scroll', async () => {
-    spyOn(component.logEntryClick, 'emit').and.callFake((index: number) => {
+    dom.addEventListener(ViewerEvents.LogEntryClick, (event) => {
+      const index = (event as CustomEvent).detail;
       dom.setComponentInput('selectedIndex', index);
       dom.detectChanges();
     });
@@ -354,20 +365,22 @@ describe('LogComponent', () => {
   it('shows copy button for spec that can be copied', () => {
     const entry = dom.get('.scroll .entry .test-2');
     expect(entry.find('.copy-button')).toBeUndefined();
-    Object.assign(component.entries()[0].fields[1], {
-      spec: {
-        name: 'test2',
-        cssClass: 'test-2',
-        canCopy: true,
-      },
-    });
+    component.entries()[0].fields[1].spec = {
+      name: 'test2',
+      cssClass: 'test-2',
+      canCopy: true,
+    };
     dom.detectChanges();
     entry.findAndClick('.copy-button');
     expect(mockCopyText).toHaveBeenCalledOnceWith('123');
   });
 
   it('propagates selected entry on keydown enter event', () => {
-    const spy = spyOn(component.timestampClick, 'emit');
+    let entry: TraceEntry<unknown> | undefined;
+    dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
+      const detail: TimestampClickDetail = (event as CustomEvent).detail;
+      entry = detail.entry;
+    });
     const keydownEnter = new KeyboardEvent('keydown', {
       key: KeyboardEventKey.ENTER,
     });
@@ -375,14 +388,12 @@ describe('LogComponent', () => {
     dom.setComponentInput('selectedIndex', undefined);
     dom.detectChanges();
     dom.dispatchEventInDocument(keydownEnter);
-    expect(spy).not.toHaveBeenCalled();
+    expect(entry).toBeUndefined();
 
     dom.setComponentInput('selectedIndex', 1);
     dom.detectChanges();
     dom.dispatchEventInDocument(keydownEnter);
-    expect(spy).toHaveBeenCalledOnceWith(
-      new TimestampClickDetail(component.entries()[1].traceEntry),
-    );
+    expect(entry).toEqual(component.entries()[1].traceEntry);
   });
 
   it('checks scroll viewport size if flag set', () => {
@@ -417,16 +428,7 @@ describe('LogComponent', () => {
       'onDocumentCopy',
     ).and.callThrough();
 
-    const entry1 = component.entries()[0];
-
-    dom.setComponentInput('entries', [
-      {
-        traceEntry: entry1.traceEntry,
-        fields: entry1.fields,
-        getPropertiesTree: entry1.getPropertiesTree,
-        formatForClipboard: (_: boolean) => 'formatted log',
-      },
-    ]);
+    dom.setComponentInput('traceType', TraceType.PROTO_LOG);
     dom.detectChanges();
 
     const copyEvent = new ClipboardEvent('copy', {
@@ -470,14 +472,7 @@ describe('LogComponent', () => {
     const entryTime = makeElapsedTimestamp(1n);
 
     const fields: LogField[] = [
-      new LogField(
-        testColumn1,
-        'Test tag 1',
-        undefined,
-        undefined,
-        undefined,
-        message,
-      ),
+      {spec: testColumn1, value: 'Test tag 1', tooltip: message},
     ];
 
     const trace = new TraceBuilder<PropertyTreeNode>()
@@ -500,6 +495,7 @@ describe('LogComponent', () => {
     dom.setComponentInput('entries', [entry]);
     dom.setComponentInput('headers', headers);
     dom.setComponentInput('selectedIndex', 0);
+    dom.setComponentInput('traceType', TraceType.CUJS);
   }
 
   async function setComponentInputData(elapsed = true) {
@@ -514,14 +510,14 @@ describe('LogComponent', () => {
     }
 
     const fields1: LogField[] = [
-      new LogField(testColumn1, 'Test tag 1'),
-      new LogField(testColumn2, 123),
-      new LogField(testColumn3, fieldTime),
+      {spec: testColumn1, value: 'Test tag 1'},
+      {spec: testColumn2, value: 123},
+      {spec: testColumn3, value: fieldTime},
     ];
     const fields2 = [
-      new LogField(testColumn1, 'Test tag 2'),
-      new LogField(testColumn2, 1234),
-      new LogField(testColumn3, 'N/A', undefined, undefined, true),
+      {spec: testColumn1, value: 'Test tag 2'},
+      {spec: testColumn2, value: 1234},
+      {spec: testColumn3, value: 'N/A', propagateEntryTimestamp: true},
     ];
 
     const trace = new TraceBuilder<PropertyTreeNode>()
@@ -552,14 +548,19 @@ describe('LogComponent', () => {
     dom.setComponentInput('entries', entries);
     dom.setComponentInput('headers', headers);
     dom.setComponentInput('selectedIndex', 0);
+    dom.setComponentInput('traceType', TraceType.CUJS);
     await dom.detectChangesAndWaitStable();
   }
 
   function checkEntryPropagatedOnTimestampClick(
     button: DOMTestHelper<LogComponent>,
   ) {
-    const spy = spyOn(component.timestampClick, 'emit');
+    let entry: TraceEntry<unknown> | undefined;
+    dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
+      const detail: TimestampClickDetail = (event as CustomEvent).detail;
+      entry = detail.entry;
+    });
     button.click();
-    expect(spy).toHaveBeenCalledTimes(1);
+    expect(entry).toBeDefined();
   }
 });

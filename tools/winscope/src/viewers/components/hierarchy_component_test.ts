@@ -24,7 +24,6 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {assertDefined} from '@common/assert';
 import {FilterFlag} from '@common/filter_flag';
 import {PersistentStore} from '@common/store/persistent_store';
 import {makeWarningDuplicateLayerIds, makeWarningMissingLayerIds,} from '@parsers/helpers/warnings';
@@ -32,19 +31,18 @@ import {checkTooltips, DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
 import {TRACE_INFO} from '@trace_api/trace_info';
 import {TraceType} from '@trace_api/trace_type';
-import {RectShowState} from '@viewers/common/rect_show_state';
 import {TextFilter} from '@viewers/common/text_filter';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
 import {flattenNodesToRows} from '@viewers/common/ui_tree_node_helpers';
-import {RectShowStateChangeDetail} from '@viewers/common/viewer_event_details';
+import {ViewerEvents} from '@viewers/common/viewer_events';
+import {HierarchyTreeNodeDataViewComponent} from '@viewers/components/hierarchy_tree_node_data_view_component';
+import {TreeNodeComponent} from '@viewers/components/tree_node_component';
 
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 import {HierarchyComponent} from './hierarchy_component';
-import {HierarchyTreeNodeDataViewComponent} from './hierarchy_tree_node_data_view_component';
 import {VirtualRow, VirtualScrollViewportComponent,} from './scroll/virtual_scroll_viewport_component';
 import {SearchBoxComponent} from './search_box_component';
 import {TreeComponent} from './tree_component';
-import {TreeNodeComponent} from './tree_node_component';
 import {UserOptionsComponent} from './user_options_component';
 
 describe('HierarchyComponent', () => {
@@ -167,46 +165,36 @@ describe('HierarchyComponent', () => {
     dom.setComponentInput('pinnedItems', [node]);
     dom.detectChanges();
 
-    const spy = spyOn(component.highlightedNodeChange, 'emit');
+    let highlightedItem: UiHierarchyTreeNode | undefined;
+    dom.addEventListener(ViewerEvents.HighlightedNodeChange, (event) => {
+      highlightedItem = (event as CustomEvent).detail.node;
+    });
+
     dom.findAndClick('.pinned-items tree-node');
-    expect(spy).toHaveBeenCalledOnceWith(node);
+    expect(highlightedItem).toEqual(node);
   });
 
   it('handles pinned item change from tree', () => {
-    const spy = spyOn(component.pinnedItemChange, 'emit');
+    let pinnedItem: UiHierarchyTreeNode | undefined;
+    dom.addEventListener(ViewerEvents.HierarchyPinnedChange, (event) => {
+      pinnedItem = (event as CustomEvent).detail.pinnedItem;
+    });
     const child = component.nodeRows()[1].node;
     dom.setComponentInput('pinnedItems', [child]);
     dom.detectChanges();
 
     dom.findAndClick('.pinned-items tree-node .pin-node-btn');
-    expect(spy).toHaveBeenCalledOnceWith(child);
-  });
-
-  it('handles rect show state change from tree', () => {
-    const tree = assertDefined(dom.findByDirective(TreeComponent));
-    const spy = spyOn(component.rectShowStateChange, 'emit');
-    const rectShowState = new RectShowStateChangeDetail('', RectShowState.HIDE);
-    tree.rectShowStateChange.emit(rectShowState);
-    expect(spy).toHaveBeenCalledOnceWith(rectShowState);
+    expect(pinnedItem).toEqual(child);
   });
 
   it('handles change in filter', () => {
-    const spy = spyOn(component.filterChange, 'emit');
+    let textFilter: TextFilter | undefined;
+    dom.addEventListener(ViewerEvents.HierarchyFilterChange, (event) => {
+      textFilter = (event as CustomEvent).detail;
+    });
     dom.findAndClick('.search-box button');
     dom.findAndDispatchInput('.title-section', 'Root');
-    expect(spy).toHaveBeenCalledWith(
-      new TextFilter('Root', [FilterFlag.MATCH_CASE]),
-    );
-  });
-
-  it('handles change in user options', () => {
-    const userOptions = assertDefined(
-      dom.findByDirective(UserOptionsComponent),
-    );
-    const spy = spyOn(component.optionsChange, 'emit');
-    const options = {opt: {name: 'opt', enabled: true}};
-    userOptions.optionsChange.emit(options);
-    expect(spy).toHaveBeenCalledOnceWith(options);
+    expect(textFilter).toEqual(new TextFilter('Root', [FilterFlag.MATCH_CASE]));
   });
 
   it('handles collapse button click', () => {

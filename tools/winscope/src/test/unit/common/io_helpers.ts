@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {FIXTURES_DIR} from '@compat/test/fixtures';
+import {FIXTURES_DIR} from './compat';
 
 /**
  * Gets a test fixture file.

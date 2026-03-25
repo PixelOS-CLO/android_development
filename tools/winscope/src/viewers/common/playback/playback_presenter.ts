@@ -253,7 +253,7 @@ export class PlaybackPresenter {
     );
 
     this.tryStartPendingBufferFetch();
-    void this.startPlay(bufferIndex);
+    this.startPlay(bufferIndex);
     return true;
   }
 
@@ -537,14 +537,10 @@ export class PlaybackPresenter {
     });
 
     worker.onmessage = (event: MessageEvent) => {
-      const {trees, error} = event.data;
+      const {trees} = event.data;
 
       try {
-        if (error) {
-          this.workerPromiseReject?.(new Error(`Worker error: ${error}`));
-        } else {
-          this.workerPromiseResolve?.(trees);
-        }
+        this.workerPromiseResolve?.(trees);
       } catch (error) {
         this.workerPromiseReject?.(error);
       } finally {

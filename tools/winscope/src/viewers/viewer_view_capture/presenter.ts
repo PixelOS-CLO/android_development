@@ -18,11 +18,10 @@ import {TabbedViewSwitchRequest} from '@app/tabbed_view_events';
 import {assertDefined, assertTrue} from '@common/assert';
 import {createPersistentStoreProxy} from '@common/store/persistent_store_proxy';
 import {Store} from '@common/store/store';
-import {WinscopeEvent} from '@messaging/winscope_event';
 import {CustomQueryType} from '@trace_api/custom_query';
 import {Trace} from '@trace_api/trace';
 import {findCorrespondingEntry} from '@trace_api/trace_entry_finder';
-import {ActiveTraceChanged, TracePositionUpdate} from '@trace_api/trace_events';
+import {TracePositionUpdate} from '@trace_api/trace_events';
 import {TRACE_INFO} from '@trace_api/trace_info';
 import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
@@ -39,6 +38,7 @@ import {TextFilter} from '@viewers/common/text_filter';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
 import {makeUiRects, makeVcUiRects} from '@viewers/common/ui_rect_factory';
 import {UserOptions} from '@viewers/common/user_options';
+import {ViewerEvents} from '@viewers/common/viewer_events';
 import {RectLegendFactory, TraceRectType,} from '@viewers/components/rects/rect_spec';
 import {UiRect} from '@viewers/components/rects/ui_rect';
 
@@ -124,7 +124,6 @@ the default for its data type.`,
 
   private viewCapturePackageNames: string[] = [];
   private sfRects: UiRect[] | undefined;
-  private sfClickedRectId: string | undefined;
   private curatedProperties: VcCuratedProperties | undefined;
 
   constructor(
@@ -150,15 +149,6 @@ the default for its data type.`,
     await this.emitWinscopeEvent(
       new TabbedViewSwitchRequest(this.surfaceFlingerTrace),
     );
-  }
-
-  protected override async onViewerSpecificWinscopeEvent(event: WinscopeEvent) {
-    switch (event.constructor) {
-      case ActiveTraceChanged:
-        return await this.onActiveTraceChanged(event as ActiveTraceChanged);
-      default:
-        this.logger.trace('Not processing event ' + event.constructor.name);
-    }
   }
 
   getTraces(): Array<Trace<HierarchyTreeNode>> {
@@ -199,20 +189,10 @@ the default for its data type.`,
         event.position,
       )?.getValue()) as HierarchyTreeNode;
       if (surfaceFlingerEntry) {
-        const sfRects = makeUiRects(
+        this.sfRects = makeUiRects(
           surfaceFlingerEntry,
           this.viewCapturePackageNames,
         );
-        const clickedRect = sfRects.find(
-          (rect) => rect.id === this.sfClickedRectId,
-        );
-        if (clickedRect) {
-          this.sfRects = sfRects.filter(
-            (r) => r.groupId === clickedRect.groupId,
-          );
-        } else {
-          this.sfRects = sfRects;
-        }
       }
     }
     this.updateCuratedProperties();
@@ -222,6 +202,14 @@ the default for its data type.`,
     this.uiData.sfRects = this.sfRects;
     this.uiData.curatedProperties = this.curatedProperties;
     this.refreshHierarchyViewerUiData();
+  }
+
+  protected override addViewerSpecificListeners(
+    htmlElement: HTMLElement,
+  ): void {
+    htmlElement.addEventListener(ViewerEvents.MiniRectsDblClick, async (_) => {
+      await this.onMiniRectsDoubleClick();
+    });
   }
 
   private async initializePackageNamesIfNeeded() {
@@ -330,15 +318,4 @@ the default for its data type.`,
     assertTrue(index !== -1);
     return index;
   }
-
-  private async onActiveTraceChanged(event: ActiveTraceChanged) {
-    const metadata = event.metadata as ActiveTraceMetadata | undefined;
-    if (metadata?.sfRectId) {
-      this.sfClickedRectId = metadata.sfRectId;
-    }
-  }
-}
-
-interface ActiveTraceMetadata {
-  sfRectId: string;
 }

@@ -16,7 +16,7 @@
 
 @import url("../components/styles/viewer_card_style.css");
 
-.properties:not(.collapsed) {
+.properties {
   flex: 1;
   display: flex;
   flex-direction: column;

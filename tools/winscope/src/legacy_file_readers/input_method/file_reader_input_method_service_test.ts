@@ -16,7 +16,6 @@
 import {assertDefined} from '@common/assert';
 import {makeConverterNoRteOffsets, makeElapsedTimestamp, makeRealTimestamp, timestampEqualityTester,} from '@common/time/test_helpers';
 import {WinscopeExtensionsImpl} from '@compat/protobuf';
-import {setupJspbTesting} from '@compat/test/protobuf';
 import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
 import {convertToPerfettoTrace, LegacyFileReaderProvider,} from '@test/unit/legacy_file_readers/fixture_utils';
 import {TraceType} from '@trace_api/trace_type';
@@ -29,7 +28,6 @@ describe('FileReaderInputMethodService', () => {
     let reader: LegacyFileReader;
 
     beforeAll(async () => {
-      setupJspbTesting();
       jasmine.addCustomEqualityTester(timestampEqualityTester);
       reader = await new LegacyFileReaderProvider([
         FileReaderInputMethodService.createInstance,
@@ -70,7 +68,7 @@ describe('FileReaderInputMethodService', () => {
 
       const entry = await perfettoParser.getEntry(0);
       expect(entry).toBeInstanceOf(HierarchyTreeNode);
-      expect(entry.getEagerPropertyByName('where')?.getValue<string>()).toBe(
+      expect(entry.getEagerPropertyByName('where')?.getValue()).toBe(
         'InputMethodService#doStartInput',
       );
     });
@@ -108,7 +106,7 @@ describe('FileReaderInputMethodService', () => {
           .getWinscopeExtensions()
           ?.getExtension(WinscopeExtensionsImpl.inputmethodService),
       );
-      expect(data?.getWhere()).toBe('InputMethodService#doFinishInput');
+      expect(data.getWhere()).toBe('InputMethodService#doFinishInput');
       expect(data?.hasInputMethodService()).toBeTrue();
       expect(packets[0].getTimestamp()?.toString()).toEqual('1149230019887');
     });

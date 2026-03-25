@@ -148,7 +148,7 @@ limitations under the License.
     <user-options
       class="block-filter-controls"
       [userOptions]="userOptions()"
-      (optionsChange)="optionsChange.emit($event)"
+      [eventType]="ViewerEvents.RectsUserOptionsChange"
       [traceType]="dependencies()[0]"
       [logCallback]="Analytics.Navigation.logRectSettingsChanged"
     >

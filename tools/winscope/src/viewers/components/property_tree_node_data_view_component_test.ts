@@ -16,13 +16,15 @@
 import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {assertDefined} from '@common/assert';
 import {makeRealTimestamp} from '@common/time/test_helpers';
+import {Timestamp} from '@common/time/time';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
 import {DEFAULT_PROPERTY_FORMATTER, FixedStringFormatter, HEX_FORMATTER, TIMESTAMP_NODE_FORMATTER,} from '@trace/formatters';
 import {DiffType} from '@viewers/common/diff_type';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
-import {TimestampClickDetail} from '@viewers/common/viewer_event_details';
+import {ViewerEvents} from '@viewers/common/viewer_events';
 
 import {PropertyTreeNodeDataViewComponent} from './property_tree_node_data_view_component';
 
@@ -48,13 +50,15 @@ describe('PropertyTreeNodeDataViewComponent', () => {
   });
 
   it('can emit timestamp', () => {
-    const spy = spyOn(component.timestampClick, 'emit');
-    const ts = makeRealTimestamp(1659126889102158832n);
+    let timestamp: Timestamp | undefined;
+    dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
+      timestamp = (event as CustomEvent).detail.timestamp;
+    });
     const node = UiPropertyTreeNode.from(
       new PropertyTreeBuilder()
         .setRootId('test node')
         .setName('timestamp')
-        .setValue(ts)
+        .setValue(makeRealTimestamp(1659126889102158832n))
         .setFormatter(TIMESTAMP_NODE_FORMATTER)
         .build(),
     );
@@ -62,14 +66,16 @@ describe('PropertyTreeNodeDataViewComponent', () => {
     dom.detectChanges();
 
     dom.get('.time').findAndClick('.time-button');
-
-    expect(spy).toHaveBeenCalledOnceWith(
-      new TimestampClickDetail(undefined, ts),
+    expect(assertDefined(timestamp).format()).toEqual(
+      '2022-07-29, 20:34:49.102',
     );
   });
 
   it('can emit propagatable node', () => {
-    const spy = spyOn(component.propagatePropertyClick, 'emit');
+    let clickedNode: UiPropertyTreeNode | undefined;
+    dom.addEventListener(ViewerEvents.PropagatePropertyClick, (event) => {
+      clickedNode = (event as CustomEvent).detail;
+    });
     const node = UiPropertyTreeNode.from(
       new PropertyTreeBuilder()
         .setRootId('test node')
@@ -85,7 +91,7 @@ describe('PropertyTreeNodeDataViewComponent', () => {
     const button = dom.get('.inline button');
     button.checkTextExact('0x3039');
     button.click();
-    expect(spy).toHaveBeenCalledOnceWith(node);
+    expect(clickedNode).toEqual(node);
   });
 
   it('renders diff values parts', () => {

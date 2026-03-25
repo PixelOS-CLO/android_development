@@ -30,7 +30,7 @@ import {nullifyIfDefaultValue} from './perfetto_conversion_helpers';
  */
 export class FileReaderTransitionsShell extends AbstractFileReader<PerfettoShellTransition> {
   private realToBootTimeOffsetNs: bigint | undefined;
-  private handlerMapping: undefined | readonly ShellHandlerMappingUdc[];
+  private handlerMapping: undefined | ShellHandlerMappingUdc[];
 
   static async createInstance(
     trace: TraceFile,
@@ -151,8 +151,7 @@ export class FileReaderTransitionsShell extends AbstractFileReader<PerfettoShell
     perfettoTransition.setId(assertDefined(shellTransition.getId()));
     if (
       shellTransition.hasDispatchTimeNs() &&
-      nullifyIfDefaultValue(shellTransition.getDispatchTimeNs()?.toString()) !==
-        null
+      nullifyIfDefaultValue(shellTransition.getDispatchTimeNs()) !== null
     ) {
       perfettoTransition.setDispatchTimeNs(
         assertDefined(shellTransition.getDispatchTimeNs()),
@@ -160,8 +159,7 @@ export class FileReaderTransitionsShell extends AbstractFileReader<PerfettoShell
     }
     if (
       shellTransition.hasMergeTimeNs() &&
-      nullifyIfDefaultValue(shellTransition.getMergeTimeNs()?.toString()) !==
-        null
+      nullifyIfDefaultValue(shellTransition.getMergeTimeNs()) !== null
     ) {
       perfettoTransition.setMergeTimeNs(
         assertDefined(shellTransition.getMergeTimeNs()),
@@ -169,9 +167,7 @@ export class FileReaderTransitionsShell extends AbstractFileReader<PerfettoShell
     }
     if (
       shellTransition.hasMergeRequestTimeNs() &&
-      nullifyIfDefaultValue(
-        shellTransition.getMergeRequestTimeNs()?.toString(),
-      ) !== null
+      nullifyIfDefaultValue(shellTransition.getMergeRequestTimeNs()) !== null
     ) {
       perfettoTransition.setMergeRequestTimeNs(
         assertDefined(shellTransition.getMergeRequestTimeNs()),
@@ -179,8 +175,7 @@ export class FileReaderTransitionsShell extends AbstractFileReader<PerfettoShell
     }
     if (
       shellTransition.hasAbortTimeNs() &&
-      nullifyIfDefaultValue(shellTransition.getAbortTimeNs()?.toString()) !==
-        null
+      nullifyIfDefaultValue(shellTransition.getAbortTimeNs()) !== null
     ) {
       perfettoTransition.setShellAbortTimeNs(
         assertDefined(shellTransition.getAbortTimeNs()),

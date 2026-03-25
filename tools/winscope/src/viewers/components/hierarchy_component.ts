@@ -33,14 +33,14 @@ import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
 import {UiTreeNode} from '@viewers/common/ui_tree_node';
 import {isHighlighted} from '@viewers/common/ui_tree_node_helpers';
 import {UserOptions} from '@viewers/common/user_options';
-import {RectShowStateChangeDetail} from '@viewers/common/viewer_event_details';
+import {ViewerEvents} from '@viewers/common/viewer_events';
+import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
+import {PropertiesTableComponent} from '@viewers/components/properties_table_component';
+import {SearchBoxComponent} from '@viewers/components/search_box_component';
+import {TreeNodeComponent} from '@viewers/components/tree_node_component';
+import {UserOptionsComponent} from '@viewers/components/user_options_component';
 
-import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
-import {PropertiesTableComponent} from './properties_table_component';
-import {SearchBoxComponent} from './search_box_component';
 import {TreeComponent} from './tree_component';
-import {TreeNodeComponent} from './tree_node_component';
-import {UserOptionsComponent} from './user_options_component';
 
 @Component({
   selector: 'hierarchy-view',
@@ -63,6 +63,7 @@ import {UserOptionsComponent} from './user_options_component';
 })
 export class HierarchyComponent {
   isHighlighted = isHighlighted;
+  ViewerEvents = ViewerEvents;
   Analytics = Analytics;
   readonly treeStorage = new InMemoryStorage();
 
@@ -77,12 +78,7 @@ export class HierarchyComponent {
   placeholderText = input('No entry found.');
   textFilter = input<TextFilter>();
 
-  readonly collapseButtonClicked = output();
-  readonly filterChange = output<TextFilter>();
-  readonly highlightedNodeChange = output<UiHierarchyTreeNode>();
-  readonly pinnedItemChange = output<UiHierarchyTreeNode>();
-  readonly optionsChange = output<UserOptions>();
-  readonly rectShowStateChange = output<RectShowStateChangeDetail>();
+  collapseButtonClicked = output();
 
   readonly showPlaceholderText = computed(() => {
     return this.nodeRows().length === 0 && !!this.placeholderText();
@@ -131,18 +127,26 @@ export class HierarchyComponent {
   }
 
   onFilterChange(detail: TextFilter) {
-    this.filterChange.emit(detail);
+    const event = new CustomEvent(ViewerEvents.HierarchyFilterChange, {
+      bubbles: true,
+      detail,
+    });
+    this.elementRef.nativeElement.dispatchEvent(event);
   }
 
   onHighlightedItemChange(node: UiTreeNode) {
-    this.highlightedNodeChange.emit(node as UiHierarchyTreeNode);
+    const event = new CustomEvent(ViewerEvents.HighlightedNodeChange, {
+      bubbles: true,
+      detail: {node: node as UiHierarchyTreeNode},
+    });
+    this.elementRef.nativeElement.dispatchEvent(event);
   }
 
   onPinnedItemChange(item: UiHierarchyTreeNode) {
-    this.pinnedItemChange.emit(item);
-  }
-
-  onRectShowStateChange(event: RectShowStateChangeDetail) {
-    this.rectShowStateChange.emit(event);
+    const event = new CustomEvent(ViewerEvents.HierarchyPinnedChange, {
+      bubbles: true,
+      detail: {pinnedItem: item as UiHierarchyTreeNode},
+    });
+    this.elementRef.nativeElement.dispatchEvent(event);
   }
 }

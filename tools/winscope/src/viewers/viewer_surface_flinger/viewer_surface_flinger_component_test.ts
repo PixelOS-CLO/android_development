@@ -17,19 +17,13 @@ import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {AbstractHierarchyViewerComponentTest} from '@viewers/common/abstract_hierarchy_viewer_component_test';
 import {TraceRectType} from '@viewers/components/rects/rect_spec';
-import {RectsComponent} from '@viewers/components/rects/rects_component';
 import {SurfaceFlingerPropertyGroupsComponent} from '@viewers/components/surface_flinger_property_groups_component';
 
 import {UiData} from './ui_data';
 import {ViewerSurfaceFlingerComponent} from './viewer_surface_flinger_component';
 
-class ViewerSurfaceFlingerComponentTest extends AbstractHierarchyViewerComponentTest<
-  UiData,
-  ViewerSurfaceFlingerComponent
-> {
+class ViewerSurfaceFlingerComponentTest extends AbstractHierarchyViewerComponentTest<ViewerSurfaceFlingerComponent> {
   protected override readonly testRects = true;
-  protected override readonly canPropagateProperties = true;
-  protected override readonly supportsPlayback = true;
   protected override readonly hierarchyTitle = 'HIERARCHY';
   protected override readonly propertiesTitle = 'PROTO DUMP';
   protected override readonly rectsTitle = 'LAYERS';
@@ -37,10 +31,9 @@ class ViewerSurfaceFlingerComponentTest extends AbstractHierarchyViewerComponent
   protected override executeSpecializedTests() {
     describe('Specialized tests', () => {
       let dom: DOMTestHelper<ViewerSurfaceFlingerComponent>;
-      let component: ViewerSurfaceFlingerComponent;
 
       beforeEach(async () => {
-        [dom, component] = await this.setUpTestEnvironment();
+        [dom] = await this.setUpTestEnvironment();
       });
 
       it('creates property groups view', () => {
@@ -51,31 +44,52 @@ class ViewerSurfaceFlingerComponentTest extends AbstractHierarchyViewerComponent
         dom.checkSectionCollapseAndExpand('.property-groups', 'PROPERTIES');
       });
 
-      it('binds rects view events to output signals', () => {
-        const rects = assertDefined(dom.findByDirective(RectsComponent));
+      it('disables properties while playback is playing', async () => {
+        let uiData = new UiData(undefined);
+        uiData.isPlaybackPlaying = true;
+        dom.setComponentInput('inputData', uiData);
+        dom.detectChanges();
+        const properties = dom.find('.properties');
+        expect(properties).toBeDefined();
+        assertDefined(properties).checkClassName('disabled-component');
 
-        const rectsDblClickSpy = spyOn(component.onRectsDblClick, 'emit');
-        const id = 'test';
-        rects.rectsDblClick.emit(id);
-        expect(rectsDblClickSpy).toHaveBeenCalledOnceWith(id);
-
-        const rectTypeClickSpy = spyOn(component.onRectTypeButtonClick, 'emit');
-        const type = TraceRectType.LAYERS;
-        rects.rectTypeButtonClick.emit(type);
-        expect(rectTypeClickSpy).toHaveBeenCalledOnceWith(type);
+        uiData = new UiData(undefined);
+        uiData.isPlaybackPlaying = false;
+        dom.setComponentInput('inputData', uiData);
+        dom.detectChanges();
+        expect(properties).toBeDefined();
+        assertDefined(properties).checkClassName('disabled-component', false);
       });
 
-      it('binds highlighted id event to output signal from property groups', () => {
-        const propertyGroups = assertDefined(
-          dom.findByDirective(SurfaceFlingerPropertyGroupsComponent),
-        );
-        const spy = spyOn(component.onHighlightedIdChange, 'emit');
-        const id = 'test';
-        propertyGroups.highlightedIdChange.emit(id);
-        expect(spy).toHaveBeenCalledOnceWith(id);
+      it('disables UI while playback is initializing', async () => {
+        let uiData = new UiData(undefined);
+        uiData = new UiData(undefined);
+        uiData.isPlaybackPlaying = false;
+        uiData.isPlaybackInitializing = true;
+        dom.setComponentInput('inputData', uiData);
+        dom.detectChanges();
+
+        const properties = dom.get('.properties');
+        properties.checkClassName('disabled-component');
+
+        const hierarchy = dom.get('.hierarchy-view');
+        hierarchy.checkClassName('disabled-component');
+
+        const rects = dom.get('.rects-view');
+        rects.checkClassName('disabled-component');
+
+        uiData = new UiData(undefined);
+        uiData.isPlaybackPlaying = true;
+        uiData.isPlaybackInitializing = false;
+        dom.setComponentInput('inputData', uiData);
+        dom.detectChanges();
+
+        properties.checkClassName('disabled-component', true);
+        hierarchy.checkClassName('disabled-component', false);
+        rects.checkClassName('disabled-component', false);
       });
 
-      it('handles rect type change in input', () => {
+      it('handles rect type change', () => {
         let uiData = new UiData(undefined);
         uiData.rectSpec = {
           type: TraceRectType.LAYERS,
@@ -106,7 +120,7 @@ class ViewerSurfaceFlingerComponentTest extends AbstractHierarchyViewerComponent
     });
   }
 
-  protected override async setUpTestEnvironment(): Promise<
+  protected async setUpTestEnvironment(): Promise<
     [
       DOMTestHelper<ViewerSurfaceFlingerComponent>,
       ViewerSurfaceFlingerComponent,
@@ -116,10 +130,6 @@ class ViewerSurfaceFlingerComponentTest extends AbstractHierarchyViewerComponent
       ViewerSurfaceFlingerComponent,
       SurfaceFlingerPropertyGroupsComponent,
     ]);
-  }
-
-  protected override getUiDataForPlaybackTests(): UiData {
-    return new UiData(undefined);
   }
 }
 

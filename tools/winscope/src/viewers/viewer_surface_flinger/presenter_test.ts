@@ -18,7 +18,6 @@ import {TabbedViewSwitchRequest} from '@app/tabbed_view_events';
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {Store} from '@common/store/store';
-import {Timestamp} from '@common/time/time';
 import {FileReaderSurfaceFlinger} from '@legacy_file_readers/surface_flinger/file_reader_surface_flinger';
 import {SetFormatters} from '@parsers/operations/set_formatters';
 import {parseAndConvertToPerfettoTrace} from '@test/unit/legacy_file_readers/fixture_utils';
@@ -42,6 +41,7 @@ import {VISIBLE_CHIP} from '@viewers/common/chip';
 import {TextFilter} from '@viewers/common/text_filter';
 import {UiDataHierarchy} from '@viewers/common/ui_data_hierarchy';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
+import {ViewerEvents} from '@viewers/common/viewer_events';
 import {TraceRectType} from '@viewers/components/rects/rect_spec';
 
 import {Presenter} from './presenter';
@@ -368,6 +368,28 @@ the default for its data type.`,
         userNotifierChecker.reset();
       });
 
+      it('adds event listeners', async () => {
+        const el = document.createElement('div');
+        presenter.addEventListeners(el);
+
+        let spy: jasmine.Spy = spyOn(presenter, 'onRectDoubleClick');
+        const testId = 'test';
+        el.dispatchEvent(
+          new CustomEvent(ViewerEvents.RectsDblClick, {
+            detail: {clickedRectId: testId},
+          }),
+        );
+        expect(spy).toHaveBeenCalledWith(testId);
+
+        spy = spyOn(presenter, 'onRectTypeButtonClicked');
+        el.dispatchEvent(
+          new CustomEvent(ViewerEvents.RectTypeButtonClick, {
+            detail: {type: TraceRectType.LAYERS},
+          }),
+        );
+        expect(spy).toHaveBeenCalledOnceWith(TraceRectType.LAYERS);
+      });
+
       it('handles displays with no visible layers', async () => {
         await presenter?.onAppEvent(assertDefined(this.positionUpdate));
         expect(uiData?.displays?.length).toBe(5);
@@ -460,22 +482,8 @@ the default for its data type.`,
         expect(spy).not.toHaveBeenCalled();
         await presenter.onRectDoubleClick('com.android.car.carlauncher');
         expect(spy).toHaveBeenCalledOnceWith(
-          new TabbedViewSwitchRequest(traceVc, {
-            sfRectId: 'com.android.car.carlauncher',
-          }),
+          new TabbedViewSwitchRequest(traceVc),
         );
-      });
-
-      it('handles rect double click if view capture trace present but no corresponding entry for current position', async () => {
-        const traceSf = assertDefined(this.traceSf);
-        const [presenter] = await createPresenterWithViewCapture(
-          traceSf,
-          traceSf.getEntry(2).getTimestamp().add(1000000n),
-        );
-        const spy = jasmine.createSpy();
-        presenter.setEmitEvent(spy);
-        await presenter.onRectDoubleClick('com.android.car.carlauncher');
-        expect(spy).not.toHaveBeenCalled();
       });
 
       it('robust to rect double click if view capture trace not present', async () => {
@@ -730,28 +738,20 @@ the default for its data type.`,
 
       async function createPresenterWithViewCapture(
         traceSf: Trace<HierarchyTreeNode>,
-        timestamp?: Timestamp,
       ): Promise<[Presenter, Trace<HierarchyTreeNode>]> {
-        const builder = new TraceBuilder<HierarchyTreeNode>()
+        const traceVc = new TraceBuilder<HierarchyTreeNode>()
           .setType(TraceType.VIEW_CAPTURE)
           .setEntries([
             new HierarchyTreeBuilder()
               .setId('vc id')
               .setName('vc node')
               .build(),
-            new HierarchyTreeBuilder()
-              .setId('vc id 2')
-              .setName('vc node')
-              .build(),
           ])
           .setParserCustomQueryResult(CustomQueryType.VIEW_CAPTURE_METADATA, {
             packageName: 'com.android.car.carlauncher',
             windowName: 'not_used',
-          });
-        if (timestamp) {
-          builder.setTimestamps([timestamp, timestamp]);
-        }
-        const traceVc = builder.build();
+          })
+          .build();
         const traces = new Traces();
 
         traces.addTrace(traceSf);

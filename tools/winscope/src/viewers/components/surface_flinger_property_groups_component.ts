@@ -22,6 +22,7 @@ import {assertDefined} from '@common/assert';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {SfCuratedProperties, SfLayerSummary,} from '@viewers/common/curated_properties';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
+import {ViewerEvents} from '@viewers/common/viewer_events';
 
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 import {TransformMatrixComponent} from './transform_matrix_component';
@@ -44,11 +45,8 @@ export class SurfaceFlingerPropertyGroupsComponent {
   properties = input<SfCuratedProperties>();
 
   collapseButtonClicked = output<void>();
-  readonly highlightedIdChange = output<string>();
 
-  constructor(
-    @Inject(ElementRef) readonly elementRef: ElementRef<HTMLElement>,
-  ) {}
+  constructor(@Inject(ElementRef) private elementRef: ElementRef) {}
 
   getTransformType(transformNode: PropertyTreeNode | undefined): string {
     const typeFlags = transformNode?.formattedValue() ?? 'null';
@@ -64,7 +62,11 @@ export class SurfaceFlingerPropertyGroupsComponent {
   }
 
   onIdClicked(layerNodeId: string) {
-    this.highlightedIdChange.emit(layerNodeId);
+    const event = new CustomEvent(ViewerEvents.HighlightedIdChange, {
+      bubbles: true,
+      detail: {id: layerNodeId},
+    });
+    this.elementRef.nativeElement.dispatchEvent(event);
   }
 
   isSfLayerSummary(

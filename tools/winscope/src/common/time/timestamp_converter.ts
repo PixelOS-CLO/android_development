@@ -39,8 +39,6 @@ export declare interface ComponentTimestampConverter {
   makeTimestampFromHuman(timestampHuman: string | UserTimestamp): Timestamp;
   getUTCOffset(): string;
   makeTimestampFromNs(valueNs: bigint): Timestamp;
-  makeTimestampFromBootTimeNs(valueNs: bigint): Timestamp;
-  makeTimestampFromRealNs(valueNs: bigint): Timestamp;
   validateHumanInput(timestampHuman: string): boolean;
   canMakeRealTimestamps(): boolean;
 }

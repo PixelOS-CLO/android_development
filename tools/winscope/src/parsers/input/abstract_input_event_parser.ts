@@ -21,7 +21,6 @@ import {PropertyTreeBuilderFromArgs} from '@parsers/helpers/property_tree_builde
 import {PropertyTreeBuilderFromProto} from '@parsers/helpers/property_tree_builder_from_proto';
 import {PropertyTreeBuilderFromQueryRow} from '@parsers/helpers/property_tree_builder_from_query_row';
 import {InputCoordinatePropagator} from '@parsers/input/operations/input_coordinate_propagator';
-import {RenameProperty} from '@parsers/input/operations/rename_property';
 import {SetFormatters} from '@parsers/operations/set_formatters';
 import {TransformToTimestamp} from '@parsers/operations/transform_to_timestamp';
 import {TranslateIntDef} from '@parsers/operations/translate_intdef';
@@ -32,7 +31,7 @@ import {EntriesRange} from '@trace_api/index_types';
 import {RowIterator} from '@trace_processor/query_result';
 import {EnumFormatter} from '@trace/formatters';
 import {InputEventType} from '@trace/input/input_event_type';
-import {Registry, TamperedMessageType,} from '@trace/proto_utils/tampered_message_type';
+import {PERFETTO_TRACE_PACKET_ROOT, TamperedMessageType,} from '@trace/proto_utils/tampered_message_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {Operation} from '@tree_node/operation';
 import {PropertiesProvider} from '@tree_node/properties_provider';
@@ -40,9 +39,13 @@ import {PropertiesProviderBuilder} from '@tree_node/properties_provider_builder'
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {DEFAULT_PROPERTY_TREE_NODE_FACTORY} from '@tree_node/property_tree_node_factory';
 
+import {RenameProperty} from './operations/rename_property';
+
 export abstract class AbstractInputEventParser extends AbstractParser<HierarchyTreeNode> {
-  protected readonly wrapperProto = assertDefined(
-    assertDefined(Registry.getInstance().getType('perfetto.protos.TracePacket'))
+  protected static readonly WRAPPER_PROTO = assertDefined(
+    assertDefined(
+      PERFETTO_TRACE_PACKET_ROOT.lookupType('perfetto.protos.TracePacket'),
+    )
       .fields['winscopeExtensions'].resolve()
       ?.fields[
         '.perfetto.protos.WinscopeExtensionsImpl.androidInputEvent'
@@ -60,13 +63,15 @@ export abstract class AbstractInputEventParser extends AbstractParser<HierarchyT
     'display_id',
   ];
 
-  private readonly dispatchEventField =
-    this.wrapperProto.fields['dispatcherWindowDispatchEvent'];
+  private static readonly DISPATCH_EVENT_FIELD =
+    AbstractInputEventParser.WRAPPER_PROTO.fields[
+      'dispatcherWindowDispatchEvent'
+    ];
   private static readonly DISPATCH_TABLE = 'android_input_event_dispatch';
   private static readonly DISPATCH_COLUMNS = ['window_id'];
-  private readonly baseDispatchEventOps = [
-    new SetFormatters(this.dispatchEventField),
-    new TranslateIntDef(this.dispatchEventField),
+  private static readonly BASE_DISPATCH_EVENT_OPS = [
+    new SetFormatters(AbstractInputEventParser.DISPATCH_EVENT_FIELD),
+    new TranslateIntDef(AbstractInputEventParser.DISPATCH_EVENT_FIELD),
     new InputCoordinatePropagator(),
   ];
   private static readonly EVENT_TYPE_FORMATTER = new EnumFormatter(
@@ -223,7 +228,7 @@ export abstract class AbstractInputEventParser extends AbstractParser<HierarchyT
     };
 
     const dispatchEventOps = [
-      ...this.baseDispatchEventOps,
+      ...AbstractInputEventParser.BASE_DISPATCH_EVENT_OPS,
       new RenameProperty('eventTimeNanos', 'kernelTimeNanos'),
       new TransformToTimestamp(['kernelTime', 'downTime'], timestampStrategy),
     ];
@@ -287,7 +292,11 @@ export abstract class AbstractInputEventParser extends AbstractParser<HierarchyT
         .setRootId(`${dispatchEvents.id}.${eventIndex}`)
         .setRootName(eventIndex)
         .setUseRootIdWithoutChange(true)
-        .setRootMessageType(assertDefined(this.dispatchEventField.resolve()))
+        .setRootMessageType(
+          assertDefined(
+            AbstractInputEventParser.DISPATCH_EVENT_FIELD.resolve(),
+          ),
+        )
         .setRowValidityCheck(rowValidityCheck)
         .build();
       dispatchEvents.addOrReplaceChild(dispatchEvent);

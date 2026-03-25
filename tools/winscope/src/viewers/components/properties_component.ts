@@ -25,13 +25,13 @@ import {FlattenedTreeRow} from '@viewers/common/flattened_tree_row';
 import {TextFilter} from '@viewers/common/text_filter';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
 import {UserOptions} from '@viewers/common/user_options';
-import {TimestampClickDetail} from '@viewers/common/viewer_event_details';
+import {ViewerEvents} from '@viewers/common/viewer_events';
+import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
+import {UserOptionsComponent} from '@viewers/components/user_options_component';
+import {ViewCapturePropertyGroupsComponent} from '@viewers/components/view_capture_property_groups_component';
 
-import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 import {SearchBoxComponent} from './search_box_component';
 import {TreeComponent} from './tree_component';
-import {UserOptionsComponent} from './user_options_component';
-import {ViewCapturePropertyGroupsComponent} from './view_capture_property_groups_component';
 
 @Component({
   selector: 'properties-view',
@@ -51,6 +51,7 @@ import {ViewCapturePropertyGroupsComponent} from './view_capture_property_groups
 export class PropertiesComponent {
   Analytics = Analytics;
   CollapsibleSectionType = CollapsibleSectionType;
+  ViewerEvents = ViewerEvents;
 
   nodeRows = input.required<Array<FlattenedTreeRow<UiPropertyTreeNode>>>();
   title = input('PROPERTIES');
@@ -62,13 +63,9 @@ export class PropertiesComponent {
   traceType = input<TraceType>();
   store = input<PersistentStore>();
   textFilter = input<TextFilter>();
+  filterEventName = input(ViewerEvents.PropertiesFilterChange);
 
   collapseButtonClicked = output();
-  readonly filterChange = output<TextFilter>();
-  readonly optionsChange = output<UserOptions>();
-  readonly highlightedPropertyChange = output<string>();
-  readonly timestampClick = output<TimestampClickDetail>();
-  readonly propagatePropertyClick = output<UiPropertyTreeNode>();
 
   readonly hasUserOptions = computed(() => {
     return Object.keys(this.userOptions()).length > 0;
@@ -85,19 +82,19 @@ export class PropertiesComponent {
   constructor(@Inject(ElementRef) private elementRef: ElementRef) {}
 
   onFilterChange(detail: TextFilter) {
-    this.filterChange.emit(detail);
+    const event = new CustomEvent(this.filterEventName(), {
+      bubbles: true,
+      detail,
+    });
+    this.elementRef.nativeElement.dispatchEvent(event);
   }
 
   onHighlightedPropertyChange(newNode: UiPropertyTreeNode) {
-    this.highlightedPropertyChange.emit(newNode.id);
-  }
-
-  onTimestampClick(event: TimestampClickDetail) {
-    this.timestampClick.emit(event);
-  }
-
-  onPropagatePropertyClick(node: UiPropertyTreeNode) {
-    this.propagatePropertyClick.emit(node);
+    const event = new CustomEvent(ViewerEvents.HighlightedPropertyChange, {
+      bubbles: true,
+      detail: {id: newNode.id},
+    });
+    this.elementRef.nativeElement.dispatchEvent(event);
   }
 
   showViewCaptureFormat(): boolean {

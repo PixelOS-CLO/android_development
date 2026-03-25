@@ -22,8 +22,10 @@ import {EmitEvent} from '@messaging/winscope_event_emitter';
 import {Trace, TraceEntry} from '@trace_api/trace';
 import {findCorrespondingEntry} from '@trace_api/trace_entry_finder';
 import {ActiveTraceChanged, ScreenRecordingChange, TracePositionUpdate,} from '@trace_api/trace_events';
+import {TraceType} from '@trace_api/trace_type';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {PlaybackState} from '@viewers/common/playback/playback_state';
+import {ViewerEvents} from '@viewers/common/viewer_events';
 
 import {UiData} from './ui_data';
 
@@ -45,7 +47,7 @@ export class Presenter {
     this.uiData = new UiData(
       this.traces.map((trace) => trace.getDescriptors().join(', ')),
     );
-    this.notifyViewChanged();
+    this.notifyViewCallback(this.uiData);
   }
 
   setEmitEvent(callback: EmitEvent) {
@@ -56,7 +58,18 @@ export class Presenter {
     // do nothing
   }
 
-  notifyViewChanged() {
+  addEventListeners(htmlElement: HTMLElement) {
+    htmlElement.addEventListener(ViewerEvents.OverlayDblClick, (event) => {
+      this.onOverlayDblClick((event as CustomEvent).detail);
+    });
+    htmlElement.addEventListener(
+      ViewerEvents.OverlayMediaBasedTraceChange,
+      (event) => {
+        if (this.traces.at(0)?.type === TraceType.SCREEN_RECORDING) {
+          this.onOverlayScreenRecordingChange((event as CustomEvent).detail);
+        }
+      },
+    );
     this.notifyViewCallback(this.uiData);
   }
 
@@ -106,7 +119,7 @@ export class Presenter {
       TraceEntry<MediaBasedTraceEntry>
     >;
     this.uiData.isFetchingEntries = true;
-    this.notifyViewChanged();
+    this.notifyViewCallback(this.uiData);
     const entries = await Promise.all(
       traceEntries.map((entry) => {
         return entry.getValue();
@@ -117,18 +130,18 @@ export class Presenter {
     if (this.shouldUpdateTraceEntries(entries)) {
       this.uiData.currentTraceEntries = entries;
     }
-    this.notifyViewChanged();
+    this.notifyViewCallback(this.uiData);
   }
 
   private onExpandedTimelineToggled(event: ExpandedTimelineToggled) {
     this.uiData.forceMinimize = event.isTimelineExpanded;
-    this.notifyViewChanged();
+    this.notifyViewCallback(this.uiData);
   }
 
   private onPlaybackStateChangeHandled(event: PlaybackStateChangeHandled) {
     this.uiData.isInPlaybackMode =
       event.stateToReflect !== PlaybackState.PAUSED;
-    this.notifyViewChanged();
+    this.notifyViewCallback(this.uiData);
   }
 
   private shouldUpdateTraceEntries(entries: MediaBasedTraceEntry[]): boolean {

@@ -15,25 +15,21 @@
  */
 
 import {assertBigInt, assertBigIntOrUndefined, assertDefined, assertString,} from '@common/assert';
-import {ParserTimestampConverter} from '@common/time/timestamp_converter';
 import {PerfettoLayerState} from '@compat/protobuf';
 import {HierarchyTreeBuilderLog} from '@parsers/helpers/hierarchy_tree_builder_log';
 import {PropertyTreeBuilderFromArgs} from '@parsers/helpers/property_tree_builder_from_args';
 import {PropertyTreeBuilderFromProto} from '@parsers/helpers/property_tree_builder_from_proto';
 import {PropertyTreeBuilderFromQueryRow} from '@parsers/helpers/property_tree_builder_from_query_row';
-import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {AddDefaults} from '@parsers/operations/add_defaults';
 import {SetFormatters} from '@parsers/operations/set_formatters';
 import {AbstractParser} from '@parsers/perfetto/abstract_parser';
 import {getDistinctValues, queryArgs, queryVsyncId,} from '@parsers/perfetto/query_helpers';
 import {CustomQueryParamTypeMap, CustomQueryParserResultTypeMap, CustomQueryType, VisitableParserCustomQuery,} from '@trace_api/custom_query';
 import {EntriesRange} from '@trace_api/index_types';
-import {TraceFile} from '@trace_api/trace_file';
 import {TraceType} from '@trace_api/trace_type';
 import {RowIterator} from '@trace_processor/query_result';
-import {TraceProcessor} from '@trace_processor/trace_processor';
 import {EnumFormatter, FixedStringFormatter} from '@trace/formatters';
-import {Registry, TamperedMessageType, TamperedProtoField,} from '@trace/proto_utils/tampered_message_type';
+import {PERFETTO_TRACE_PACKET_ROOT, TamperedMessageType, TamperedProtoField,} from '@trace/proto_utils/tampered_message_type';
 import {TransactionColumnType} from '@trace/transactions/transaction_column_type';
 import {TransactionType} from '@trace/transactions/transaction_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
@@ -43,8 +39,8 @@ import {PropertiesProviderBuilder} from '@tree_node/properties_provider_builder'
 import {PropertyFormatter, PropertyTreeNode,} from '@tree_node/property_tree_node';
 
 export class ParserTransactions extends AbstractParser<HierarchyTreeNode> {
-  private readonly transactionsTraceEntryField = (
-    Registry.getInstance().getType(
+  private static readonly TransactionsTraceEntryField = (
+    PERFETTO_TRACE_PACKET_ROOT.lookupType(
       'perfetto.protos.TracePacket',
     ) as TamperedMessageType
   ).fields['surfaceflingerTransactions'];
@@ -71,22 +67,6 @@ export class ParserTransactions extends AbstractParser<HierarchyTreeNode> {
     },
     {} as {[key: number]: string},
   );
-
-  static async createInstance(
-    traceFile: TraceFile,
-    traceProcessor: TraceProcessor,
-    timestampConverter: ParserTimestampConverter,
-    traceGeometryData: TraceGeometryData,
-  ): Promise<Array<AbstractParser<HierarchyTreeNode>>> {
-    return [
-      new ParserTransactions(
-        traceFile,
-        traceProcessor,
-        timestampConverter,
-        traceGeometryData,
-      ),
-    ];
-  }
 
   private flags: {[key: number]: string} | undefined;
 
@@ -434,7 +414,7 @@ LEFT JOIN ranked_process_matches AS rpm
   ): TamperedProtoField | undefined {
     let field: TamperedProtoField | undefined;
     const entryProtoType = assertDefined(
-      this.transactionsTraceEntryField.resolve(),
+      ParserTransactions.TransactionsTraceEntryField.resolve(),
     );
     switch (transactionType) {
       case TransactionType.DISPLAY_ADDED:

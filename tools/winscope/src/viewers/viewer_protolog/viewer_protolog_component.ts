@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component} from '@angular/core';
+import {Component, viewChild} from '@angular/core';
+import {TraceType} from '@trace_api/trace_type';
 import {LogComponent} from '@viewers/components/log_component';
-import {LogViewerComponent} from '@viewers/components/log_viewer_component';
+import {ViewerComponent} from '@viewers/components/viewer_component';
 
 import {ProtologHeightPredictor} from './protolog_height_predictor';
 import {UiData} from './ui_data';
@@ -28,8 +29,12 @@ import {UiData} from './ui_data';
   templateUrl: './viewer_protolog_component.ng.html',
   styleUrls: ['./viewer_protolog_component.css'],
 })
-export class ViewerProtologComponent extends LogViewerComponent<UiData> {
-  readonly heightPredictor = new ProtologHeightPredictor(
+export class ViewerProtologComponent extends ViewerComponent<UiData> {
+  logComponent = viewChild(LogComponent);
+
+  TraceType = TraceType;
+
+  heightPredictor = new ProtologHeightPredictor(
     this.elementRef,
     (index: number) => this.inputData()?.entries[index],
   );

@@ -27,26 +27,22 @@ import {Traces} from '@trace_api/traces';
 
 import {Viewer, ViewerComponent, ViewType} from './viewer';
 
-export interface Presenter {
+interface Presenter {
   onAppEvent(event: WinscopeEvent): Promise<void>;
   setEmitEvent(callback: EmitEvent): void;
-  notifyViewChanged(): void;
+  addEventListeners(htmlElement: HTMLElement): void;
   onDestroy(): void;
 }
 
-export abstract class AbstractViewer<
-  TraceEntryType,
-  UiDataType,
-  PresenterType extends Presenter = Presenter,
-> implements Viewer {
-  protected readonly trace: Trace<TraceEntryType> | undefined;
-  protected readonly presenter: PresenterType;
+export abstract class AbstractViewer<T, U> implements Viewer {
+  protected readonly trace: Trace<T> | undefined;
+  protected readonly presenter: Presenter;
   private readonly title: string;
   private readonly componentType: Type<ViewerComponent>;
   protected componentRef: ComponentRef<ViewerComponent> | undefined;
 
   constructor(
-    trace: Trace<TraceEntryType> | undefined,
+    trace: Trace<T> | undefined,
     traces: Traces,
     componentType: Type<ViewerComponent>,
     store: Store,
@@ -55,7 +51,7 @@ export abstract class AbstractViewer<
     this.trace = trace;
     this.title = TRACE_INFO[this.getTraceTypeForViewTitle()].name;
     this.componentType = componentType;
-    const notifyViewCallback = (uiData: UiDataType) => {
+    const notifyViewCallback = (uiData: U) => {
       const component = this.componentRef;
       if (!component) {
         return;
@@ -74,10 +70,9 @@ export abstract class AbstractViewer<
 
   setComponentRef(componentRef: ComponentRef<ViewerComponent>) {
     this.componentRef = componentRef;
-    this.addOutputListeners(componentRef.instance, () =>
-      componentRef.changeDetectorRef.detectChanges(),
+    this.presenter.addEventListeners(
+      componentRef.instance.elementRef.nativeElement,
     );
-    this.presenter.notifyViewChanged();
   }
 
   onShow() {
@@ -116,33 +111,23 @@ export abstract class AbstractViewer<
     return [assertDefined(this.trace)];
   }
 
-  getViewType(): ViewType {
-    return ViewType.TRACE_TAB;
-  }
-
   onDestroy() {
     this.presenter.onDestroy();
-    this.onViewerDestroy();
   }
 
   protected getTraceTypeForViewTitle(): TraceType {
     return assertDefined(this.trace).type;
   }
 
-  protected onViewerDestroy() {
-    // do nothing
+  getViewType(): ViewType {
+    return ViewType.TRACE_TAB;
   }
 
   protected abstract createPresenter(
-    trace: Trace<TraceEntryType> | undefined,
+    trace: Trace<T> | undefined,
     traces: Traces,
     store: Store,
-    notifyViewCallback: (uiData: UiDataType) => void,
+    notifyViewCallback: (uiData: U) => void,
     timestampConverter?: TimestampConverter,
-  ): PresenterType;
-
-  protected abstract addOutputListeners(
-    _: ViewerComponent,
-    _changeDetectorCallback: () => void,
-  ): void;
+  ): Presenter;
 }

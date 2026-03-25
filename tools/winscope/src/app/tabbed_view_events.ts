@@ -20,10 +20,7 @@ import {Trace} from '@trace_api/trace';
 import {Viewer, ViewType} from '@viewers/viewer';
 
 export class TabbedViewSwitched implements WinscopeEvent {
-  constructor(
-    readonly newFocusedView: Viewer,
-    readonly metadata?: unknown,
-  ) {
+  constructor(readonly newFocusedView: Viewer) {
     assertTrue(
       newFocusedView.getViewType() === ViewType.TRACE_TAB ||
         newFocusedView.getViewType() === ViewType.GLOBAL_SEARCH,
@@ -32,8 +29,5 @@ export class TabbedViewSwitched implements WinscopeEvent {
 }
 
 export class TabbedViewSwitchRequest implements WinscopeEvent {
-  constructor(
-    readonly newActiveTrace: Trace<unknown>,
-    readonly metadata?: unknown,
-  ) {}
+  constructor(readonly newActiveTrace: Trace<unknown>) {}
 }
