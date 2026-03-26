@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-syntax = "proto2";
+import {Component} from '@angular/core';
+import {UiDataLog} from '@viewers/common/ui_data_log';
 
-package android_common;
+import {LogViewerComponent} from './log_viewer_component';
 
-import "google/protobuf/descriptor.proto";
-
-extend google.protobuf.FieldOptions {
-  optional string typedef = 60001;
-}
+@Component({
+  selector: 'log-viewer-stub',
+  template: `<div>log viewer</div>`,
+})
+export class LogViewerComponentStub extends LogViewerComponent<UiDataLog> {}

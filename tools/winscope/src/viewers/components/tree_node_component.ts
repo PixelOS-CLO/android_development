@@ -15,7 +15,7 @@
  */
 import {ClipboardModule} from '@angular/cdk/clipboard';
 import {CommonModule} from '@angular/common';
-import {Component, computed, effect, ElementRef, Inject, input, output,} from '@angular/core';
+import {Component, computed, ElementRef, Inject, input, output,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {assertDefined} from '@common/assert';
@@ -24,6 +24,7 @@ import {DiffType} from '@viewers/common/diff_type';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
 import {UiTreeNode} from '@viewers/common/ui_tree_node';
+import {TimestampClickDetail} from '@viewers/common/viewer_event_details';
 
 import {HierarchyTreeNodeDataViewComponent} from './hierarchy_tree_node_data_view_component';
 import {PropertyTreeNodeDataViewComponent} from './property_tree_node_data_view_component';
@@ -42,8 +43,8 @@ import {PropertyTreeNodeDataViewComponent} from './property_tree_node_data_view_
   templateUrl: './tree_node_component.ng.html',
   styleUrls: ['tree_node_component.css'],
 })
-export class TreeNodeComponent {
-  node = input.required<UiTreeNode>();
+export class TreeNodeComponent<T extends UiTreeNode> {
+  node = input.required<T>();
 
   isLeaf = input<boolean>(false);
   flattened = input<boolean>(false);
@@ -59,8 +60,9 @@ export class TreeNodeComponent {
   readonly toggleTreeChange = output<void>();
   readonly rectShowStateChange = output<void>();
   readonly expandTreeChange = output<void>();
-  readonly pinNodeChange = output<UiTreeNode>();
-  readonly scrollChange = output<void>();
+  readonly pinNodeChange = output<T>();
+  readonly timestampClick = output<TimestampClickDetail>();
+  readonly propagatePropertyNodeClick = output<UiPropertyTreeNode>();
 
   readonly collapseDiffClass = computed(() => {
     const node = this.node();
@@ -115,12 +117,6 @@ export class TreeNodeComponent {
   constructor(@Inject(ElementRef) elementRef: ElementRef<HTMLElement>) {
     this.el = elementRef.nativeElement;
     this.el?.addEventListener('mousedown', this.nodeMouseDownEventListener);
-
-    effect(() => {
-      if (!this.isInPinnedSection() && this.isSelected()) {
-        this.scrollChange.emit();
-      }
-    });
   }
 
   ngOnDestroy() {
@@ -155,7 +151,7 @@ export class TreeNodeComponent {
     this.pinNodeChange.emit(this.node());
   }
 
-  private getAllDiffTypesOfChildren(node: UiTreeNode): Set<DiffType> {
+  private getAllDiffTypesOfChildren(node: T): Set<DiffType> {
     const classes = new Set<DiffType>();
     for (const child of node.getAllChildren()) {
       classes.add(child.getDiff());

@@ -17,12 +17,12 @@
 import {Timestamp} from '@common/time/time';
 import {TraceEntry} from '@trace_api/trace';
 import {LazyPropertiesStrategyType} from '@tree_node/properties_provider';
-import {TextFilter} from '@viewers/common/text_filter';
-import {UserOptions} from '@viewers/common/user_options';
 
 import {FlattenedTreeRow} from './flattened_tree_row';
 import {LogFilter} from './log_filters';
+import {TextFilter} from './text_filter';
 import {UiPropertyTreeNode} from './ui_property_tree_node';
+import {UserOptions} from './user_options';
 
 export interface UiDataLog {
   entries: LogEntry[];
@@ -57,15 +57,25 @@ export interface LogEntry {
   traceEntry: TraceEntry<unknown>;
   fields: LogField[];
   getPropertiesTree: LazyPropertiesStrategyType | undefined;
+  formatForClipboard?: (timeOnly: boolean) => string;
 }
 
-export interface LogField {
-  spec: ColumnSpec;
-  value: LogFieldValue;
-  icon?: string;
-  iconColor?: string;
-  propagateEntryTimestamp?: boolean;
-  tooltip?: string;
+export class LogField {
+  constructor(
+    readonly spec: ColumnSpec,
+    readonly value: LogFieldValue,
+    readonly icon?: string,
+    readonly iconColor?: string,
+    readonly propagateEntryTimestamp?: boolean,
+    readonly tooltip?: string,
+  ) {}
+
+  format(timeOnly = false): string {
+    if (this.value instanceof Timestamp) {
+      return this.value.format(timeOnly);
+    }
+    return this.value.toString();
+  }
 }
 
 export type LogFieldValue =

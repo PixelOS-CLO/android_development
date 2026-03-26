@@ -162,12 +162,15 @@ limitations under the License.
                   [selectedIndex]="curr.result?.selectedIndex"
                   [scrollToIndex]="curr.result?.scrollToIndex"
                   [currentIndex]="curr.result?.currentIndex"
-                  [traceType]="TraceType.SEARCH"
                   [showTraceEntryTimes]="false"
                   [showTimeControls]="false"
                   [padEntries]="false"
                   [isFetchingData]="curr.result?.isFetchingData ?? false"
                   [checkScrollViewportCount]="curr.result?.checkScrollViewportCount ?? 0"
+                  (logEntryClick)="onLogEntryClick.emit({detail: $event, uid: curr.uid})"
+                  (timestampClick)="onResultTimestampClick.emit({detail: $event, uid: curr.uid})"
+                  (arrowDownPress)="onArrowDownPress.emit(curr.uid)"
+                  (arrowUpPress)="onArrowUpPress.emit(curr.uid)"
                 ></log-view>
               </div>
             </div>

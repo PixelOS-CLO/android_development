@@ -19,6 +19,7 @@ import {ComponentFixture} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventCode, KeyboardEventKey, KeyboardEventKeyCode,} from '@common/dom';
+import {MouseEventButton} from '@common/mouse_event_button';
 
 export class DOMTestHelper<T> {
   constructor(
@@ -66,6 +67,14 @@ export class DOMTestHelper<T> {
       this.fixture.debugElement.query(By.directive(component))
         ?.componentInstance ?? undefined
     );
+  }
+
+  findAllByDirective<T>(component: Type<T>): T[] {
+    return this.fixture.debugElement
+      .queryAll(By.directive(component))
+      .map((el) => {
+        return el.componentInstance;
+      });
   }
 
   findInDocument(selector: string): DOMTestHelper<T> | undefined {
@@ -225,16 +234,16 @@ export class DOMTestHelper<T> {
     this.keydownByKey(KeyboardEventKey.MEDIA_TRACK_PREVIOUS, toDocument);
   }
 
-  keydownArrowLeft(toDocument = false) {
-    this.keydownByKey(KeyboardEventKey.ARROW_LEFT, toDocument);
+  keydownArrowLeft(toDocument = false, target?: HTMLElement) {
+    this.keydownByKey(KeyboardEventKey.ARROW_LEFT, toDocument, target);
   }
 
-  keydownArrowRight(toDocument = false) {
-    this.keydownByKey(KeyboardEventKey.ARROW_RIGHT, toDocument);
+  keydownArrowRight(toDocument = false, target?: HTMLElement) {
+    this.keydownByKey(KeyboardEventKey.ARROW_RIGHT, toDocument, target);
   }
 
-  keydownArrowUp(toDocument = false) {
-    this.keydownByKey(KeyboardEventKey.ARROW_UP, toDocument);
+  keydownArrowUp(toDocument = false, target?: HTMLElement) {
+    this.keydownByKey(KeyboardEventKey.ARROW_UP, toDocument, target);
   }
 
   keydownArrowDown(toDocument = false) {
@@ -254,12 +263,28 @@ export class DOMTestHelper<T> {
     this.dispatchEvent(new FocusEvent('focusout'));
   }
 
-  dragElement(x: number, y: number) {
+  dragElement(x: number, y: number, button = MouseEventButton.MAIN) {
     const {left, top} = this.root.getBoundingClientRect();
-    this.dispatchMouseEvent(this.root, 'mousedown', left, top, 0, 0);
-    this.dispatchMouseEvent(document, 'mousemove', left + 1, top + 0, 1, y);
-    this.dispatchMouseEvent(document, 'mousemove', left + x, top + y, x, y);
-    this.dispatchMouseEvent(document, 'mouseup', left + x, top + y, x, y);
+    this.dispatchMouseEvent(this.root, 'mousedown', left, top, 0, 0, button);
+    this.dispatchMouseEvent(document, 'mousemove', left + 1, top, 1, y, button);
+    this.dispatchMouseEvent(
+      document,
+      'mousemove',
+      left + x,
+      top + y,
+      x,
+      y,
+      button,
+    );
+    this.dispatchMouseEvent(
+      document,
+      'mouseup',
+      left + x,
+      top + y,
+      x,
+      y,
+      button,
+    );
   }
 
   dispatchEvent(event: Event) {
@@ -419,6 +444,7 @@ export class DOMTestHelper<T> {
     screenY: number,
     clientX: number,
     clientY: number,
+    button = MouseEventButton.MAIN,
   ) {
     const event = new MouseEvent(type, {
       bubbles: true,
@@ -431,13 +457,17 @@ export class DOMTestHelper<T> {
       clientX,
       clientY,
       buttons: 1,
+      button,
     });
     source.dispatchEvent(event);
     this.detectChanges();
   }
 
-  private keydownByKey(key: string, toDocument = false) {
+  private keydownByKey(key: string, toDocument = false, target?: HTMLElement) {
     const event = new KeyboardEvent('keydown', {key});
+    if (target) {
+      spyOnProperty(event, 'target').and.returnValue(target);
+    }
     if (toDocument) {
       this.dispatchEventInDocument(event);
     } else {

@@ -15,7 +15,7 @@
  */
 import {DragDropModule} from '@angular/cdk/drag-drop';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, Inject, input, NgZone, viewChild,} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, Inject, input, NgZone, output, viewChild,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
@@ -26,7 +26,6 @@ import {assertDefined} from '@common/assert';
 import {Size} from '@common/geometry/size';
 import {Timer} from '@common/time/timer';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
-import {ViewerEvents} from '@viewers/common/viewer_events';
 
 @Component({
   selector: 'viewer-media-based',
@@ -48,6 +47,10 @@ export class ViewerMediaBasedComponent {
   showFetchingEntriesMessage = false;
   shouldMinimize = false;
   index = 0;
+  keepCanvasAlive = false;
+
+  readonly onOverlayMediaBasedTraceChange = output<number>();
+  readonly onOverlayDblClick = output<number>();
 
   private videoElement =
     viewChild<ElementRef<HTMLVideoElement>>('videoElement');
@@ -82,6 +85,7 @@ export class ViewerMediaBasedComponent {
     effect(() => {
       const currentTraceEntries = this.currentTraceEntries();
       if (currentTraceEntries.length === 0) {
+        this.keepCanvasAlive = false;
         return;
       }
       if (this.safeUrl === undefined) {
@@ -130,8 +134,20 @@ export class ViewerMediaBasedComponent {
   }
 
   hasImageToShow(): boolean {
+    if (this.keepCanvasAlive) {
+      return true;
+    }
     const curr = this.currentTraceEntries().at(this.index);
     return curr !== undefined && curr.frame !== undefined;
+  }
+
+  hasVideoToShow(): boolean {
+    const curr = this.currentTraceEntries().at(this.index);
+    return (
+      this.safeUrl !== undefined &&
+      curr !== undefined &&
+      curr.frameData !== undefined
+    );
   }
 
   getCurrentTime(): number | undefined {
@@ -140,28 +156,23 @@ export class ViewerMediaBasedComponent {
 
   onSelectChange(event: MatSelectChange) {
     this.index = event.value;
+    this.keepCanvasAlive = false;
     this.tryUpdateSafeUrl();
     this.tryUpdateRenderedFrame();
     this.updateFrameSize();
     event.source.close();
-    const screenIndexChangeEvent = new CustomEvent(
-      ViewerEvents.OverlayMediaBasedTraceChange,
-      {
-        detail: this.index,
-        bubbles: true,
-      },
-    );
-    this.elementRef.nativeElement.dispatchEvent(screenIndexChangeEvent);
+    this.onOverlayMediaBasedTraceChange.emit(this.index);
   }
 
-  onOverlayDblClick() {
+  onOverlayDoubleClicked() {
     if (this.enableDoubleClick() && !this.isInPlaybackMode()) {
-      const event = new CustomEvent(ViewerEvents.OverlayDblClick, {
-        detail: this.index,
-        bubbles: true,
-      });
-      this.elementRef.nativeElement.dispatchEvent(event);
+      this.onOverlayDblClick.emit(this.index);
     }
+  }
+
+  onVideoSeeked() {
+    this.keepCanvasAlive = false;
+    this.changeDetectorRef.detectChanges();
   }
 
   private tryUpdateRenderedFrame() {
@@ -175,6 +186,7 @@ export class ViewerMediaBasedComponent {
     }
     const canvas = canvasElement.nativeElement;
     entry.frame.tryDrawOnCanvas(canvas);
+    this.keepCanvasAlive = true;
   }
 
   private resetFrameSizeWorker() {

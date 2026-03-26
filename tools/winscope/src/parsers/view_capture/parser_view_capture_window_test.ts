@@ -65,6 +65,9 @@ describe('PerfettoParserViewCaptureWindow', () => {
   it('builds trace entry', async () => {
     const root = await parser.getEntry(1);
     expect(root).toBeInstanceOf(HierarchyTreeNode);
+    expect(root.id).toBe(
+      'com.android.internal.policy.PhoneWindow@4f9be60ViewNode0 com.android.internal.policy.DecorView@203589466',
+    );
     expect(root.name).toBe('com.android.internal.policy.DecorView@203589466');
     expect(root.getRects().length).toBe(1);
 
@@ -78,7 +81,7 @@ describe('PerfettoParserViewCaptureWindow', () => {
     const root = await parser.getEntry(1);
     const properties = await root.getAllProperties();
     const defaultProperty = assertDefined(properties.getChildByName('left'));
-    expect(defaultProperty.getValue()).toBe(0);
+    expect(defaultProperty.getValue<number>()).toBe(0);
     expect(defaultProperty.formattedValue()).toBe('0');
   });
 
@@ -106,14 +109,18 @@ describe('PerfettoParserViewCaptureWindow', () => {
 
   it('provides eager properties', async () => {
     const entry = await parser.getEntry(0);
-    expect(entry.getEagerPropertyByName('nodeId')?.getValue()).toEqual(0n);
-    expect(entry.getEagerPropertyByName('className')?.getValue()).toEqual(
-      'com.android.internal.policy.DecorView',
-    );
-    expect(entry.getEagerPropertyByName('hashcode')?.getValue()).toEqual(
-      203589466n,
-    );
+    expect(
+      entry.getEagerPropertyByName('nodeId')?.getValue()?.toString(),
+    ).toEqual('0');
+    expect(
+      entry.getEagerPropertyByName('className')?.getValue<string>(),
+    ).toEqual('com.android.internal.policy.DecorView');
+    expect(
+      entry.getEagerPropertyByName('hashcode')?.getValue()?.toString(),
+    ).toEqual('203589466');
     expect(entry.getEagerPropertyByName('isVisible')?.getValue()).toBeTrue();
-    expect(entry.getEagerPropertyByName('viewId')?.getValue()).toEqual('NO_ID');
+    expect(entry.getEagerPropertyByName('viewId')?.getValue<string>()).toEqual(
+      'NO_ID',
+    );
   });
 });
