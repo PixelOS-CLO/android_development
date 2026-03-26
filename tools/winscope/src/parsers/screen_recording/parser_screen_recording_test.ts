@@ -15,14 +15,13 @@
  */
 import {makeRealTimestamp, timestampEqualityTester,} from '@common/time/testing/test_helpers';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
-import {NonPerfettoParserProvider} from '@parsers/fixture_utils';
+import {spyOnThumbnailGenerator, waitForThumbnailGeneration,} from '@parsers/screen_recording/testing/test_helpers';
+import {NonPerfettoParserProvider} from '@parsers/testing/fixture_utils';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {FileReader} from '@trace_api/file_reader';
 import {Parser} from '@trace_api/parser';
 import {TraceType} from '@trace_api/trace_type';
 import {MediaBasedTraceEntry, VideoEntry,} from '@trace/media_based/media_based_trace_entry';
-
-import {spyOnThumbnailGenerator, waitForThumbnailGeneration,} from './test_helpers';
 
 describe('ParserScreenRecording', () => {
   let parser: Parser<MediaBasedTraceEntry> & FileReader;

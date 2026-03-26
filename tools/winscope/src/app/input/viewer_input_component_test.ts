@@ -55,7 +55,7 @@ class ViewerInputComponentTest extends AbstractLogViewerComponentTest<ViewerInpu
   private trace = new TraceBuilder<HierarchyTreeNode>()
     .setType(TraceType.INPUT_EVENT_MERGED)
     .setEntries([this.hTree])
-    .setTimestamps([makeElapsedTimestamp(20n)])
+    .setTimestamps([makeElapsedTimestamp(BigInt(20))])
     .build();
   private entry = this.trace.getEntry(0);
 

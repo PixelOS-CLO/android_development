@@ -174,8 +174,8 @@ export class LogComponent {
     this.updateTableMarginEnd();
   }
 
-  @HostListener('window:resize', ['$event'])
-  onResize(_: Event) {
+  @HostListener('window:resize')
+  onResize() {
     this.updateTableMarginEnd();
     this.virtualScrollViewport().checkViewportSize();
   }

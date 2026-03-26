@@ -117,7 +117,7 @@ export class TraceFileIdentifier<T extends FileReader>
 
   async onWinscopeEvent(event: WinscopeEvent) {
     if (event instanceof BugreportFileSelected) {
-      this.onBugreportFileSelected(event as BugreportFileSelected);
+      await this.onBugreportFileSelected(event as BugreportFileSelected);
     }
   }
 

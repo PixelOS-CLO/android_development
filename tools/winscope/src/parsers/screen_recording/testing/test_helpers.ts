@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-import {waitToBeCalled} from '@common/spy_utils';
-
-import {ThumbnailGenerator} from './thumbnail_generator';
+import {waitToBeCalled} from '@common/testing/spy_utils';
+import {ThumbnailGenerator} from '@parsers/screen_recording/thumbnail_generator';
 
 export function spyOnThumbnailGenerator() {
   return spyOn(ThumbnailGenerator.prototype, 'generate').and.callThrough();

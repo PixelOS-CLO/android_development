@@ -24,7 +24,7 @@ import {InitializeTraceSearchRequest, TraceAddRequest, TracePositionUpdate, Trac
 import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {QueryResult} from '@trace_processor/query_result';
-import {makeSearchTraceSpies} from '@trace_processor/test_utils';
+import {makeSearchTraceSpies} from '@trace_processor/testing/test_utils';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 
 import {Presenter} from './presenter';
@@ -267,7 +267,8 @@ describe('PresenterSearch', () => {
     }
     expect(uiData.currentSearches.length).toBe(1);
     expect(uiData.recentSearches.length).toBe(100);
-    const saved = JSON.parse(storage.get('recentSearches') ?? '{}');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const saved = JSON.parse(storage.get('recentSearches') ?? '{}') as any;
     expect(saved.searches.length).toBe(100);
   });
 

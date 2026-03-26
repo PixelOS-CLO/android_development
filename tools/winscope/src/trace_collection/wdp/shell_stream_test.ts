@@ -92,7 +92,7 @@ describe('ShellStream', () => {
 
   it('resolves complete promise on close', async () => {
     let completed = false;
-    stream.complete.then(() => {
+    void stream.complete.then(() => {
       completed = true;
     });
     await stream.connect();

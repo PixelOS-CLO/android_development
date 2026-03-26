@@ -18,6 +18,8 @@ import {CommonModule} from '@angular/common';
 import {Component, input, output} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
+import {trySanitizeUrl} from '@compat/safevalues';
+import {windowOpen} from '@compat/safevalues/dom';
 import {ConnectionState} from '@trace_collection/connection_state';
 
 /**
@@ -36,14 +38,19 @@ export class WdpSetupComponent {
   ConnectionState = ConnectionState;
 
   onInstallExternalButtonClick() {
-    window.open(
+    const sanitizedUrl = trySanitizeUrl(
       'https://tools.google.com/dlpage/android_web_device_proxy',
-      '_blank',
     );
+    if (sanitizedUrl) {
+      windowOpen(window, sanitizedUrl, '_blank');
+    }
   }
 
   onInstallGoogleButtonClick() {
-    window.open('http://go/web-device-proxy#setup', '_blank');
+    const sanitizedUrl = trySanitizeUrl('http://go/web-device-proxy#setup');
+    if (sanitizedUrl) {
+      windowOpen(window, sanitizedUrl, '_blank');
+    }
   }
 
   onRetryButtonClick() {

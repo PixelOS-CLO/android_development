@@ -50,6 +50,8 @@ import {Timestamp} from '@common/time/time';
 import {getRootUrl} from '@common/window';
 import {globalConfig} from '@compat/global_config';
 import {getLogger} from '@compat/logging';
+import {objectUrlFromSafeSource, trySanitizeUrl, unwrapSafeUrl,} from '@compat/safevalues';
+import {windowOpen} from '@compat/safevalues/dom';
 import {CrossToolProtocol} from '@cross_tool/cross_tool_protocol';
 import {RequestData} from '@cross_tool/g3_proxy';
 import {isAllowedIframeParentOrigin} from '@cross_tool/origin_allow_list';
@@ -65,7 +67,7 @@ import {AdbFiles} from '@trace_collection/adb_files';
 import {Registry} from '@trace/proto_utils/tampered_message_type';
 import {AppFilesCollected, AppFilesUploaded, AppInitialized, AppRefreshDumpsRequest, AppResetRequest, AppTraceViewRequest,} from '@ui/shared/events/app_events';
 import {ActiveSearchQueriesUpdate, BookmarksChanged, BugreportFileSelected, BugreportFileSelectionRequest, DarkModeToggled,} from '@ui/shared/events/misc_events';
-import {TabbedViewSwitchRequest} from '@ui/shared/events/tabbed_view_events';
+import {TabbedViewSwitchRequest} from '@ui/shared/viewers/tabbed_view_events';
 import {TimelineData} from '@ui/timeline/timeline_data';
 import {LoadedFileData} from '@ui/trace_loading/loaded_file_data';
 import {ParsingErrorType} from '@ui/trace_loading/parsing_error_type';
@@ -410,7 +412,7 @@ export class AppComponent implements WinscopeEventListener {
     if (request == null) {
       return undefined;
     }
-    return JSON.parse(atob(request));
+    return JSON.parse(atob(request)) as RequestData;
   }
 
   isSupportedReportedParentOrigin(parentOrigin: string): boolean {
@@ -438,9 +440,7 @@ export class AppComponent implements WinscopeEventListener {
       window.parent.postMessage(data, parentOrigin);
     } else {
       logger.warn(
-        'Not inside an iframe...',
-        window.self.origin,
-        window.top?.origin,
+        'Not inside an iframe...' + window.self.origin + window.top?.origin,
       );
     }
   }
@@ -759,7 +759,7 @@ export class AppComponent implements WinscopeEventListener {
   }
 
   private goToLink(url: string) {
-    window.open(url, '_blank');
+    windowOpen(window, trySanitizeUrl(url), '_blank');
   }
 
   private translateStatus(status: boolean) {
@@ -767,7 +767,7 @@ export class AppComponent implements WinscopeEventListener {
   }
 
   private downloadTraces(blob: Blob, filename: string) {
-    const url = window.URL.createObjectURL(blob);
+    const url = unwrapSafeUrl(objectUrlFromSafeSource(blob));
     this.downloadRequest(url, filename);
   }
 

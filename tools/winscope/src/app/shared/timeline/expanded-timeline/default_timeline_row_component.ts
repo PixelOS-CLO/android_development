@@ -59,7 +59,7 @@ export class DefaultTimelineRowComponent extends AbstractTimelineRowComponent<un
   override drawTimeline() {
     const selectionRange = this.selectionRange();
     this.trace()
-      .sliceTime(selectionRange.from, selectionRange.to.add(1n))
+      .sliceTime(selectionRange.from, selectionRange.to.add(BigInt(1)))
       .forEachTimestamp((entry) => {
         this.drawEntry(entry);
       });

@@ -162,7 +162,7 @@ describe('PropertiesComponent', () => {
     const tsSpy = spyOn(component.timestampClick, 'emit');
     const tsDetail = new TimestampClickDetail(
       undefined,
-      makeElapsedTimestamp(2n),
+      makeElapsedTimestamp(BigInt(2)),
     );
     dataView.timestampClick.emit(tsDetail);
     expect(tsSpy).toHaveBeenCalledOnceWith(tsDetail);

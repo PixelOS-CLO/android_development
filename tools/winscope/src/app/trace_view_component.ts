@@ -37,7 +37,7 @@ import {ActiveTraceChanged} from '@trace_api/trace_events';
 import {TRACE_INFO} from '@trace_api/trace_info';
 import {TraceType} from '@trace_api/trace_type';
 import {FilterPresetApplyRequest, FilterPresetSaveRequest,} from '@ui/shared/events/misc_events';
-import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@ui/shared/events/tabbed_view_events';
+import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@ui/shared/viewers/tabbed_view_events';
 import {ViewType} from '@ui/shared/viewers/viewer';
 import {ParsingErrorType} from '@ui/trace_loading/parsing_error_type';
 
@@ -154,7 +154,7 @@ export class TraceViewComponent
       const store = this.store();
       const storedPresets = store.get(this.filterPresetsStoreKey);
       if (storedPresets) {
-        this.allFilterPresets.set(JSON.parse(storedPresets));
+        this.allFilterPresets.set(JSON.parse(storedPresets) as string[]);
       }
       firstStoreChange.destroy();
     });

@@ -62,7 +62,7 @@ describe('ImeUtils', () => {
         .getChildByName('windowContainer')
         ?.getChildByName('identifier')
         ?.getChildByName('title')
-        ?.getValue(),
+        ?.getValue<string>(),
     ).toEqual(
       'com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity',
     );
@@ -75,7 +75,7 @@ describe('ImeUtils', () => {
         .getChildByName('windowContainer')
         ?.getChildByName('identifier')
         ?.getChildByName('title')
-        ?.getValue(),
+        ?.getValue<string>(),
     ).toEqual(
       'com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity',
     );
@@ -94,7 +94,7 @@ describe('ImeUtils', () => {
         .getChildByName('windowContainer')
         ?.getChildByName('identifier')
         ?.getChildByName('title')
-        ?.getValue(),
+        ?.getValue<string>(),
     ).toBe('SnapshotStartingWindow for taskId=1393');
 
     expect(processed.wmStateProperties.isInputMethodWindowVisible).toBeFalse();
@@ -122,18 +122,18 @@ describe('ImeUtils', () => {
       '280 Surface(name=77f1069 InputMethod)/@0xb4afb8f - animation-leash of insets_animation#280',
     );
     expect(inputMethodSurface.isVisible).toEqual(false);
-    expect(inputMethodSurfaceRect.getChildByName('left')?.getValue()).toEqual(
-      -10800,
-    );
-    expect(inputMethodSurfaceRect.getChildByName('top')?.getValue()).toEqual(
-      -24136,
-    );
-    expect(inputMethodSurfaceRect.getChildByName('right')?.getValue()).toEqual(
-      10800,
-    );
-    expect(inputMethodSurfaceRect.getChildByName('bottom')?.getValue()).toEqual(
-      23864,
-    );
+    expect(
+      inputMethodSurfaceRect.getChildByName('left')?.getValue<number>(),
+    ).toEqual(-10800);
+    expect(
+      inputMethodSurfaceRect.getChildByName('top')?.getValue<number>(),
+    ).toEqual(-24136);
+    expect(
+      inputMethodSurfaceRect.getChildByName('right')?.getValue<number>(),
+    ).toEqual(10800);
+    expect(
+      inputMethodSurfaceRect.getChildByName('bottom')?.getValue<number>(),
+    ).toEqual(23864);
     expect(inputMethodSurface.screenBounds).toBeDefined();
 
     const imeContainer = assertDefined(layers.properties.imeContainer);
