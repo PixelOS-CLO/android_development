@@ -1158,7 +1158,7 @@ describe('AppComponent', () => {
         perfetto: [],
         lostPerfettoPackets: 0,
         traceTypesWithParsingErrors: new Map(),
-        timezoneInfo: undefined,
+        metadata: {},
         traceGeometryData: new TraceGeometryData(),
         warnings: [],
       },
