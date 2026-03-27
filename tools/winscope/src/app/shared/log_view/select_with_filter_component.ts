@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {CdkAccordionModule} from '@angular/cdk/accordion';
 import {ScrollingModule} from '@angular/cdk/scrolling';
 import {CommonModule} from '@angular/common';
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, effect, Inject, input, model, output, signal, viewChild,} from '@angular/core';
@@ -22,6 +23,7 @@ import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MatOption, MatOptionModule, MatPseudoCheckboxModule,} from '@angular/material/core';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelect, MatSelectChange, MatSelectModule,} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
@@ -43,6 +45,8 @@ import {AbstractSelectComponent} from '@app/shared/user_input/abstract_select_co
     ScrollingModule,
     MatPseudoCheckboxModule,
     MatButtonModule,
+    CdkAccordionModule,
+    MatIconModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './select_with_filter_component.ng.html',
@@ -176,6 +180,11 @@ export class SelectWithFilterComponent extends AbstractSelectComponent {
   selectedOptions(): string[] {
     const select = this.select();
     return this.options().filter((o) => select.value.includes(o));
+  }
+
+  selectedScrollHeight() {
+    const opt1 = this.selectedOptions().length * 48 + 'px';
+    return `min(30vh, ${opt1})`;
   }
 
   onSelectedOptionClick(option: string) {
