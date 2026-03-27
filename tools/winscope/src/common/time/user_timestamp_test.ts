@@ -214,4 +214,39 @@ describe('user_timestamp', () => {
       ).toBeFalse();
     });
   });
+
+  describe('addOrReplaceFilenameFormatTimestamp', () => {
+    const newTs = '2022-11-11_10_03_22';
+
+    it('replaces timestamp in filename format', () => {
+      checkTsAddedToFilename('name_2022-11-10_22_04_54', 'name');
+    });
+
+    it('adds filename to end of inputs with invalid timestamps', () => {
+      checkTsAddedToFilename('2022-11-10_22_04_54');
+      checkTsAddedToFilename('_2022-11-10_22_04_54.234');
+      checkTsAddedToFilename('_2022-11-10_22_04_54_20');
+      checkTsAddedToFilename('_2022-11-10, 22:04:54');
+      checkTsAddedToFilename('_2022-13-10_22_04_54');
+      checkTsAddedToFilename('_2022-11-32_22_04_54');
+      checkTsAddedToFilename('_2022-11-10_25_04_54');
+      checkTsAddedToFilename('_2022-11-10_22_60_54');
+      checkTsAddedToFilename('_2022-11-10_22_04_60');
+      checkTsAddedToFilename('_2022-11-10_22_04_54.');
+    });
+
+    it('throws for invalid new timestamp', () => {
+      expect(() =>
+        new UserTimestamp(
+          'name_2022-11-10_22_04_54',
+        ).addOrReplaceFilenameFormatTimestamp('2022-11-11_10:03:22'),
+      ).toThrow();
+    });
+
+    function checkTsAddedToFilename(filename: string, newPrefix = filename) {
+      expect(
+        new UserTimestamp(filename).addOrReplaceFilenameFormatTimestamp(newTs),
+      ).toBe(newPrefix + '_' + newTs);
+    }
+  });
 });

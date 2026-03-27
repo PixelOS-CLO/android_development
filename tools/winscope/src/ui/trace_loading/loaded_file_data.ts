@@ -19,6 +19,7 @@ import {DOWNLOAD_FILENAME_REGEX, ILLEGAL_FILENAME_CHARACTERS_REGEX, OnProgressUp
 import {TimezoneInfo} from '@common/time/time';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {TimestampConverter, UTC_TIMEZONE_INFO,} from '@common/time/timestamp_converter';
+import {UserTimestamp} from '@common/time/user_timestamp';
 import {getResolvedUTCOffset} from '@common/time/utc_offset_resolver';
 import {getLogger, Logger} from '@compat/logging';
 import {getReaderWithLatestRealToBootTimeOffset, getReaderWithLatestRealToMonotonicTimeOffset,} from '@legacy_file_readers/common/file_reader_helpers';
@@ -314,21 +315,33 @@ export class LoadedFileData {
   ): string {
     const files = fileReaders.flatMap((reader) => reader.getFiles());
     // set download archive file name, used to download all traces
-    let filenameWithCurrTime: string;
-    const currTime = new Date().toISOString().slice(0, -5).replace('T', '_');
+    let archiveFilename: string;
+    const currTime = this.getCurrTimeForFilename();
+
+    const parentArchive = fileReaders.at(0)?.getFiles().at(0)?.parentArchive;
     if (
+      parentArchive?.name &&
+      files.every((file) => file.parentArchive === parentArchive)
+    ) {
+      archiveFilename = this.makeArchiveFilenameFromParentArchive(
+        parentArchive.name,
+        source,
+        currTime,
+      );
+    } else if (
       this.downloadArchiveFilename ===
         LoadedFileData.DEFAULT_DOWNLOAD_ARCHIVE_NAME &&
       files.length === 1
     ) {
-      const filenameNoDir = removeDirFromFileName(files[0].file.name);
-      const filenameNoDirOrExt = removeExtensionFromFilename(filenameNoDir);
-      filenameWithCurrTime = `${filenameNoDirOrExt}_${currTime}`;
+      archiveFilename = this.makeArchiveFilenameFromFile(
+        files[0].file.name,
+        currTime,
+      );
     } else {
-      filenameWithCurrTime = `${source}_${currTime}`;
+      archiveFilename = `${source}_${currTime}`;
     }
 
-    const archiveFilenameNoIllegalChars = filenameWithCurrTime.replace(
+    const archiveFilenameNoIllegalChars = archiveFilename.replace(
       ILLEGAL_FILENAME_CHARACTERS_REGEX,
       '_',
     );
@@ -341,6 +354,43 @@ export class LoadedFileData {
       );
       return LoadedFileData.DEFAULT_DOWNLOAD_ARCHIVE_NAME;
     }
+  }
+
+  private getCurrTimeForFilename(): string {
+    const currTime = new Date();
+    // update timestamp value to include user's local timezone offset
+    currTime.setMinutes(currTime.getMinutes() - currTime.getTimezoneOffset());
+
+    // format as ISO string in current timezone
+    return currTime
+      .toISOString()
+      .slice(0, -5) // no seconds or 'Z'
+      .replace('T', '_')
+      .replace(ILLEGAL_FILENAME_CHARACTERS_REGEX, '_');
+  }
+
+  private makeArchiveFilenameFromParentArchive(
+    parentArchive: string,
+    source: FilesSource,
+    currTime: string,
+  ): string {
+    let archiveFilename = removeExtensionFromFilename(parentArchive);
+    if (!archiveFilename.startsWith(source)) {
+      archiveFilename = `${source}_${archiveFilename}`;
+    }
+    return this.addCurrTimeToFilename(archiveFilename, currTime);
+  }
+
+  private makeArchiveFilenameFromFile(filename: string, currTime: string) {
+    const filenameNoDir = removeDirFromFileName(filename);
+    const filenameNoDirOrExt = removeExtensionFromFilename(filenameNoDir);
+    return this.addCurrTimeToFilename(filenameNoDirOrExt, currTime);
+  }
+
+  private addCurrTimeToFilename(filename: string, currTime: string): string {
+    return new UserTimestamp(filename).addOrReplaceFilenameFormatTimestamp(
+      currTime,
+    );
   }
 
   private updateTimestamps(

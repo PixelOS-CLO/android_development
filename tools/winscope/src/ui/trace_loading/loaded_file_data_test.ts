@@ -45,6 +45,10 @@ import {ParsingErrorType} from './parsing_error_type';
 import {makeWarningIncompleteFrameMapping} from './warnings';
 
 describe('LoadedFileData', () => {
+  // YYYY-MM-DD_HH_MM_SS$
+  const filenameTsRegex =
+    '[0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|(02)-(0[1-9]|[12][0-9]))_(0[0-9]|1[0-9]|2[0-3])_(0[0-9]|[1-5][0-9])_(0[0-9]|[1-5][0-9])$';
+
   const emptyTraceGeometryData = new TraceGeometryData();
   const ts0 = makeRealTimestamp(0n);
   const ts1 = makeRealTimestamp(1n);
@@ -198,6 +202,52 @@ describe('LoadedFileData', () => {
     expectLoadResult(1, []);
     const downloadFilename = loadedFileData.getDownloadArchiveFilename();
     expect(DOWNLOAD_FILENAME_REGEX.test(downloadFilename)).toBeTrue();
+  });
+
+  it('adds source to archive name for download if all files come from same archive', async () => {
+    const archive = await getFixtureFile(
+      'archives/deployment_full_trace_phone_perfetto.zip',
+      'deployment_full_trace_phone_perfetto',
+    );
+    const expectedRegex = new RegExp(
+      `${FilesSource.TEST}_deployment_full_trace_phone_perfetto_`,
+    );
+    await checkDownloadFilename(archive, expectedRegex);
+  });
+
+  it('retains archive name for download without source if source already present', async () => {
+    const archive = await getFixtureFile(
+      'archives/deployment_full_trace_phone_perfetto.zip',
+      FilesSource.TEST + '_deployment_full_trace_phone_perfetto',
+    );
+    const expectedRegex = new RegExp(
+      `${FilesSource.TEST}_deployment_full_trace_phone_perfetto_`,
+    );
+    await checkDownloadFilename(archive, expectedRegex);
+  });
+
+  it('replaces previous upload time of archive to current upload time', async () => {
+    const originalName = 'test_2026-03-27_11_59_12.zip';
+    const archive = await getFixtureFile('archives/winscope.zip', originalName);
+    await checkDownloadFilename(archive, new RegExp(`test_${filenameTsRegex}`));
+    expect(loadedFileData.getDownloadArchiveFilename()).not.toEqual(
+      originalName,
+    );
+  });
+
+  it('replaces previous upload time of file to current upload time', async () => {
+    const originalName = 'SurfaceFlinger_2026-03-27_11_59_12.pb';
+    const archive = await getFixtureFile(
+      'traces/elapsed_and_real_timestamp/SurfaceFlinger.pb',
+      originalName,
+    );
+    await checkDownloadFilename(
+      archive,
+      new RegExp(`SurfaceFlinger_${filenameTsRegex}`),
+    );
+    expect(loadedFileData.getDownloadArchiveFilename()).not.toEqual(
+      originalName,
+    );
   });
 
   it('surfaces information about packet loss', async () => {
@@ -720,5 +770,12 @@ describe('LoadedFileData', () => {
         ? [TraceType.SCREENSHOT, traceType]
         : [traceType, TraceType.SCREENSHOT],
     );
+  }
+
+  async function checkDownloadFilename(archive: File, expectedRegex: RegExp) {
+    const res = await loadFiles([archive]);
+    await loadedFileData.addFiles(res, FilesSource.TEST);
+    expect(loadedFileData.getDownloadArchiveFilename()).toMatch(expectedRegex);
+    userNotifierChecker.reset();
   }
 });
