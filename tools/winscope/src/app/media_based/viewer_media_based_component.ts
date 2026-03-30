@@ -120,8 +120,8 @@ export class ViewerMediaBasedComponent {
     this.clearFrameSizeWorker();
   }
 
-  @HostListener('window:resize', ['$event'])
-  onResize(_: Event) {
+  @HostListener('window:resize')
+  onResize() {
     this.updateMaxContainerSize();
   }
 

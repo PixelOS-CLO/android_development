@@ -77,8 +77,8 @@ export class SliderComponent {
     this.cdr.detectChanges();
   }
 
-  @HostListener('window:resize', ['$event'])
-  onResize(_: Event) {
+  @HostListener('window:resize')
+  onResize() {
     this.syncDragPositionTo(this.zoomRange());
     this.syncCursorPositionTo(this.currentPosition().timestamp);
   }

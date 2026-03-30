@@ -376,7 +376,7 @@ export class CollectTracesComponent
     const dumpConfig = this.dumpConfig();
     const requestedDumps = this.getRequests(dumpConfig);
     if (requestedDumps.length === 0) {
-      this.emitEvent(new NoTraceTargetsSelectedEvent());
+      void this.emitEvent(new NoTraceTargetsSelectedEvent());
       return;
     }
 
@@ -522,7 +522,7 @@ export class CollectTracesComponent
     this.targetTabIndex = 1;
     this.dumpConfig.set(
       updateConfigsFromStore(
-        JSON.parse(JSON.stringify(this.dumpConfig())),
+        JSON.parse(JSON.stringify(this.dumpConfig())) as TraceConfigurationMap,
         this.store(),
         this.storeKeyPrefixDumpConfig,
       ),
@@ -558,7 +558,7 @@ export class CollectTracesComponent
     );
 
     if (requestedTraces.length === 0) {
-      this.emitEvent(new NoTraceTargetsSelectedEvent());
+      void this.emitEvent(new NoTraceTargetsSelectedEvent());
       return;
     }
 

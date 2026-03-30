@@ -24,8 +24,8 @@ describe('Transformer', () => {
 
   it('can transform', () => {
     const fromRange = new TimeRange(
-      makeRealTimestamp(1689763211000000000n),
-      makeRealTimestamp(1689763571000000000n),
+      makeRealTimestamp(BigInt(1689763211000000000)),
+      makeRealTimestamp(BigInt(1689763571000000000)),
     );
     const toRange = {
       from: 100,
@@ -41,20 +41,20 @@ describe('Transformer', () => {
     expect(transformer.transform(fromRange.to)).toBe(toRange.to);
 
     expect(
-      transformer.transform(makeRealTimestamp(rangeStart + range / 2n)),
+      transformer.transform(makeRealTimestamp(rangeStart + range / BigInt(2))),
     ).toBe(toRange.from + (toRange.to - toRange.from) / 2);
     expect(
-      transformer.transform(makeRealTimestamp(rangeStart + range / 4n)),
+      transformer.transform(makeRealTimestamp(rangeStart + range / BigInt(4))),
     ).toBe(toRange.from + (toRange.to - toRange.from) / 4);
     expect(
-      transformer.transform(makeRealTimestamp(rangeStart + range / 20n)),
+      transformer.transform(makeRealTimestamp(rangeStart + range / BigInt(20))),
     ).toBe(toRange.from + (toRange.to - toRange.from) / 20);
 
     expect(
-      transformer.transform(makeRealTimestamp(rangeStart - range / 2n)),
+      transformer.transform(makeRealTimestamp(rangeStart - range / BigInt(2))),
     ).toBe(toRange.from - (toRange.to - toRange.from) / 2);
     expect(
-      transformer.transform(makeRealTimestamp(rangeEnd + range / 2n)),
+      transformer.transform(makeRealTimestamp(rangeEnd + range / BigInt(2))),
     ).toBe(toRange.to + (toRange.to - toRange.from) / 2);
   });
 
@@ -83,27 +83,27 @@ describe('Transformer', () => {
       transformer
         .untransform(toRange.from + (toRange.to - toRange.from) / 2)
         .getValueNs(),
-    ).toBe(rangeStart + range / 2n);
+    ).toBe(rangeStart + range / BigInt(2));
     expect(
       transformer
         .untransform(toRange.from + (toRange.to - toRange.from) / 4)
         .getValueNs(),
-    ).toBe(rangeStart + range / 4n);
+    ).toBe(rangeStart + range / BigInt(4));
     expect(
       transformer
         .untransform(toRange.from + (toRange.to - toRange.from) / 20)
         .getValueNs(),
-    ).toBe(rangeStart + range / 20n);
+    ).toBe(rangeStart + range / BigInt(20));
 
     expect(
       transformer
         .untransform(toRange.from - (toRange.to - toRange.from) / 2)
         .getValueNs(),
-    ).toBe(rangeStart - range / 2n);
+    ).toBe(rangeStart - range / BigInt(2));
     expect(
       transformer
         .untransform(toRange.from + (toRange.to - toRange.from) / 2)
         .getValueNs(),
-    ).toBe(rangeStart + range / 2n);
+    ).toBe(rangeStart + range / BigInt(2));
   });
 });

@@ -245,7 +245,7 @@ export abstract class AbstractHierarchyViewerPresenter<
 
   private async onPlaybackSpeedChange(event: PlaybackSpeedChange) {
     if (this.playbackPresenter && this.trace) {
-      this.playbackPresenter.changeSpeed(event.speedValue);
+      void this.playbackPresenter.changeSpeed(event.speedValue);
     }
   }
 
@@ -315,7 +315,10 @@ export abstract class AbstractHierarchyViewerPresenter<
   protected async applyPresetConfig(storeKey: string) {
     const preset = this.storage.get(storeKey);
     if (preset) {
-      const parsedPreset: PresetHierarchy = JSON.parse(preset, parseMap);
+      const parsedPreset: PresetHierarchy = JSON.parse(
+        preset,
+        parseMap,
+      ) as PresetHierarchy;
       await this.hierarchyPresenter.applyHierarchyUserOptionsChange(
         parsedPreset.hierarchyUserOptions,
       );
@@ -532,7 +535,7 @@ export abstract class AbstractHierarchyViewerPresenter<
     this.hierarchyPresenter.setShowDiffAvailability(false);
     const playbackPresenter = assertDefined(this.playbackPresenter);
     playbackPresenter.setTraceGeometryData(traceGeometryData);
-    playbackPresenter
+    void playbackPresenter
       .play(currentPosition, requestedState, screenRecordingTrace)
       .catch((error) => {
         Analytics.Error.logPlaybackError(error.message);
@@ -541,7 +544,7 @@ export abstract class AbstractHierarchyViewerPresenter<
 
   private async pausePlayback(): Promise<void> {
     this.hierarchyPresenter.setShowDiffAvailability(true);
-    assertDefined(this.playbackPresenter).pause();
+    await assertDefined(this.playbackPresenter).pause();
   }
 
   private flattenHierarchies():

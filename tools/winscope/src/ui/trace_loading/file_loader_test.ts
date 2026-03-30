@@ -25,7 +25,7 @@ import {UserNotifierChecker} from '@services/testing/user_notifier_checker';
 import {FileReader} from '@trace_api/file_reader';
 import {FilesSource} from '@trace_api/files_source';
 import {TraceType} from '@trace_api/trace_type';
-import {makeSpyQueryResult, makeSpyRowIterator,} from '@trace_processor/test_utils';
+import {makeSpyQueryResult, makeSpyRowIterator,} from '@trace_processor/testing/test_utils';
 import {TraceProcessorProxy} from '@trace_processor/trace_processor';
 import {BugreportFileSelected} from '@ui/shared/events/misc_events';
 

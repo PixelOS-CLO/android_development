@@ -39,12 +39,12 @@ describe('SliderComponent', () => {
   const leftCropperSelector = '.slider .cropper.left';
   const rightCropperSelector = '.slider .cropper.right';
   const converter = makeConverterZeroRteOffsets();
-  const time100 = converter.makeTimestampFromRealNs(100n);
-  const time125 = converter.makeTimestampFromRealNs(125n);
-  const time126 = converter.makeTimestampFromRealNs(126n);
-  const time150 = converter.makeTimestampFromRealNs(150n);
-  const time175 = converter.makeTimestampFromRealNs(175n);
-  const time200 = converter.makeTimestampFromRealNs(200n);
+  const time100 = converter.makeTimestampFromRealNs(BigInt(100));
+  const time125 = converter.makeTimestampFromRealNs(BigInt(125));
+  const time126 = converter.makeTimestampFromRealNs(BigInt(126));
+  const time150 = converter.makeTimestampFromRealNs(BigInt(150));
+  const time175 = converter.makeTimestampFromRealNs(BigInt(175));
+  const time200 = converter.makeTimestampFromRealNs(BigInt(200));
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({

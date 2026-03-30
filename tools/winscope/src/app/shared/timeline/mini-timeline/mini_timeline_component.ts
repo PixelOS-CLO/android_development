@@ -223,8 +223,8 @@ export class MiniTimelineComponent {
     );
   }
 
-  @HostListener('window:resize', ['$event'])
-  onResize(_: Event) {
+  @HostListener('window:resize')
+  onResize() {
     this.makeHiPPICanvas();
     this.drawer?.draw();
   }

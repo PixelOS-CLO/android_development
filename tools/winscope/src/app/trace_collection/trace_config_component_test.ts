@@ -124,7 +124,7 @@ describe('TraceConfigComponent', () => {
     );
     const layersConfig: ConfigurationOptions = JSON.parse(
       assertDefined(componentStore.get(storeKey + layersTraceKey)),
-    );
+    ) as ConfigurationOptions;
     layersConfig.checkboxConfigs = [];
     commonStore.add(storeKey + layersTraceKey, JSON.stringify(layersConfig));
 

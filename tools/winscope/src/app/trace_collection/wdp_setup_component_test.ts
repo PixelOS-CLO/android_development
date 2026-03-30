@@ -71,6 +71,7 @@ describe('WdpSetupComponent', () => {
     expect(windowSpy).toHaveBeenCalledOnceWith(
       'https://tools.google.com/dlpage/android_web_device_proxy',
       '_blank',
+      undefined,
     );
 
     windowSpy.calls.reset();
@@ -78,6 +79,7 @@ describe('WdpSetupComponent', () => {
     expect(windowSpy).toHaveBeenCalledOnceWith(
       'http://go/web-device-proxy#setup',
       '_blank',
+      undefined,
     );
   });
 

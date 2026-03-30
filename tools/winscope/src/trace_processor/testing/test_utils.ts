@@ -16,9 +16,8 @@
 
 import {assertDefined} from '@common/assert';
 import {Timestamp} from '@common/time/time';
-
-import {ColumnType, QueryResult, RowIterator} from './query_result';
-import {TraceProcessorFactory} from './trace_processor_factory';
+import {ColumnType, QueryResult, RowIterator,} from '@trace_processor/query_result';
+import {TraceProcessorFactory} from '@trace_processor/trace_processor_factory';
 
 /**
  * Creates Jasmine spy objects for `QueryResult` and `RowIterator` to mock the

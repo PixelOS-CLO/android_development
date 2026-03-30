@@ -15,7 +15,7 @@
  */
 
 import {assertDefined} from '@common/assert';
-import {waitToBeCalled} from '@common/spy_utils';
+import {waitToBeCalled} from '@common/testing/spy_utils';
 import {makeConverterZeroRteOffsets} from '@common/time/testing/test_helpers';
 import {Timestamp} from '@common/time/time';
 import {TimestampConverter} from '@common/time/timestamp_converter';

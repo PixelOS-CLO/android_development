@@ -36,6 +36,7 @@ import {downloadFromUrl} from '@common/download';
 import {Timestamp} from '@common/time/time';
 import {TimeDuration} from '@common/time/time_duration';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
+import {objectUrlFromSafeSource, unwrapSafeUrl} from '@compat/safevalues';
 import {Analytics} from '@logging/analytics';
 import {UserNotifier} from '@services/user_notifier';
 import {CurrentSearch, ListedSearch, UiData} from '@ui/search/ui_data';
@@ -292,7 +293,7 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
     return 'calc(100% - ' + this.globalSearchTitleHeight + 'px)';
   }
 
-  @HostListener('window:resize', ['$event'])
+  @HostListener('window:resize')
   onResize() {
     this.globalSearchTitleHeight =
       this.globalSearchTitle()?.nativeElement.clientHeight ?? 48;
@@ -357,7 +358,7 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
       const blob = new Blob(['\ufeff' + csvContent], {
         type: 'text/csv;charset=utf-8;',
       });
-      const url = window.URL.createObjectURL(blob);
+      const url = unwrapSafeUrl(objectUrlFromSafeSource(blob));
       download(url, `search_results_${search.uid}.csv`);
       Analytics.TraceSearch.logQueryExportedToCsv();
     } catch (e) {

@@ -76,7 +76,7 @@ class ViewerProtologComponentTest extends AbstractLogViewerComponentTest<ViewerP
       .setId('Protolog')
       .setName('tree')
       .build();
-    const ts = makeElapsedTimestamp(10n);
+    const ts = makeElapsedTimestamp(BigInt(10));
     const trace = new TraceBuilder<HierarchyTreeNode>()
       .setEntries([tree, tree])
       .setTimestamps([ts, ts])

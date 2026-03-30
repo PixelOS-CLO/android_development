@@ -36,7 +36,7 @@ import {FrameMapper} from '@trace_api/frame_mapper';
 import {Parser} from '@trace_api/parser';
 import {TraceFile} from '@trace_api/trace_file';
 import {TraceType} from '@trace_api/trace_type';
-import {makeSpyQueryResult} from '@trace_processor/test_utils';
+import {makeSpyQueryResult} from '@trace_processor/testing/test_utils';
 import {TraceProcessorProxy} from '@trace_processor/trace_processor';
 
 import {FileLoader, FileLoaderResult} from './file_loader';

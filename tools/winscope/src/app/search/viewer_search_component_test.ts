@@ -61,7 +61,10 @@ describe('ViewerSearchComponent', () => {
   ];
 
   const trace = new TraceBuilder<PropertyTreeNode>()
-    .setTimestamps([makeRealTimestamp(100n), makeRealTimestamp(200n)])
+    .setTimestamps([
+      makeRealTimestamp(BigInt(100)),
+      makeRealTimestamp(BigInt(200)),
+    ])
     .build();
 
   const entries: LogEntry[] = [
@@ -77,7 +80,7 @@ describe('ViewerSearchComponent', () => {
       traceEntry: trace.getEntry(1),
       fields: [
         new LogField(headers[0].spec, 'value 3\nwith newline'),
-        new LogField(headers[1].spec, makeRealTimestamp(300n)),
+        new LogField(headers[1].spec, makeRealTimestamp(BigInt(300))),
       ],
       getPropertiesTree: undefined,
     },
@@ -519,10 +522,10 @@ describe('ViewerSearchComponent', () => {
   async function checkEditQueryFromOptions(tabIndex: number) {
     dom.detectChanges();
     const input = getTextInput();
-    expect(input.checkValue(''));
+    input.checkValue('');
     await changeTabAndClickEdit(tabIndex);
     expect(component.matTabGroups().at(0)?.selectedIndex).toBe(0);
-    expect(input.checkValue(testQuery));
+    input.checkValue(testQuery);
   }
 
   async function changeTabAndClickEdit(tabIndex: number) {

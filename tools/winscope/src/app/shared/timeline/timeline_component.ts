@@ -37,6 +37,7 @@ import {TimeRange, Timestamp} from '@common/time/time';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {UserTimestamp} from '@common/time/user_timestamp';
 import {getLogger} from '@compat/logging';
+import {objectUrlFromSafeSource} from '@compat/safevalues';
 import {Analytics} from '@logging/analytics';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {EmitEvent, WinscopeEventEmitter,} from '@messaging/winscope_event_emitter';
@@ -52,9 +53,9 @@ import {Traces} from '@trace_api/traces';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {Thumbnail} from '@trace/media_based/thumbnail';
 import {BookmarksChanged, DarkModeToggled} from '@ui/shared/events/misc_events';
-import {TabbedViewSwitched} from '@ui/shared/events/tabbed_view_events';
 import {PlaybackSpeedChange, PlaybackStateChangeHandled, PlaybackStateChangeRequest,} from '@ui/shared/playback/events';
 import {PlaybackState} from '@ui/shared/playback/playback_state';
+import {TabbedViewSwitched} from '@ui/shared/viewers/tabbed_view_events';
 import {TimelineData} from '@ui/timeline/timeline_data';
 import {ExpandedTimelineToggled} from '@ui/timeline/timeline_events';
 
@@ -319,7 +320,7 @@ export class TimelineComponent
   async toggleExpand() {
     this.expanded = !this.expanded;
     this.changeDetectorRef.detectChanges();
-    this.updateScreenRecordingVisualization();
+    void this.updateScreenRecordingVisualization();
     this.changeDetectorRef.detectChanges();
     if (this.expanded) {
       Analytics.Navigation.logExpandedTimelineOpened();
@@ -331,7 +332,7 @@ export class TimelineComponent
     this.timelineData().setPosition(position);
     await this.updateScreenRecordingVisualization();
     if (this.playbackState !== PlaybackState.PAUSED) {
-      this.emitEvent(
+      void this.emitEvent(
         new PlaybackStateChangeRequest(
           assertDefined(this.currentTabTraceType()),
           this.playbackState,
@@ -389,8 +390,8 @@ export class TimelineComponent
     return TRACE_INFO[trace.type].name + (trace.isDump() ? ' Dump' : '');
   }
 
-  @HostListener('window:resize', ['$event'])
-  onResize(_: Event) {
+  @HostListener('window:resize')
+  onResize() {
     if (this.frameCanvasEntry) {
       this.renderFrameInExpandedTimeline(this.frameCanvasEntry);
     }
@@ -748,7 +749,7 @@ export class TimelineComponent
       case PlaybackState.BACKWARDS:
         this.disabledMessage = 'UI disabled due to playback initialization';
         this.setIsDisabled(true);
-        this.emitEvent(
+        void this.emitEvent(
           new PlaybackStateChangeRequest(
             currentTabTraceType,
             state,
@@ -758,7 +759,7 @@ export class TimelineComponent
         return;
 
       case PlaybackState.PAUSED:
-        this.emitEvent(
+        void this.emitEvent(
           new PlaybackStateChangeRequest(currentTabTraceType, state),
         );
         return;
@@ -805,7 +806,7 @@ export class TimelineComponent
     const storedDeselectedTraces = this.store().get(
       this.storeKeyDeselectedTraces,
     );
-    return JSON.parse(storedDeselectedTraces ?? '[]');
+    return JSON.parse(storedDeselectedTraces ?? '[]') as TraceType[];
   }
 
   private updateStoredDeselectedTraceTypes(clickedTrace: Trace<unknown>) {
@@ -879,7 +880,7 @@ export class TimelineComponent
         .getValue();
       if (video.frameData !== undefined) {
         this.videoUrl = this.sanitizer.bypassSecurityTrustUrl(
-          URL.createObjectURL(video.frameData),
+          objectUrlFromSafeSource(video.frameData),
         );
         this.thumbnail.set(video.thumbnail);
         this.changeDetectorRef.detectChanges();
@@ -969,7 +970,7 @@ export class TimelineComponent
   }
 
   private async drawThumbnail(ts: Timestamp) {
-    this.drawScreenRecordingThumbnail(ts);
+    void this.drawScreenRecordingThumbnail(ts);
   }
 
   private async drawScreenRecordingThumbnail(ts: Timestamp) {

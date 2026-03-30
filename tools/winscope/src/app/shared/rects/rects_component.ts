@@ -357,7 +357,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     if (storedSelectedDisplays !== undefined) {
       const storedIds: Array<number | string> = JSON.parse(
         storedSelectedDisplays,
-      );
+      ) as Array<number | string>;
       const displays = assertDefined(this.internalDisplays).filter(
         (display) => {
           return storedIds.some((id) => display.displayId === id);

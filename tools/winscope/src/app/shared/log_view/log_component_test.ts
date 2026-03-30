@@ -297,7 +297,7 @@ describe('LogComponent', () => {
     const spy = spyOn(component.timestampClick, 'emit');
     dom.findAndClick(`.${testColumn3.cssClass} button`);
     expect(spy).toHaveBeenCalledOnceWith(
-      new TimestampClickDetail(undefined, makeElapsedTimestamp(2n)),
+      new TimestampClickDetail(undefined, makeElapsedTimestamp(BigInt(2))),
     );
   });
 
@@ -544,7 +544,7 @@ describe('LogComponent', () => {
   });
 
   function setTooltipInputData(message: string | undefined) {
-    const entryTime = makeElapsedTimestamp(1n);
+    const entryTime = makeElapsedTimestamp(BigInt(1));
 
     const fields: LogField[] = [
       new LogField(
@@ -583,11 +583,11 @@ describe('LogComponent', () => {
     let entryTime: Timestamp;
     let fieldTime: Timestamp;
     if (elapsed) {
-      entryTime = makeElapsedTimestamp(1n);
-      fieldTime = makeElapsedTimestamp(2n);
+      entryTime = makeElapsedTimestamp(BigInt(1));
+      fieldTime = makeElapsedTimestamp(BigInt(2));
     } else {
-      entryTime = makeRealTimestamp(1n);
-      fieldTime = makeRealTimestamp(2n);
+      entryTime = makeRealTimestamp(BigInt(1));
+      fieldTime = makeRealTimestamp(BigInt(2));
     }
 
     const fields1: LogField[] = [

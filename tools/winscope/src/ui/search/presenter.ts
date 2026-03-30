@@ -108,7 +108,7 @@ export class Presenter {
 
   async onGlobalSearchSectionClick() {
     if (!this.uiData.initialized) {
-      this.emitWinscopeEvent(new InitializeTraceSearchRequest());
+      await this.emitWinscopeEvent(new InitializeTraceSearchRequest());
     }
   }
 
@@ -116,7 +116,7 @@ export class Presenter {
     const activeSearch = assertDefined(this.findActiveSearch(uid));
     this.resetActiveSearch(activeSearch, query);
     this.runningSearch = activeSearch.search;
-    this.emitWinscopeEvent(new TraceSearchRequest(query));
+    await this.emitWinscopeEvent(new TraceSearchRequest(query));
   }
 
   addSearch(query?: string) {
@@ -212,7 +212,7 @@ export class Presenter {
     this.resetActiveSearch(activeSearch, traceQuery);
     this.runningSearch = undefined;
     this.notifyViewChanged();
-    this.initializeResultPresenter(activeSearch, newTrace);
+    await this.initializeResultPresenter(activeSearch, newTrace);
   }
 
   private updateCurrentSearches() {

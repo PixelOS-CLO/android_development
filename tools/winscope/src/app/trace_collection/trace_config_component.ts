@@ -84,7 +84,7 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
 
   ngOnInit() {
     const config = updateConfigsFromStore(
-      JSON.parse(JSON.stringify(this.traceConfig())),
+      JSON.parse(JSON.stringify(this.traceConfig())) as TraceConfigurationMap,
       this.store(),
       this.traceConfigStoreKey(),
     );

@@ -54,20 +54,20 @@ describe('MiniTimelineComponent', () => {
 
   const converter = makeConverterZeroRteOffsets();
 
-  const timestamp10 = converter.makeTimestampFromRealNs(10n);
-  const timestamp15 = converter.makeTimestampFromRealNs(15n);
-  const timestamp16 = converter.makeTimestampFromRealNs(16n);
-  const timestamp20 = converter.makeTimestampFromRealNs(20n);
-  const timestamp700 = converter.makeTimestampFromRealNs(700n);
-  const timestamp810 = converter.makeTimestampFromRealNs(810n);
-  const timestamp1000 = converter.makeTimestampFromRealNs(10000000n);
-  const timestamp1750 = converter.makeTimestampFromRealNs(17500000n);
-  const timestamp2000 = converter.makeTimestampFromRealNs(20000000n);
-  const timestamp3000 = converter.makeTimestampFromRealNs(30000000n);
-  const timestamp4000 = converter.makeTimestampFromRealNs(40000000n);
+  const timestamp10 = converter.makeTimestampFromRealNs(BigInt(10));
+  const timestamp15 = converter.makeTimestampFromRealNs(BigInt(15));
+  const timestamp16 = converter.makeTimestampFromRealNs(BigInt(16));
+  const timestamp20 = converter.makeTimestampFromRealNs(BigInt(20));
+  const timestamp700 = converter.makeTimestampFromRealNs(BigInt(700));
+  const timestamp810 = converter.makeTimestampFromRealNs(BigInt(810));
+  const timestamp1000 = converter.makeTimestampFromRealNs(BigInt(10000000));
+  const timestamp1750 = converter.makeTimestampFromRealNs(BigInt(17500000));
+  const timestamp2000 = converter.makeTimestampFromRealNs(BigInt(20000000));
+  const timestamp3000 = converter.makeTimestampFromRealNs(BigInt(30000000));
+  const timestamp4000 = converter.makeTimestampFromRealNs(BigInt(40000000));
 
   const position800 = TracePosition.fromTimestamp(
-    converter.makeTimestampFromRealNs(800n),
+    converter.makeTimestampFromRealNs(BigInt(800)),
   );
 
   const traces = new TracesBuilder()
@@ -466,8 +466,8 @@ describe('MiniTimelineComponent', () => {
     const fullRangeQuarterTimestamp = timestamp1750;
     checkZoomOnTimestamp(
       fullRangeQuarterTimestamp,
-      1n,
-      4n,
+      BigInt(1),
+      BigInt(4),
       zoomInByKeyW,
       zoomOutByKeyS,
     );
@@ -475,8 +475,8 @@ describe('MiniTimelineComponent', () => {
     setCanvasZeroXOffset();
     checkZoomOnTimestamp(
       fullRangeQuarterTimestamp,
-      1n,
-      4n,
+      BigInt(1),
+      BigInt(4),
       zoomInByScrollWheel,
       zoomOutByScrollWheel,
     );
@@ -495,8 +495,8 @@ describe('MiniTimelineComponent', () => {
     const fullRangeQuarterTimestamp = timestamp1750;
     checkZoomOnTimestamp(
       fullRangeQuarterTimestamp,
-      1n,
-      4n,
+      BigInt(1),
+      BigInt(4),
       zoomInByKeyW,
       zoomOutByKeyS,
     );
@@ -505,8 +505,8 @@ describe('MiniTimelineComponent', () => {
     const zoomOutButton = dom.get(zoomOutSelector);
     checkZoomOnTimestamp(
       fullRangeQuarterTimestamp,
-      1n,
-      4n,
+      BigInt(1),
+      BigInt(4),
       () => {
         zoomInButton.click();
       },
@@ -534,8 +534,8 @@ describe('MiniTimelineComponent', () => {
     const fullRangeQuarterTimestamp = timestamp1750;
     checkZoomOnTimestamp(
       fullRangeQuarterTimestamp,
-      1n,
-      4n,
+      BigInt(1),
+      BigInt(4),
       zoomInByKeyW,
       zoomOutByKeyS,
     );
@@ -544,8 +544,8 @@ describe('MiniTimelineComponent', () => {
     const zoomOutButton = dom.get(zoomOutSelector);
     checkZoomOnTimestamp(
       fullRangeQuarterTimestamp,
-      1n,
-      4n,
+      BigInt(1),
+      BigInt(4),
       () => {
         zoomInButton.click();
       },
@@ -568,8 +568,8 @@ describe('MiniTimelineComponent', () => {
     const fullRangeMiddleTimestamp = timestamp3000;
     checkZoomOnTimestamp(
       fullRangeMiddleTimestamp,
-      1n,
-      2n,
+      BigInt(1),
+      BigInt(2),
       zoomInByKeyW,
       zoomOutByKeyS,
     );
@@ -577,8 +577,8 @@ describe('MiniTimelineComponent', () => {
     setCanvasZeroXOffset();
     checkZoomOnTimestamp(
       fullRangeMiddleTimestamp,
-      1n,
-      2n,
+      BigInt(1),
+      BigInt(2),
       zoomInByScrollWheel,
       zoomOutByScrollWheel,
     );
@@ -587,8 +587,8 @@ describe('MiniTimelineComponent', () => {
     const zoomOutButton = dom.get(zoomOutSelector);
     checkZoomOnTimestamp(
       fullRangeMiddleTimestamp,
-      1n,
-      2n,
+      BigInt(1),
+      BigInt(2),
       () => {
         zoomInButton.click();
       },
@@ -613,8 +613,8 @@ describe('MiniTimelineComponent', () => {
     const fullRangeQuarterTimestamp = timestamp1750;
     checkZoomOnTimestamp(
       fullRangeQuarterTimestamp,
-      1n,
-      4n,
+      BigInt(1),
+      BigInt(4),
       zoomInByKeyW,
       zoomOutByKeyS,
       10,
@@ -623,8 +623,8 @@ describe('MiniTimelineComponent', () => {
     setCanvasZeroXOffset();
     checkZoomOnTimestamp(
       fullRangeQuarterTimestamp,
-      1n,
-      4n,
+      BigInt(1),
+      BigInt(4),
       zoomInByScrollWheel,
       zoomOutByScrollWheel,
       10,

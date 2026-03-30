@@ -21,7 +21,7 @@ import {FileReaderInputMethodService} from '@legacy_file_readers/input_method/fi
 import {FileReaderSurfaceFlinger} from '@legacy_file_readers/surface_flinger/file_reader_surface_flinger';
 import {convertToPerfettoTrace, LegacyFileReaderProvider,} from '@legacy_file_readers/testing/fixture_utils';
 import {FileReaderWindowManager} from '@legacy_file_readers/window_manager/file_reader_window_manager';
-import {getPerfettoParsers, NonPerfettoParserProvider,} from '@parsers/fixture_utils';
+import {getPerfettoParsers, NonPerfettoParserProvider,} from '@parsers/testing/fixture_utils';
 import {Parser} from '@trace_api/parser';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {Trace} from '@trace_api/trace';

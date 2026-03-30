@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import {waitToBeCalled} from '@common/spy_utils';
 import {binaryEncode} from '@common/string_helpers';
+import {waitToBeCalled} from '@common/testing/spy_utils';
 import {makeFakeWebSocket, makeFakeWebSocketMessage,} from '@trace_collection/wdp/testing/web_socket_test_helpers';
 
 import {StreamProvider} from './stream_provider';

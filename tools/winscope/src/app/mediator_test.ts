@@ -48,9 +48,9 @@ import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {AppFilesCollected, AppFilesUploaded, AppInitialized, AppRefreshDumpsRequest, AppResetRequest, AppTraceViewRequest, AppTraceViewRequestHandled,} from '@ui/shared/events/app_events';
 import {ActiveSearchQueriesUpdate, BookmarksChanged, BugreportFileSelected, BugreportFileSelectionRequest, DarkModeToggled, FilterPresetApplyRequest, FilterPresetSaveRequest, NoTraceTargetsSelectedEvent,} from '@ui/shared/events/misc_events';
-import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@ui/shared/events/tabbed_view_events';
 import {PlaybackSpeedChange, PlaybackStateChangeHandled, PlaybackStateChangeRequest,} from '@ui/shared/playback/events';
 import {PlaybackState} from '@ui/shared/playback/playback_state';
+import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@ui/shared/viewers/tabbed_view_events';
 import {ViewType} from '@ui/shared/viewers/viewer';
 import {PlaybackStateChangePropagate} from '@ui/timeline/playback_events';
 import {TimelineData} from '@ui/timeline/timeline_data';
@@ -60,9 +60,9 @@ import {LoadedFileData} from '@ui/trace_loading/loaded_file_data';
 import {makeWarningNoTraceTargetsSelected, makeWarningNoValidFiles,} from '@ui/trace_loading/warnings';
 
 describe('Mediator', () => {
-  const TIMESTAMP_INVALID = makeRealTimestamp(-1n);
-  const TIMESTAMP_10 = makeRealTimestamp(10n);
-  const TIMESTAMP_11 = makeRealTimestamp(11n);
+  const TIMESTAMP_INVALID = makeRealTimestamp(BigInt(-1));
+  const TIMESTAMP_10 = makeRealTimestamp(BigInt(10));
+  const TIMESTAMP_11 = makeRealTimestamp(BigInt(11));
 
   const POSITION_10 = TracePosition.fromTimestamp(TIMESTAMP_10);
   const POSITION_11 = TracePosition.fromTimestamp(TIMESTAMP_11);
@@ -262,13 +262,11 @@ describe('Mediator', () => {
         collected: [await getFixtureFile('invalid_files/empty.pb')],
       }),
     );
-    expect(
-      userNotifierChecker.expectNotified([
-        makeWarningInvalidPerfettoTrace('empty.pb', [
-          'Perfetto trace has no Winscope trace entries',
-        ]),
+    userNotifierChecker.expectNotified([
+      makeWarningInvalidPerfettoTrace('empty.pb', [
+        'Perfetto trace has no Winscope trace entries',
       ]),
-    );
+    ]);
     expect(appComponent.onWinscopeEvent).not.toHaveBeenCalled();
   });
 
@@ -283,14 +281,12 @@ describe('Mediator', () => {
         ],
       }),
     );
-    expect(
-      userNotifierChecker.expectNotified([
-        makeWarningInvalidLegacyTrace(
-          ['no_entries_InputMethodClients.pb'],
-          'Trace is empty',
-        ),
-      ]),
-    );
+    userNotifierChecker.expectNotified([
+      makeWarningInvalidLegacyTrace(
+        ['no_entries_InputMethodClients.pb'],
+        'Trace is empty',
+      ),
+    ]);
     expect(appComponent.onWinscopeEvent).not.toHaveBeenCalled();
   });
 
@@ -301,7 +297,7 @@ describe('Mediator', () => {
         collected: [shellTransitionFile],
       }),
     );
-    expect(userNotifierChecker.expectNone());
+    userNotifierChecker.expectNone();
     expect(appComponent.onWinscopeEvent).not.toHaveBeenCalled();
     checkUploadTracesComponentTraceViewEvents();
   });
@@ -313,7 +309,7 @@ describe('Mediator', () => {
         collected: [],
       }),
     );
-    expect(userNotifierChecker.expectNotified([makeWarningNoValidFiles()]));
+    userNotifierChecker.expectNotified([makeWarningNoValidFiles()]);
     expect(appComponent.onWinscopeEvent).not.toHaveBeenCalled();
   });
 
@@ -333,11 +329,9 @@ describe('Mediator', () => {
         collected: [inputFiles[0]],
       }),
     );
-    expect(
-      userNotifierChecker.expectNotified([
-        makeWarningNoValidFiles(['Uncollected Trace']),
-      ]),
-    );
+    userNotifierChecker.expectNotified([
+      makeWarningNoValidFiles(['Uncollected Trace']),
+    ]);
     expect(appComponent.onWinscopeEvent).toHaveBeenCalled();
     checkUploadTracesComponentTraceViewEvents();
   });
@@ -569,7 +563,7 @@ describe('Mediator', () => {
 
     it('defers trace position propagation till traces are loaded and visualized', async () => {
       // ensure converter has been used to create real timestamps
-      loadedFileData.getTimestampConverter().makeTimestampFromRealNs(0n);
+      loadedFileData.getTimestampConverter().makeTimestampFromRealNs(BigInt(0));
 
       // load files but do not load trace view
       await loadFiles();
@@ -578,7 +572,7 @@ describe('Mediator', () => {
       // keep timestamp for later
       await mediator.onWinscopeEvent(
         new RemoteToolTimestampReceived(() => {
-          return makeRealTimestamp(1659107089233029344n);
+          return makeRealTimestamp(BigInt(1659107089233029344));
         }),
       );
       expect(timelineComponent.onWinscopeEvent).not.toHaveBeenCalled();
@@ -855,8 +849,8 @@ describe('Mediator', () => {
 
     it('propagates to the visible viewer matching the trace type', async () => {
       const traceGeometryData = new TraceGeometryData(
-        new Map([[0n, new Rect(0, 0, 0, 0)]]),
-        new Map([[0n, new TransformMatrix(1, 1, 1, 1, 1, 1)]]),
+        new Map([[BigInt(0), new Rect(0, 0, 0, 0)]]),
+        new Map([[BigInt(0), new TransformMatrix(1, 1, 1, 1, 1, 1)]]),
       );
       const event = new PlaybackStateChangeRequest(
         TraceType.SURFACE_FLINGER,

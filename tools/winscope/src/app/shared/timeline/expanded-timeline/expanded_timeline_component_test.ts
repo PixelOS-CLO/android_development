@@ -40,12 +40,12 @@ import {TransitionTimelineComponent} from './transition_timeline_component';
 
 describe('ExpandedTimelineComponent', () => {
   const converter = makeConverterZeroRteOffsets();
-  const time10 = converter.makeTimestampFromRealNs(10n);
-  const time11 = converter.makeTimestampFromRealNs(11n);
-  const time12 = converter.makeTimestampFromRealNs(12n);
-  const time30 = converter.makeTimestampFromRealNs(30n);
-  const time60 = converter.makeTimestampFromRealNs(60n);
-  const time110 = converter.makeTimestampFromRealNs(110n);
+  const time10 = converter.makeTimestampFromRealNs(BigInt(10));
+  const time11 = converter.makeTimestampFromRealNs(BigInt(11));
+  const time12 = converter.makeTimestampFromRealNs(BigInt(12));
+  const time30 = converter.makeTimestampFromRealNs(BigInt(30));
+  const time60 = converter.makeTimestampFromRealNs(BigInt(60));
+  const time110 = converter.makeTimestampFromRealNs(BigInt(110));
 
   let component: ExpandedTimelineComponent;
   let dom: DOMTestHelper<ExpandedTimelineComponent>;

@@ -24,7 +24,7 @@ describe('Cross-Tool Protocol', () => {
 
   beforeEach(async () => {
     await browser.restart();
-    browser.waitForAngularEnabled(false);
+    await browser.waitForAngularEnabled(false);
     await browser.manage().timeouts().setScriptTimeout(DEFAULT_TIMEOUT_MS);
     await setTimeouts(DEFAULT_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
     await checkServerIsUp('Remote tool mock', REMOTE_TOOL_MOCK_URL);
@@ -210,7 +210,7 @@ describe('Cross-Tool Protocol', () => {
   }
 
   async function sendTimestampToRemoteTool(value: string) {
-    browser.switchTo().window(await getWindowHandleWinscope());
+    await browser.switchTo().window(await getWindowHandleWinscope());
     await changeNsTimestampInWinscope(value);
   }
 

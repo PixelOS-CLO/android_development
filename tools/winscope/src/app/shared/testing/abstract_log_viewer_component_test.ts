@@ -109,7 +109,7 @@ export abstract class AbstractLogViewerComponentTest<
           expect(clickSpy).toHaveBeenCalledOnceWith(0);
 
           const timestampClickSpy = spyOn(component.onTimestampClick, 'emit');
-          const ts = makeElapsedTimestamp(2n);
+          const ts = makeElapsedTimestamp(BigInt(2));
           const tsDetail = new TimestampClickDetail(undefined, ts);
           logComponent.timestampClick.emit(tsDetail);
           expect(timestampClickSpy).toHaveBeenCalledOnceWith(tsDetail);
