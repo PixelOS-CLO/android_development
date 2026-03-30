@@ -18,11 +18,7 @@ import {Type} from '@angular/core';
 import {ComponentFixture} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {assertDefined} from '@common/assert';
-import {
-  KeyboardEventCode,
-  KeyboardEventKey,
-  KeyboardEventKeyCode,
-} from '@common/dom';
+import {KeyboardEventCode, KeyboardEventKey, KeyboardEventKeyCode,} from '@common/dom';
 
 export class DOMTestHelper<T> {
   constructor(
@@ -254,15 +250,6 @@ export class DOMTestHelper<T> {
     panel.dispatchEvent(keydownCtrlA);
   }
 
-  private keydownByKey(key: string, toDocument = false) {
-    const event = new KeyboardEvent('keydown', {key});
-    if (toDocument) {
-      this.dispatchEventInDocument(event);
-    } else {
-      this.dispatchEvent(event);
-    }
-  }
-
   focusOut() {
     this.dispatchEvent(new FocusEvent('focusout'));
   }
@@ -294,11 +281,11 @@ export class DOMTestHelper<T> {
   }
 
   checkText(value: string) {
-    expect(this.root.textContent?.trim()).toContain(value);
+    expect(this.getText() ?? '').toContain(value);
   }
 
   checkTextExact(value: string) {
-    expect(this.root.textContent?.trim()).toEqual(value);
+    expect(this.getText()).toEqual(value);
   }
 
   checkInnerHTML(value: string, isPresent = true) {
@@ -421,6 +408,10 @@ export class DOMTestHelper<T> {
     this.fixture.componentRef.setInput(name, value);
   }
 
+  destroy() {
+    this.fixture.destroy();
+  }
+
   private dispatchMouseEvent(
     source: Node,
     type: string,
@@ -443,6 +434,15 @@ export class DOMTestHelper<T> {
     });
     source.dispatchEvent(event);
     this.detectChanges();
+  }
+
+  private keydownByKey(key: string, toDocument = false) {
+    const event = new KeyboardEvent('keydown', {key});
+    if (toDocument) {
+      this.dispatchEventInDocument(event);
+    } else {
+      this.dispatchEvent(event);
+    }
   }
 }
 

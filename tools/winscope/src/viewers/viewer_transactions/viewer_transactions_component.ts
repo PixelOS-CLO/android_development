@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component, ViewChild} from '@angular/core';
+import {Component, viewChild} from '@angular/core';
 import {TraceType} from '@trace_api/trace_type';
 import {CollapsibleSectionType} from '@viewers/common/collapsible_section_type';
 import {CollapsibleSections} from '@viewers/common/collapsible_sections';
@@ -22,6 +22,8 @@ import {CollapsedSectionsComponent} from '@viewers/components/collapsed_sections
 import {LogComponent} from '@viewers/components/log_component';
 import {PropertiesComponent} from '@viewers/components/properties_component';
 import {ViewerComponent} from '@viewers/components/viewer_component';
+
+import {TransactionsHeightPredictor} from './transactions_height_predictor';
 import {UiData} from './ui_data';
 
 @Component({
@@ -37,7 +39,7 @@ import {UiData} from './ui_data';
   styleUrls: ['./viewer_transactions_component.css'],
 })
 export class ViewerTransactionsComponent extends ViewerComponent<UiData> {
-  @ViewChild(LogComponent) logComponent?: LogComponent;
+  logComponent = viewChild(LogComponent);
 
   CollapsibleSectionType = CollapsibleSectionType;
 
@@ -50,4 +52,9 @@ export class ViewerTransactionsComponent extends ViewerComponent<UiData> {
       isCollapsed: false,
     },
   ]);
+
+  heightPredictor = new TransactionsHeightPredictor(
+    this.elementRef,
+    (index: number) => this.inputData()?.entries[index],
+  );
 }

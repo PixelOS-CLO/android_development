@@ -15,22 +15,9 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {
-  Component,
-  ElementRef,
-  HostListener,
-  Inject,
-  input,
-  OnDestroy,
-  effect,
-  OnInit,
-  output,
-} from '@angular/core';
+import {Component, computed, effect, ElementRef, HostListener, Inject, input, OnDestroy, OnInit, output, signal,} from '@angular/core';
 import {MatButtonModule, MatIconButton} from '@angular/material/button';
-import {
-  MatButtonToggleChange,
-  MatButtonToggleModule,
-} from '@angular/material/button-toggle';
+import {MatButtonToggleChange, MatButtonToggleModule,} from '@angular/material/button-toggle';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIcon, MatIconModule, MatIconRegistry} from '@angular/material/icon';
@@ -41,6 +28,7 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import {DomSanitizer} from '@angular/platform-browser';
 import {assertDefined} from '@common/assert';
 import {Distance} from '@common/geometry/distance';
+import {Store} from '@common/store/store';
 import {getRootUrl} from '@common/window';
 import {Analytics} from '@logging/analytics';
 import {TRACE_INFO} from '@trace_api/trace_info';
@@ -53,10 +41,10 @@ import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_
 import {RectSpec, TraceRectType} from '@viewers/components/rects/rect_spec';
 import {UiRect} from '@viewers/components/rects/ui_rect';
 import {UserOptionsComponent} from '@viewers/components/user_options_component';
+
 import {Canvas} from './canvas';
 import {Mapper3D} from './mapper3d';
 import {ShadingMode} from './shading_mode';
-import {Store} from '@common/store/store';
 
 @Component({
   selector: 'rects-view',
@@ -82,20 +70,21 @@ export class RectsComponent implements OnInit, OnDestroy {
   Analytics = Analytics;
   ViewerEvents = ViewerEvents;
 
-  title = input('title');
+  title = input.required<string>();
+  rects = input.required<UiRect[]>();
+  displays = input.required<DisplayIdentifier[]>();
+  shadingModes = input.required<ShadingMode[]>();
+  userOptions = input.required<UserOptions>();
+  dependencies = input.required<TraceType[]>();
+
   zoomFactor = input(1);
-  store = input<Store | undefined>(undefined);
-  rects = input<UiRect[]>([]);
-  miniRects = input<UiRect[] | undefined>(undefined);
-  displays = input<DisplayIdentifier[]>([]);
+  store = input<Store>();
+  miniRects = input<UiRect[]>();
   highlightedItem = input('');
   groupLabel = input('Displays');
   isStackBased = input(false);
-  shadingModes = input<ShadingMode[]>([ShadingMode.GRADIENT]);
-  rectSpec = input<RectSpec | undefined>(undefined);
-  allRectSpecs = input<RectSpec[] | undefined>(undefined);
-  userOptions = input<UserOptions>({});
-  dependencies = input<TraceType[]>([]);
+  rectSpec = input<RectSpec>();
+  allRectSpecs = input<RectSpec[]>();
   pinnedItems = input<UiHierarchyTreeNode[]>([]);
   isDarkMode = input(false);
 
@@ -123,7 +112,17 @@ export class RectsComponent implements OnInit, OnDestroy {
   private mouseMoveListener = (event: MouseEvent) => this.onMouseMove(event);
   private mouseUpListener = () => this.onMouseUp();
   private panning = false;
-  private defaultRectType: TraceRectType | undefined;
+
+  private readonly defaultRectType = signal<TraceRectType | undefined>(
+    undefined,
+  );
+
+  readonly showRectSpecWarning = computed(() => {
+    const defaultRectType = this.defaultRectType();
+    return (
+      defaultRectType !== undefined && defaultRectType !== this.rectSpec()?.type
+    );
+  });
 
   private static readonly ZOOM_SCROLL_RATIO = 0.3;
 
@@ -203,7 +202,7 @@ export class RectsComponent implements OnInit, OnDestroy {
     });
 
     const defaultRectTypeEffect = effect(() => {
-      this.defaultRectType = this.rectSpec()?.type;
+      this.defaultRectType.set(this.rectSpec()?.type);
       defaultRectTypeEffect.destroy();
     });
 
@@ -501,13 +500,6 @@ export class RectsComponent implements OnInit, OnDestroy {
         bubbles: true,
         detail: {type: spec.type},
       }),
-    );
-  }
-
-  showRectSpecWarning(): boolean {
-    return (
-      this.defaultRectType !== undefined &&
-      this.defaultRectType !== this.rectSpec()?.type
     );
   }
 

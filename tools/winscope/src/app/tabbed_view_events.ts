@@ -15,15 +15,15 @@
  */
 
 import {assertTrue} from '@common/assert';
-import {Trace} from '@trace_api/trace';
-import {View, ViewType} from '@viewers/viewer';
 import {WinscopeEvent} from '@messaging/winscope_event';
+import {Trace} from '@trace_api/trace';
+import {Viewer, ViewType} from '@viewers/viewer';
 
 export class TabbedViewSwitched implements WinscopeEvent {
-  constructor(readonly newFocusedView: View) {
+  constructor(readonly newFocusedView: Viewer) {
     assertTrue(
-      newFocusedView.type === ViewType.TRACE_TAB ||
-        newFocusedView.type === ViewType.GLOBAL_SEARCH,
+      newFocusedView.getViewType() === ViewType.TRACE_TAB ||
+        newFocusedView.getViewType() === ViewType.GLOBAL_SEARCH,
     );
   }
 }

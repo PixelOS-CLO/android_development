@@ -20,26 +20,27 @@ import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {AbstractViewer} from '@viewers/abstract_viewer';
+
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';
 import {ViewerSurfaceFlingerComponent} from './viewer_surface_flinger_component';
 
-export class ViewerSurfaceFlinger extends AbstractViewer<HierarchyTreeNode> {
+export class ViewerSurfaceFlinger extends AbstractViewer<
+  HierarchyTreeNode,
+  UiData
+> {
   static readonly DEPENDENCIES: TraceType[] = [TraceType.SURFACE_FLINGER];
 
   constructor(trace: Trace<HierarchyTreeNode>, traces: Traces, store: Store) {
-    super(trace, traces, 'viewer-surface-flinger', store);
+    super(trace, traces, ViewerSurfaceFlingerComponent, store);
   }
 
-  protected override initializePresenter(
+  protected override createPresenter(
     trace: Trace<HierarchyTreeNode>,
     traces: Traces,
     store: Store,
+    notifyViewCallback: (uiData: UiData) => void,
   ): Presenter {
-    const notifyViewCallback = (uiData: UiData) => {
-      (this.htmlElement as unknown as ViewerSurfaceFlingerComponent).inputData =
-        uiData;
-    };
     return new Presenter(trace, traces, store, notifyViewCallback);
   }
 }

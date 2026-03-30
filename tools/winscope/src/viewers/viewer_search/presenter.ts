@@ -14,35 +14,21 @@
  * limitations under the License.
  */
 
+import {ActiveSearchQueriesUpdate} from '@app/misc_events';
 import {assertDefined} from '@common/assert';
 import {createPersistentStoreProxy} from '@common/store/persistent_store_proxy';
 import {Store} from '@common/store/store';
 import {TimestampConverter} from '@common/time/timestamp_converter';
-import {
-  InitializeTraceSearchRequest,
-  TraceAddRequest,
-  TracePositionUpdate,
-  TraceRemoveRequest,
-  TraceSearchFailed,
-  TraceSearchInitialized,
-  TraceSearchRequest,
-} from '@trace/trace_events';
-import {ActiveSearchQueriesUpdate} from '@app/misc_events';
+import {getLogger, Logger} from '@compat/logging';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {EmitEvent} from '@messaging/winscope_event_emitter';
 import {Trace} from '@trace_api/trace';
+import {InitializeTraceSearchRequest, TraceAddRequest, TracePositionUpdate, TraceRemoveRequest, TraceSearchFailed, TraceSearchInitialized, TraceSearchRequest,} from '@trace_api/trace_events';
 import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {QueryResult} from '@trace_processor/query_result';
-import {
-  AddQueryClickDetail,
-  ClearQueryClickDetail,
-  DeleteSavedQueryClickDetail,
-  SaveQueryClickDetail,
-  SearchQueryClickDetail,
-  ViewerEvents,
-} from '@viewers/common/viewer_events';
-import {getLogger, Logger} from '@compat/logging';
+import {AddQueryClickDetail, ClearQueryClickDetail, DeleteSavedQueryClickDetail, SaveQueryClickDetail, SearchQueryClickDetail, ViewerEvents,} from '@viewers/common/viewer_events';
+
 import {SearchResultPresenter} from './search_result_presenter';
 import {CurrentSearch, ListedSearch, SearchResult, UiData} from './ui_data';
 
@@ -58,6 +44,7 @@ export class Presenter {
   private activeSearchUid = 0;
   private activeSearches: ActiveSearch[] = [];
   private savedSearches: {searches: ListedSearch[]};
+  private recentSearches: {searches: ListedSearch[]};
   private viewerElement: HTMLElement | undefined;
   private runningSearch: CurrentSearch | undefined;
 
@@ -73,7 +60,15 @@ export class Presenter {
       {searches: []},
       this.storage,
     );
-    this.uiData.savedSearches = Array.from(this.savedSearches.searches);
+    this.recentSearches = createPersistentStoreProxy<{
+      searches: ListedSearch[];
+    }>('recentSearches', {searches: []}, this.storage);
+    this.uiData.savedSearches = this.savedSearches.searches.map(
+      (s) => new ListedSearch(s.query, s.name, s.timeMs),
+    );
+    this.uiData.recentSearches = this.recentSearches.searches.map(
+      (s) => new ListedSearch(s.query, s.name, s.timeMs),
+    );
     this.addSearch();
   }
 
@@ -124,6 +119,7 @@ export class Presenter {
         this.onClearQueryClick(detail.uid);
       },
     );
+    this.notifyViewCallback(this.uiData);
   }
 
   private async onTraceSearchInitialized(event: TraceSearchInitialized) {
@@ -218,10 +214,16 @@ export class Presenter {
 
   private async showQueryResult(newTrace: Trace<QueryResult>) {
     const [traceQuery] = newTrace.getDescriptors();
-    if (this.uiData.recentSearches.length >= 10) {
+    const existingIndex = this.uiData.recentSearches.findIndex(
+      (s) => s.query === traceQuery,
+    );
+    if (existingIndex !== -1) {
+      this.uiData.recentSearches.splice(existingIndex, 1);
+    } else if (this.uiData.recentSearches.length >= 100) {
       this.uiData.recentSearches.pop();
     }
     this.uiData.recentSearches.unshift(new ListedSearch(traceQuery));
+    this.recentSearches.searches = this.uiData.recentSearches;
 
     const activeSearch = assertDefined(
       this.activeSearches.find((a) => a.search.uid === this.runningSearch?.uid),

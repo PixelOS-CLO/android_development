@@ -16,22 +16,19 @@
 
 import {TimeRange, Timestamp} from '@common/time/time';
 import {ComponentTimestampConverter} from '@common/time/timestamp_converter';
+import {getLogger, Logger} from '@compat/logging';
 import {Analytics} from '@logging/analytics';
-import {makeWarningCannotParseAllTransitions} from './warnings';
 import {UserNotifier} from '@services/user_notifier';
-import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {Trace, TraceEntry} from '@trace_api/trace';
 import {findCorrespondingEntry} from '@trace_api/trace_entry_finder';
 import {TracePosition} from '@trace_api/trace_position';
-import {
-  TraceType,
-  compareByDisplayOrder,
-  isTraceTypeWithViewer,
-} from '@trace_api/trace_type';
+import {compareByDisplayOrder, isTraceTypeWithViewer, TraceType,} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
-import {getLogger, Logger} from '@compat/logging';
-import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {timestampToVideoTimeSeconds} from '@trace/media_based/helpers';
+import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
+import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
+
+import {makeWarningCannotParseAllTransitions} from './warnings';
 
 /**
  * A container of all the timeline-related data.
@@ -115,7 +112,10 @@ export class TimelineData {
     return this.transitionEntries;
   }
 
-  getTimestampConverter(): ComponentTimestampConverter | undefined {
+  getTimestampConverter(): ComponentTimestampConverter {
+    if (this.timestampConverter === undefined) {
+      throw new Error('TimestampData is not initialized');
+    }
     return this.timestampConverter;
   }
 

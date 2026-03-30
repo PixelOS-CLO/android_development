@@ -14,28 +14,29 @@
  * limitations under the License.
  */
 
-import {CdkVirtualScrollViewport} from '@angular/cdk/scrolling';
 import {assertDefined} from '@common/assert';
+import {makeElapsedTimestamp} from '@common/time/test_helpers';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
 import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
-import {makeElapsedTimestamp} from '@common/time/test_helpers';
-import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
-import {InputColumnType} from '@trace/input/input_column_type';
 import {TraceType} from '@trace_api/trace_type';
+import {InputColumnType} from '@trace/input/input_column_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {AbstractLogViewerComponentTest} from '@viewers/common/abstract_log_viewer_component_test';
 import {LogSelectFilter} from '@viewers/common/log_filters';
 import {LogHeader} from '@viewers/common/ui_data_log';
 import {RectsComponent} from '@viewers/components/rects/rects_component';
+import {VirtualScrollViewportComponent} from '@viewers/components/scroll/virtual_scroll_viewport_component';
 import {UserOptionsComponent} from '@viewers/components/user_options_component';
+
 import {InputEntry, UiData} from './ui_data';
 import {ViewerInputComponent} from './viewer_input_component';
 
 class ViewerInputComponentTest extends AbstractLogViewerComponentTest<ViewerInputComponent> {
   protected override readonly testProperties = true;
   protected override readonly testScroll = true;
-  protected override readonly initialEntries = 30;
+  protected override readonly initialEntries = 10;
   protected override readonly hasTimeControls = false;
   protected override readonly propertiesSectionTitle = 'EVENT DETAILS';
   protected override readonly propertiesPlaceholder = 'No selected entry.';
@@ -82,20 +83,23 @@ class ViewerInputComponentTest extends AbstractLogViewerComponentTest<ViewerInpu
       });
 
       it('shows rects view when rects are defined', () => {
-        assertDefined(component.inputData).rectsToDraw = [];
+        const inputData = assertDefined(component.inputData());
+        inputData.rectsToDraw = [];
         dom.detectChanges();
         expect(dom.find('.rects-view')).toBeDefined();
       });
 
       it('hides rects view when rects are not defined', () => {
-        assertDefined(component.inputData).rectsToDraw = undefined;
+        const inputData = assertDefined(component.inputData());
+        inputData.rectsToDraw = undefined;
         dom.detectChanges();
         expect(dom.find('.rects-view')).toBeUndefined();
       });
 
       it('shows message when no event is selected', () => {
-        assertDefined(component.inputData).propertyNodes = undefined;
-        assertDefined(component.inputData).dispatchPropertyNodes = undefined;
+        const inputData = assertDefined(component.inputData());
+        inputData.propertyNodes = undefined;
+        inputData.dispatchPropertyNodes = undefined;
         dom.detectChanges();
         dom
           .get('.event-properties .placeholder-text')
@@ -110,7 +114,7 @@ class ViewerInputComponentTest extends AbstractLogViewerComponentTest<ViewerInpu
   protected async setUpTestEnvironment(): Promise<
     [
       DOMTestHelper<ViewerInputComponent>,
-      CdkVirtualScrollViewport,
+      VirtualScrollViewportComponent,
       ViewerInputComponent,
     ]
   > {
@@ -133,7 +137,11 @@ class ViewerInputComponentTest extends AbstractLogViewerComponentTest<ViewerInpu
   }
 
   protected override async setUpTestEnvironmentForScroll(): Promise<
-    [DOMTestHelper<ViewerInputComponent>, CdkVirtualScrollViewport]
+    [
+      DOMTestHelper<ViewerInputComponent>,
+      VirtualScrollViewportComponent,
+      ViewerInputComponent,
+    ]
   > {
     const uiData = UiData.createEmpty();
     uiData.headers = [new LogHeader(this.testSpec, new LogSelectFilter([]))];
@@ -141,12 +149,10 @@ class ViewerInputComponentTest extends AbstractLogViewerComponentTest<ViewerInpu
     uiData.rectsToDraw = [];
     uiData.entries = Array.from({length: 200}, () => this.createInputEntry());
 
-    const [dom, viewport] = await this.initializeTestEnvironment(
-      uiData,
-      ViewerInputComponent,
-      [RectsComponent, UserOptionsComponent],
-    );
-    return [dom, viewport];
+    return await this.initializeTestEnvironment(uiData, ViewerInputComponent, [
+      RectsComponent,
+      UserOptionsComponent,
+    ]);
   }
 
   private createInputEntry(): InputEntry {

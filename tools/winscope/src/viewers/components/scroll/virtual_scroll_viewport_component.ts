@@ -15,22 +15,9 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  Directive,
-  ElementRef,
-  EventEmitter,
-  Inject,
-  InjectionToken,
-  Input,
-  NgZone,
-  Output,
-  SimpleChanges,
-  ViewChild,
-} from '@angular/core';
+import {ChangeDetectionStrategy, Component, Directive, effect, ElementRef, Inject, InjectionToken, input, NgZone, output, ViewChild,} from '@angular/core';
 import {assertDefined} from '@common/assert';
-import {Observable, ReplaySubject, Subject, fromEvent} from 'rxjs';
+import {fromEvent, Observable, ReplaySubject, Subject} from 'rxjs';
 import {debounceTime, map, takeUntil} from 'rxjs/operators';
 
 interface VirtualScrollViewportHost {
@@ -64,10 +51,10 @@ export class VirtualRow {
     private readonly elementRef: ElementRef<HTMLElement>,
   ) {}
 
-  @Input({required: true}) rowIndex: number | undefined;
+  rowIndex = input.required<number>();
 
   ngAfterViewChecked() {
-    this.host.updateHeight(assertDefined(this.rowIndex), this.elementRef);
+    this.host.updateHeight(this.rowIndex(), this.elementRef);
   }
 }
 
@@ -91,9 +78,10 @@ export class VirtualScrollViewportComponent {
   private targetScrollTop = 0;
   private visibleRange: RenderedRange = {start: 0, end: 0};
 
-  @Input({required: true}) itemCount: number | undefined;
-  @Input({required: true}) heightPredictor: HeightPredictor | undefined;
-  @Output() readonly visibleRangeChanged = new EventEmitter<RenderedRange>();
+  itemCount = input.required<number>();
+  heightPredictor = input.required<HeightPredictor>();
+
+  readonly visibleRangeChanged = output<RenderedRange>();
 
   @ViewChild('contentWrapper', {static: true})
   contentWrapper: ElementRef<HTMLElement> | undefined;
@@ -107,10 +95,30 @@ export class VirtualScrollViewportComponent {
     readonly elementRef: ElementRef<HTMLElement>,
     private readonly ngZone: NgZone,
   ) {
+    effect(() => {
+      const itemCount = this.itemCount();
+      const heightPredictor = this.heightPredictor();
+      if (this.heights.length > itemCount) {
+        this.heights.splice(itemCount);
+      } else if (this.heights.length < itemCount) {
+        this.heights.push(
+          ...Array.from({length: itemCount - this.heights.length}, (_, i) => {
+            return heightPredictor.predict(i + this.heights.length - 1);
+          }),
+        );
+        this.updateSpacer();
+      }
+      this.handleChanges();
+    });
+
     const resized = new Subject<void>();
     this.resizeObserver = new ResizeObserver(() => resized.next());
     resized.pipe(takeUntil(this.destroyed), debounceTime(1)).subscribe(() => {
       this.ngZone.run(() => {
+        const heightPredictor = this.heightPredictor();
+        for (let i = 0; i < this.itemCount(); i++) {
+          this.heights[i] = heightPredictor.predict(i);
+        }
         this.updateSpacer();
         this.handleChanges();
       });
@@ -126,25 +134,6 @@ export class VirtualScrollViewportComponent {
     this.destroyed.next();
     this.destroyed.complete();
     this.resizeObserver.disconnect();
-  }
-
-  ngOnChanges(changes: SimpleChanges) {
-    if (!changes['itemCount']) {
-      return;
-    }
-    const itemCount = assertDefined(this.itemCount);
-    if (this.heights.length > itemCount) {
-      this.heights.splice(itemCount);
-    } else if (this.heights.length < itemCount) {
-      const heightPredictor = assertDefined(this.heightPredictor);
-      this.heights.push(
-        ...Array.from({length: itemCount - this.heights.length}, (_, i) => {
-          return heightPredictor.predict(i + this.heights.length - 1);
-        }),
-      );
-      this.updateSpacer();
-    }
-    this.handleChanges();
   }
 
   ngAfterViewInit() {
@@ -182,6 +171,7 @@ export class VirtualScrollViewportComponent {
   updateHeight(index: number, elementRef: ElementRef<HTMLElement>) {
     const height = elementRef.nativeElement.offsetHeight + 1;
     const offset = height - this.heights[index];
+    const heightChanged = Math.abs(this.heights[index] - height) > 5;
     this.heights[index] = height;
 
     if (offset !== 0) {
@@ -192,8 +182,18 @@ export class VirtualScrollViewportComponent {
       const notInRange = index > 0 && index <= this.visibleRange.start;
       if (beforeVisibleAnchor || notInRange) {
         this.scrollTo(this.targetScrollTop + offset);
+        return;
       }
     }
+
+    if (heightChanged) {
+      this.checkViewportSize();
+    }
+  }
+
+  checkViewportSize() {
+    this.handleChanges();
+    this.updateSpacer();
   }
 
   private handleChanges() {
@@ -201,7 +201,7 @@ export class VirtualScrollViewportComponent {
       return;
     }
     const contentWrapper = assertDefined(this.contentWrapper);
-    const itemCount = assertDefined(this.itemCount);
+    const itemCount = this.itemCount();
     if (itemCount === 0) {
       this.scrollTo(0);
       contentWrapper.nativeElement.style.top = '0px';
@@ -252,7 +252,7 @@ export class VirtualScrollViewportComponent {
 
   private updateSpacer() {
     let sum = 0;
-    for (let i = 0; i < assertDefined(this.itemCount); i++) {
+    for (let i = 0; i < this.itemCount(); i++) {
       sum += this.heights[i];
     }
     assertDefined(this.spacer).nativeElement.style.flexBasis = `${sum}px`;

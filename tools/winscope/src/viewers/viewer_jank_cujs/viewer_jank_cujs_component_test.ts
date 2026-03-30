@@ -14,18 +14,19 @@
  * limitations under the License.
  */
 
-import {CdkVirtualScrollViewport} from '@angular/cdk/scrolling';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
+import {NonPerfettoParserProvider} from '@test/unit/parsers/fixture_utils';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
+import {Parser} from '@trace_api/parser';
 import {TraceEntry} from '@trace_api/trace';
 import {TraceType} from '@trace_api/trace_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {AbstractLogViewerComponentTest} from '@viewers/common/abstract_log_viewer_component_test';
 import {LogEntry, LogHeader} from '@viewers/common/ui_data_log';
+import {VirtualScrollViewportComponent} from '@viewers/components/scroll/virtual_scroll_viewport_component';
+
 import {CujEntry, UiData} from './ui_data';
 import {ViewerJankCujsComponent} from './viewer_jank_cujs_component';
-import {Parser} from '@trace_api/parser';
-import {NonPerfettoParserProvider} from '@test/unit/fixture_utils';
 
 class ViewerJankCujsComponentTest extends AbstractLogViewerComponentTest<ViewerJankCujsComponent> {
   protected override readonly testProperties = false;
@@ -42,7 +43,7 @@ class ViewerJankCujsComponentTest extends AbstractLogViewerComponentTest<ViewerJ
   protected async setUpTestEnvironment(): Promise<
     [
       DOMTestHelper<ViewerJankCujsComponent>,
-      CdkVirtualScrollViewport,
+      VirtualScrollViewportComponent,
       ViewerJankCujsComponent,
     ]
   > {

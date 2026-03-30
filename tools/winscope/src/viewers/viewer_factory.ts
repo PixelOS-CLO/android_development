@@ -18,13 +18,15 @@ import {assertTrue} from '@common/assert';
 import {Store} from '@common/store/store';
 import {TimestampConverter} from '@common/time/timestamp_converter';
 import {Trace} from '@trace_api/trace';
-import {TraceType, compareByDisplayOrder} from '@trace_api/trace_type';
+import {compareByDisplayOrder, TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
+import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
+
 import {Viewer, ViewType} from './viewer';
-import {ViewerInput} from './viewer_input/viewer_input';
 import {ViewerInputMethodClients} from './viewer_input_method_clients/viewer_input_method_clients';
 import {ViewerInputMethodManagerService} from './viewer_input_method_manager_service/viewer_input_method_manager_service';
 import {ViewerInputMethodService} from './viewer_input_method_service/viewer_input_method_service';
+import {ViewerInput} from './viewer_input/viewer_input';
 import {ViewerJankCujs} from './viewer_jank_cujs/viewer_jank_cujs';
 import {ViewerScreenRecording} from './viewer_media_based/viewer_screen_recording';
 import {ViewerScreenshot} from './viewer_media_based/viewer_screenshot';
@@ -35,7 +37,6 @@ import {ViewerTransactions} from './viewer_transactions/viewer_transactions';
 import {ViewerTransitions} from './viewer_transitions/viewer_transitions';
 import {ViewerViewCapture} from './viewer_view_capture/viewer_view_capture';
 import {ViewerWindowManager} from './viewer_window_manager/viewer_window_manager';
-import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 
 export class ViewerFactory {
   static readonly SINGLE_TRACE_VIEWERS = [
@@ -100,28 +101,28 @@ export class ViewerFactory {
     // the final order of tabs/views in the UI corresponds the order of the
     // respective viewers below
     return viewers.sort((a, b) => {
-      const aView = a.getViews()[0];
-      const bView = b.getViews()[0];
+      const aViewType = a.getViewType();
+      const bViewType = b.getViewType();
       if (
-        aView.type === ViewType.TRACE_TAB &&
-        bView.type === ViewType.TRACE_TAB
+        aViewType === ViewType.TRACE_TAB &&
+        bViewType === ViewType.TRACE_TAB
       ) {
         return compareByDisplayOrder(
           a.getTraces()[0].type,
           b.getTraces()[0].type,
         );
       } else if (
-        aView.type === ViewType.GLOBAL_SEARCH &&
-        bView.type !== ViewType.GLOBAL_SEARCH
+        aViewType === ViewType.GLOBAL_SEARCH &&
+        bViewType !== ViewType.GLOBAL_SEARCH
       ) {
         return -1;
       } else if (
-        aView.type !== ViewType.GLOBAL_SEARCH &&
-        bView.type === ViewType.GLOBAL_SEARCH
+        aViewType !== ViewType.GLOBAL_SEARCH &&
+        bViewType === ViewType.GLOBAL_SEARCH
       ) {
         return 1;
       } else {
-        return aView.title < bView.title ? -1 : 1;
+        return a.getTitle() < b.getTitle() ? -1 : 1;
       }
     });
   }

@@ -14,97 +14,49 @@
  * limitations under the License.
  */
 
+import {AppFilesCollected, AppFilesUploaded, AppInitialized, AppRefreshDumpsRequest, AppResetRequest, AppTraceViewRequest, AppTraceViewRequestHandled,} from '@app/app_events';
+import {PlaybackSpeedChange, PlaybackStateChangeHandled, PlaybackStateChangePropagate, PlaybackStateChangeRequest,} from '@app/components/timeline/playback_events';
+import {ExpandedTimelineToggled} from '@app/components/timeline/timeline_events';
+import {ActiveSearchQueriesUpdate, BookmarksChanged, BugreportFileSelected, BugreportFileSelectionRequest, DarkModeToggled, FilterPresetApplyRequest, FilterPresetSaveRequest, NoTraceTargetsSelectedEvent,} from '@app/misc_events';
+import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@app/tabbed_view_events';
+import {ViewersLoaded, ViewersUnloaded} from '@app/viewers_events';
 import {assertDefined} from '@common/assert';
 import {Store} from '@common/store/store';
 import {Timestamp} from '@common/time/time';
+import {Timer} from '@common/time/timer';
+import {getLogger, Logger} from '@compat/logging';
 import {CrossToolProtocol} from '@cross_tool/cross_tool_protocol';
+import {RemoteToolDownloadStart, RemoteToolFilesReceived, RemoteToolInitialized, RemoteToolTimestampReceived, RemoteToolWaitingForFiles,} from '@cross_tool/remote_tool_events';
 import {Analytics} from '@logging/analytics';
 import {ProgressListener} from '@messaging/progress_listener';
 import {UserWarning} from '@messaging/user_warning';
-import {
-  makeWarningNoValidFiles,
-  makeWarningCannotVisualizeTraceEntry,
-  makeWarningFailedToInitializeTimelineData,
-  makeWarningNoTraceTargetsSelected,
-} from './warnings';
-import {
-  AppFilesCollected,
-  AppFilesUploaded,
-  AppInitialized,
-  AppRefreshDumpsRequest,
-  AppResetRequest,
-  AppTraceViewRequest,
-  AppTraceViewRequestHandled,
-} from '@app/app_events';
-import {
-  ActiveSearchQueriesUpdate,
-  BookmarksChanged,
-  BugreportFileSelected,
-  BugreportFileSelectionRequest,
-  DarkModeToggled,
-  FilterPresetApplyRequest,
-  FilterPresetSaveRequest,
-  NoTraceTargetsSelectedEvent,
-} from '@app/misc_events';
-import {ExpandedTimelineToggled} from '@app/components/timeline/timeline_events';
-import {
-  PlaybackSpeedChange,
-  PlaybackStateChangeHandled,
-  PlaybackStateChangePropagate,
-  PlaybackStateChangeRequest,
-} from '@app/components/timeline/playback_events';
-import {
-  ActiveTraceChanged,
-  InitializeTraceSearchRequest,
-  ScreenRecordingChange,
-  TraceAddRequest,
-  TracePositionUpdate,
-  TraceRemoveRequest,
-  TraceSearchCompleted,
-  TraceSearchFailed,
-  TraceSearchInitialized,
-  TraceSearchRequest,
-  ShowTraceUploadWarning,
-} from '@trace/trace_events';
 import {WinscopeEvent} from '@messaging/winscope_event';
-import {
-  RemoteToolDownloadStart,
-  RemoteToolFilesReceived,
-  RemoteToolInitialized,
-  RemoteToolTimestampReceived,
-  RemoteToolWaitingForFiles,
-} from '@cross_tool/remote_tool_events';
-import {ViewersLoaded, ViewersUnloaded} from '@app/viewers_events';
-import {
-  TabbedViewSwitched,
-  TabbedViewSwitchRequest,
-} from '@app/tabbed_view_events';
 import {WinscopeEventEmitter} from '@messaging/winscope_event_emitter';
 import {WinscopeEventListener} from '@messaging/winscope_event_listener';
-import {getLogger, Logger} from '@compat/logging';
 import {UserNotifier} from '@services/user_notifier';
+import {PlaybackPrefetchedEntries} from '@trace_api/playback_prefetched_entries';
 import {Trace} from '@trace_api/trace';
+import {ActiveTraceChanged, InitializeTraceSearchRequest, ScreenRecordingChange, ShowTraceUploadWarning, TraceAddRequest, TracePositionUpdate, TraceRemoveRequest, TraceSearchCompleted, TraceSearchFailed, TraceSearchInitialized, TraceSearchRequest,} from '@trace_api/trace_events';
 import {TRACE_INFO} from '@trace_api/trace_info';
 import {TracePosition} from '@trace_api/trace_position';
 import {TraceType} from '@trace_api/trace_type';
 import {RequestedTraceTypes} from '@trace_collection/adb_files';
-import {View, Viewer, ViewType} from '@viewers/viewer';
-import {ViewerFactory} from '@viewers/viewer_factory';
-import {FilesSource} from './files_source';
-import {TimelineData} from './timeline_data';
-import {FileLoader} from './file_loader';
-import {TraceSearchInitializer} from './trace_search/trace_search_initializer';
-import {PlaybackState} from '@viewers/common/playback/playback_state';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
-import {PlaybackPrefetchedEntries} from '@trace/playback_prefetched_entries';
+import {PlaybackState} from '@viewers/common/playback/playback_state';
+import {Viewer, ViewType} from '@viewers/viewer';
+import {ViewerFactory} from '@viewers/viewer_factory';
+
+import {FileLoader} from './file_loader';
+import {FilesSource} from './files_source';
 import {LoadedFileData} from './loaded_file_data';
-import {Timer} from '@common/time/timer';
+import {TimelineData} from './timeline_data';
+import {TraceSearchInitializer} from './trace_search/trace_search_initializer';
+import {makeWarningCannotVisualizeTraceEntry, makeWarningFailedToInitializeTimelineData, makeWarningNoTraceTargetsSelected, makeWarningNoValidFiles,} from './warnings';
 
 /**
  * Mediator class for communication between components
  */
 export class Mediator {
-  initialTimelineTabTraceType: TraceType | undefined;
   private abtChromeExtensionProtocol: WinscopeEventEmitter &
     WinscopeEventListener;
   private crossToolProtocol: CrossToolProtocol;
@@ -120,7 +72,7 @@ export class Mediator {
   private activeFileLoader: FileLoader | undefined;
   private timelineData: TimelineData;
   private viewers: Viewer[] = [];
-  private focusedTabView: undefined | View;
+  private focusedTabView: undefined | Viewer;
   private areViewersLoaded = false;
   private lastRemoteToolDeferredTimestampReceived?: () => Timestamp | undefined;
   private currentProgressListener?: ProgressListener;
@@ -300,7 +252,7 @@ export class Mediator {
   }
 
   private async onTabbedViewSwitched(event: TabbedViewSwitched) {
-    const newActiveTrace = event.newFocusedView.traces[0];
+    const newActiveTrace = event.newFocusedView.getTraces()[0];
     if (this.timelineData.trySetActiveTrace(newActiveTrace)) {
       const activeTraceChanged = new ActiveTraceChanged(newActiveTrace);
       await this.timelineComponent?.onWinscopeEvent(activeTraceChanged);
@@ -376,7 +328,7 @@ export class Mediator {
   private async onTraceSearchRequest(event: TraceSearchRequest) {
     await this.timelineComponent?.onWinscopeEvent(event);
     const searchViewer = this.viewers.find(
-      (viewer) => viewer.getViews()[0].type === ViewType.GLOBAL_SEARCH,
+      (viewer) => viewer.getViewType() === ViewType.GLOBAL_SEARCH,
     );
     const trace = await this.loadedFileData.tryCreateSearchTrace(event.query);
     this.timelineComponent?.onWinscopeEvent(new TraceSearchCompleted());
@@ -405,7 +357,7 @@ export class Mediator {
     const traces = this.loadedFileData.getTraces();
     const views = await TraceSearchInitializer.createSearchViews(traces);
     const searchViewer = this.viewers.find(
-      (viewer) => viewer.getViews()[0].type === ViewType.GLOBAL_SEARCH,
+      (viewer) => viewer.getViewType() === ViewType.GLOBAL_SEARCH,
     );
     const initializedEvent = new TraceSearchInitialized(views);
     await searchViewer?.onWinscopeEvent(initializedEvent);
@@ -554,7 +506,7 @@ export class Mediator {
   }
 
   getActiveTraceType(): TraceType | undefined {
-    return this.focusedTabView?.traces[0]?.type;
+    return this.focusedTabView?.getTraces()[0]?.type;
   }
 
   getCurrentTimestamp(): Timestamp | undefined {
@@ -660,16 +612,14 @@ export class Mediator {
       return true;
     }
 
-    return viewer.getViews().some((view) => {
-      if (view === this.focusedTabView) {
-        return true;
-      }
-      if (view.type === ViewType.OVERLAY) {
-        // Nice to have: update viewer only if overlay view is actually visible (not minimized)
-        return true;
-      }
-      return false;
-    });
+    if (viewer === this.focusedTabView) {
+      return true;
+    }
+    if (viewer.getViewType() === ViewType.OVERLAY) {
+      // Nice to have: update viewer only if overlay view is actually visible (not minimized)
+      return true;
+    }
+    return false;
   }
 
   private async processRemoteToolDeferredTimestampReceived(
@@ -759,9 +709,9 @@ export class Mediator {
     await this.propagateTracePosition(initialPosition, true, source);
     Analytics.Memory.logUsage('viewers_initialized');
 
-    this.focusedTabView = this.viewers
-      .find((v) => v.getViews()[0].type === ViewType.TRACE_TAB)
-      ?.getViews()[0];
+    this.focusedTabView = this.viewers.find(
+      (v) => v.getViewType() === ViewType.TRACE_TAB,
+    );
     this.areViewersLoaded = true;
 
     // Notify app component (i.e. render viewers), only after all viewers have been initialized
@@ -778,8 +728,11 @@ export class Mediator {
     // "trace position update" could be processed concurrently within the same viewer.
     // Meaning the viewer could perform twice the initial heavy pre-processing,
     // thus increasing UI initialization times.
-    this.initialTimelineTabTraceType = this.focusedTabView?.traces[0]?.type;
-    await this.appComponent.onWinscopeEvent(new ViewersLoaded(this.viewers));
+    const initialTimelineTabTraceType =
+      this.focusedTabView?.getTraces()[0]?.type;
+    await this.appComponent.onWinscopeEvent(
+      new ViewersLoaded(this.viewers, initialTimelineTabTraceType),
+    );
     Analytics.Loading.logLoadViewersTime(Date.now() - e2eStartTimeMs);
   }
 
@@ -895,8 +848,8 @@ export class Mediator {
   }
 
   private async propagateToOverlays(event: WinscopeEvent) {
-    const overlayViewers = this.viewers.filter((viewer) =>
-      viewer.getViews().some((view: View) => view.type === ViewType.OVERLAY),
+    const overlayViewers = this.viewers.filter(
+      (viewer) => viewer.getViewType() === ViewType.OVERLAY,
     );
     for (const overlay of overlayViewers) {
       await overlay.onWinscopeEvent(event);

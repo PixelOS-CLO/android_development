@@ -20,25 +20,24 @@ import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {AbstractViewer} from '@viewers/abstract_viewer';
+
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';
 import {ViewerProtologComponent} from './viewer_protolog_component';
 
-export class ViewerProtoLog extends AbstractViewer<HierarchyTreeNode> {
+export class ViewerProtoLog extends AbstractViewer<HierarchyTreeNode, UiData> {
   static readonly DEPENDENCIES: TraceType[] = [TraceType.PROTO_LOG];
 
   constructor(trace: Trace<HierarchyTreeNode>, traces: Traces, store: Store) {
-    super(trace, traces, 'viewer-protolog', store);
+    super(trace, traces, ViewerProtologComponent, store);
   }
 
-  protected override initializePresenter(
+  protected override createPresenter(
     trace: Trace<HierarchyTreeNode>,
     traces: Traces,
     store: Store,
+    notifyViewCallback: (uiData: UiData) => void,
   ): Presenter {
-    const notifyViewCallback = (data: UiData) => {
-      (this.htmlElement as unknown as ViewerProtologComponent).inputData = data;
-    };
     return new Presenter(trace, notifyViewCallback, store);
   }
 }

@@ -38,9 +38,9 @@ export class CurrentSearch {
 }
 
 export class SearchResult implements UiDataLog {
-  selectedIndex: undefined | number;
-  scrollToIndex: undefined | number;
-  currentIndex: undefined | number;
+  selectedIndex: undefined | number = undefined;
+  scrollToIndex: undefined | number = undefined;
+  currentIndex: undefined | number = undefined;
   isFetchingData = false;
   checkScrollViewportCount = 0;
 
@@ -55,7 +55,8 @@ export class ListedSearch {
   constructor(
     readonly query: string,
     readonly name = query,
+    timeMs?: number,
   ) {
-    this.timeMs = Date.now();
+    this.timeMs = timeMs ?? Date.now();
   }
 }
