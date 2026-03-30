@@ -29,6 +29,7 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {MatDrawer, MatDrawerContainer, MatDrawerContent,} from '@app/shared/bottomnav/bottom_drawer_component';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {CanvasDrawer} from '@app/shared/timeline/expanded-timeline/canvas_drawer';
 import {DefaultTimelineRowComponent} from '@app/shared/timeline/expanded-timeline/default_timeline_row_component';
 import {ExpandedTimelineComponent} from '@app/shared/timeline/expanded-timeline/expanded_timeline_component';
@@ -67,6 +68,10 @@ import {PlaybackControlsComponent} from './playback_component';
 import {TimelineComponent} from './timeline_component';
 
 describe('TimelineComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const converter = makeConverterZeroRteOffsets();
 
   const time90 = converter.makeTimestampFromRealNs(BigInt(90));

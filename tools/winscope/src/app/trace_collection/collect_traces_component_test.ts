@@ -32,6 +32,7 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
 import {MatTabGroup, MatTabsModule} from '@angular/material/tabs';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {LoadProgressComponent} from '@app/trace_loading/load_progress_component';
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
@@ -61,6 +62,10 @@ import {WdpSetupComponent} from './wdp_setup_component';
 import {WinscopeProxySetupComponent} from './winscope_proxy_setup_component';
 
 describe('CollectTracesComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: CollectTracesComponent;
   let dom: DOMTestHelper<CollectTracesComponent>;
   let mockDevice: MockAdbDeviceConnection;

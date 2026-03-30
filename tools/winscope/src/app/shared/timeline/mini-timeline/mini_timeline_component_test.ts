@@ -26,6 +26,7 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventCode} from '@common/dom';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
@@ -43,6 +44,10 @@ import {MiniTimelineComponent} from './mini_timeline_component';
 import {SliderComponent} from './slider_component';
 
 describe('MiniTimelineComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: MiniTimelineComponent;
   let dom: DOMTestHelper<MiniTimelineComponent>;
   let timelineData: TimelineData;

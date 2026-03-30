@@ -19,6 +19,7 @@ import {TestBed} from '@angular/core/testing';
 import {LogViewerComponentStub} from '@app/shared/log_view/testing/log_viewer_component_stub';
 import {MockViewer} from '@app/shared/testing/mock_log_viewer';
 import {MockPresenter} from '@app/shared/testing/mock_log_viewer_presenter';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeZeroTimestamp} from '@common/time/testing/test_helpers';
@@ -34,6 +35,10 @@ import {TextFilter} from '@ui/shared/user_input/text_filter';
 import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
 
 describe('AbstractLogViewer', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const testHeader = new LogHeader(
     {name: 'Test Column', cssClass: 'test-class'},
     new LogSelectFilter([]),

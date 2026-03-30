@@ -33,6 +33,7 @@ import {CollapsedSectionsComponent} from '@app/shared/collapsible_sections/colla
 import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections/collapsible_section_title_component';
 import {LogComponent} from '@app/shared/log_view/log_component';
 import {VirtualRow, VirtualScrollViewportComponent,} from '@app/shared/scroll/virtual_scroll_viewport_component';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeRealTimestamp} from '@common/time/testing/test_helpers';
@@ -51,6 +52,10 @@ import {SEARCH_VIEWS} from './trace_search_initializer';
 import {ViewerSearchComponent} from './viewer_search_component';
 
 describe('ViewerSearchComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const testQuery = 'select * from table';
   const accordionItemSelector = '.accordion-item-header';
   const searchQuerySelector = '.query-actions .search-button';

@@ -28,6 +28,7 @@ import {MatTabsModule} from '@angular/material/tabs';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
 import {AngularViewer} from '@app/shared/angular_viewer';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {ViewerStub} from '@app/shared/viewer_stub';
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
@@ -46,6 +47,10 @@ import {ParsingErrorType} from '@ui/trace_loading/parsing_error_type';
 import {TraceViewComponent} from './trace_view_component';
 
 describe('TraceViewComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const traceSf = makeEmptyTrace<HierarchyTreeNode>(TraceType.SURFACE_FLINGER);
   const traceWm = new TraceBuilder<object>()
     .setType(TraceType.WINDOW_MANAGER)

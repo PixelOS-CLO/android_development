@@ -15,11 +15,16 @@
  */
 import {CommonModule} from '@angular/common';
 import {TestBed} from '@angular/core/testing';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 
 import {PropertiesTableComponent} from './properties_table_component';
 
 describe('PropertiesTableComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: PropertiesTableComponent;
   let dom: DOMTestHelper<PropertiesTableComponent>;
 

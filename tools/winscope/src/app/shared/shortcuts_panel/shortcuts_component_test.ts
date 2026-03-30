@@ -18,11 +18,16 @@ import {TestBed} from '@angular/core/testing';
 import {MatDialogModule} from '@angular/material/dialog';
 import {MatIconModule} from '@angular/material/icon';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 
 import {ShortcutsComponent} from './shortcuts_component';
 
 describe('ShortcutsComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: ShortcutsComponent;
   let dom: DOMTestHelper<ShortcutsComponent>;
 

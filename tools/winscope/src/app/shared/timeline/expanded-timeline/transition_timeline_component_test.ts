@@ -25,6 +25,7 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {PENDING_TO_PLAY_COLOR} from '@app/shared/timeline/common/transition_timeline_helpers';
 import {Rect} from '@common/geometry/rect';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
@@ -41,6 +42,10 @@ import {HierarchyTreeBuilder} from '@tree_node/testing/hierarchy_tree_builder';
 import {TransitionTimelineComponent} from './transition_timeline_component';
 
 describe('TransitionTimelineComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: TransitionTimelineComponent;
   let dom: DOMTestHelper<TransitionTimelineComponent>;
 

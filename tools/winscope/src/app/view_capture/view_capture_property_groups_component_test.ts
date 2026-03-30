@@ -16,6 +16,7 @@
 import {TestBed} from '@angular/core/testing';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatTooltipModule} from '@angular/material/tooltip';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {TransformMatrixComponent} from '@app/surface_flinger/transform_matrix_component';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {VcCuratedProperties} from '@ui/shared/properties/curated_properties';
@@ -23,6 +24,10 @@ import {VcCuratedProperties} from '@ui/shared/properties/curated_properties';
 import {ViewCapturePropertyGroupsComponent} from './view_capture_property_groups_component';
 
 describe('ViewCapturePropertyGroupsComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const properties: VcCuratedProperties = {
     className: 'test.package.name',
     viewId: 'package/name',

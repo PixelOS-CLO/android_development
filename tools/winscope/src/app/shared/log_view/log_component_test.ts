@@ -34,6 +34,7 @@ import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections
 import {PropertiesComponent} from '@app/shared/properties/properties_component';
 import {VirtualRow, VirtualScrollViewportComponent,} from '@app/shared/scroll/virtual_scroll_viewport_component';
 import {SearchBoxComponent} from '@app/shared/search_box/search_box_component';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventKey} from '@common/dom';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
@@ -50,6 +51,10 @@ import {LogComponent} from './log_component';
 import {SelectWithFilterComponent} from './select_with_filter_component';
 
 describe('LogComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const testColumn1: ColumnSpec = {
     name: 'test1',
     cssClass: 'test-1',
