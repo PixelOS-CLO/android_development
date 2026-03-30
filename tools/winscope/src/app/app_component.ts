@@ -17,7 +17,7 @@
 import {AbtChromeExtensionProtocol} from '@abt_chrome_extension/abt_chrome_extension_protocol';
 import {ClipboardModule} from '@angular/cdk/clipboard';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, ErrorHandler, Inject, Injector, NgZone, viewChild, ViewEncapsulation,} from '@angular/core';
+import {ChangeDetectorRef, Component, ErrorHandler, inject, NgZone, viewChild, ViewEncapsulation,} from '@angular/core';
 import {FormControl, FormsModule, ReactiveFormsModule, Validators,} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -137,7 +137,10 @@ export class AppComponent implements WinscopeEventListener {
   generatedShareLink = '';
 
   isDarkModeOn = false;
-  changeDetectorRef: ChangeDetectorRef;
+  changeDetectorRef = inject(ChangeDetectorRef);
+  private pageTitle = inject(Title);
+  private ngZone = inject(NgZone);
+  private dialog = inject(MatDialog);
   loadedFileData: LoadedFileData;
   mediator: Mediator;
   currentTimestamp?: Timestamp;
@@ -162,16 +165,8 @@ export class AppComponent implements WinscopeEventListener {
   traceViewComponent = viewChild(TraceViewComponent);
   timelineComponent = viewChild(TimelineComponent);
 
-  constructor(
-    @Inject(Injector) injector: Injector,
-    @Inject(ChangeDetectorRef) changeDetectorRef: ChangeDetectorRef,
-    @Inject(SnackBarOpener) snackbarOpener: SnackBarOpener,
-    @Inject(Title) private pageTitle: Title,
-    @Inject(NgZone) private ngZone: NgZone,
-    @Inject(MatDialog) private dialog: MatDialog,
-  ) {
-    this.changeDetectorRef = changeDetectorRef;
-    UserNotifier.setNotificationListener(snackbarOpener);
+  constructor() {
+    UserNotifier.setNotificationListener(inject(SnackBarOpener));
     this.loadedFileData = new LoadedFileData();
     this.crossToolProtocol = new CrossToolProtocol(
       this.loadedFileData.getTimestampConverter(),

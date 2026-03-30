@@ -15,7 +15,7 @@
  */
 import {CdkOverlayOrigin, OverlayModule} from '@angular/cdk/overlay';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, ElementRef, Inject, input, model, NgZone,} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, ElementRef, inject, input, model, NgZone,} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -74,11 +74,11 @@ export class TraceConfigComponent extends AbstractSelectComponent<SelectionConfi
     this.changeDetectorRef.detectChanges();
   });
 
-  constructor(
-    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
-    @Inject(NgZone) private ngZone: NgZone,
-    @Inject(ElementRef) private elementRef: ElementRef,
-  ) {
+  private changeDetectorRef = inject(ChangeDetectorRef);
+  private ngZone = inject(NgZone);
+  private elementRef = inject(ElementRef);
+
+  constructor() {
     super();
   }
 

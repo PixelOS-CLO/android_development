@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component, Inject} from '@angular/core';
+import {Component, inject} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatDialogModule} from '@angular/material/dialog';
 import {MatIconModule, MatIconRegistry} from '@angular/material/icon';
@@ -32,10 +32,10 @@ import {getRootUrl} from '@common/window';
   styleUrls: ['shortcuts_component.scss'],
 })
 export class ShortcutsComponent {
-  constructor(
-    @Inject(MatIconRegistry) private matIconRegistry: MatIconRegistry,
-    @Inject(DomSanitizer) private domSanitizer: DomSanitizer,
-  ) {
+  private matIconRegistry = inject(MatIconRegistry);
+  private domSanitizer = inject(DomSanitizer);
+
+  constructor() {
     this.matIconRegistry.addSvgIcon(
       'trackpad_right_click',
       this.domSanitizer.bypassSecurityTrustResourceUrl(

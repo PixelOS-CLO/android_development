@@ -15,7 +15,7 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, Inject, input, OnDestroy, OnInit, output, signal,} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, inject, input, OnDestroy, OnInit, output, signal,} from '@angular/core';
 import {MatButtonModule, MatIconButton} from '@angular/material/button';
 import {MatButtonToggleChange, MatButtonToggleModule,} from '@angular/material/button-toggle';
 import {MatDividerModule} from '@angular/material/divider';
@@ -127,12 +127,12 @@ export class RectsComponent implements OnInit, OnDestroy {
 
   private static readonly ZOOM_SCROLL_RATIO = 0.3;
 
-  constructor(
-    @Inject(ElementRef) private elementRef: ElementRef<HTMLElement>,
-    @Inject(MatIconRegistry) private matIconRegistry: MatIconRegistry,
-    @Inject(DomSanitizer) private domSanitizer: DomSanitizer,
-    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
-  ) {
+  private elementRef: ElementRef<HTMLElement> = inject(ElementRef<HTMLElement>);
+  private matIconRegistry = inject(MatIconRegistry);
+  private domSanitizer = inject(DomSanitizer);
+  private changeDetectorRef = inject(ChangeDetectorRef);
+
+  constructor() {
     this.matIconRegistry.addSvgIcon(
       'cube_full_shade',
       this.domSanitizer.bypassSecurityTrustResourceUrl(

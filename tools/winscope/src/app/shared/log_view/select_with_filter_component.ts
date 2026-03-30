@@ -15,7 +15,7 @@
  */
 import {ScrollingModule} from '@angular/cdk/scrolling';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, effect, Inject, input, model, output, signal, viewChild,} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, effect, inject, input, model, output, signal, viewChild,} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -123,10 +123,9 @@ export class SelectWithFilterComponent extends AbstractSelectComponent {
   private static readonly SCROLLBAR_WIDTH = 8;
   private static readonly CHAR_WIDTH = 8.5;
 
-  constructor(
-    @Inject(ChangeDetectorRef)
-    private readonly changeDetectorRef: ChangeDetectorRef,
-  ) {
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+
+  constructor() {
     super();
 
     effect(() => {

@@ -19,7 +19,7 @@ import {SelectionModel} from '@angular/cdk/collections';
 import {CdkMenuModule} from '@angular/cdk/menu';
 import {ScrollingModule} from '@angular/cdk/scrolling';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, Inject, input, output, viewChild, viewChildren,} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, inject, input, output, viewChild, viewChildren,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
@@ -64,6 +64,9 @@ import {SelectWithFilterComponent} from './select_with_filter_component';
 })
 export class LogComponent {
   Array = Array;
+
+  private readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
   headers = input.required<LogHeader[]>();
   entries = input.required<LogEntry[]>();
@@ -110,11 +113,7 @@ export class LogComponent {
 
   private lastClickedTimestamp: Timestamp | undefined;
 
-  constructor(
-    @Inject(ElementRef) private readonly elementRef: ElementRef<HTMLElement>,
-    @Inject(ChangeDetectorRef)
-    private readonly changeDetectorRef: ChangeDetectorRef,
-  ) {
+  constructor() {
     effect(() => {
       if (this.checkScrollViewportCount() > 0) {
         this.virtualScrollViewport().checkViewportSize();

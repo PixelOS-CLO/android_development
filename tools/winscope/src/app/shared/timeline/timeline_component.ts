@@ -16,7 +16,7 @@
 
 import {ClipboardModule} from '@angular/cdk/clipboard';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, computed, ElementRef, HostListener, Inject, input, output, signal, viewChild, ViewEncapsulation,} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, ElementRef, HostListener, inject, input, output, signal, viewChild, ViewEncapsulation,} from '@angular/core';
 import {AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators,} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatRippleModule} from '@angular/material/core';
@@ -194,10 +194,8 @@ export class TimelineComponent
   private lastPlayState: PlaybackState | undefined;
   frameCanvasEntry: MediaBasedTraceEntry | undefined;
 
-  constructor(
-    @Inject(DomSanitizer) private sanitizer: DomSanitizer,
-    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
-  ) {}
+  private sanitizer = inject(DomSanitizer);
+  private changeDetectorRef = inject(ChangeDetectorRef);
 
   ngOnInit() {
     const timelineData = this.timelineData();
