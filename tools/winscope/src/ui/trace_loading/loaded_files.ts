@@ -16,6 +16,7 @@
 
 import {assertDefined} from '@common/assert';
 import {createZipArchive, getFileExtension, OnProgressUpdateType, removeDirFromFileName, removeExtensionFromFilename,} from '@common/io';
+import {utf8Encode} from '@common/string_helpers';
 import {INVALID_TIME_NS, TimeRange, Timestamp} from '@common/time/time';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {getReaderWithLatestRealToBootTimeOffset, getReaderWithLatestRealToMonotonicTimeOffset,} from '@legacy_file_readers/common/file_reader_helpers';
@@ -24,6 +25,7 @@ import {UserNotifier} from '@services/user_notifier';
 import {FileReader} from '@trace_api/file_reader';
 import {TraceFile} from '@trace_api/trace_file';
 import {TRACE_INFO} from '@trace_api/trace_info';
+import {toJSON, TraceMetadata} from '@trace_api/trace_metadata';
 import {TraceType} from '@trace_api/trace_type';
 
 import {makeWarningTraceHasElapsedTimestamps, makeWarningTraceHasOldData, makeWarningTraceOverridden,} from './warnings';
@@ -100,7 +102,10 @@ export class LoadedFiles<T extends FileReader> {
     this.removeWithPredicate(predicate);
   }
 
-  async makeZipArchive(onProgressUpdate?: OnProgressUpdateType): Promise<Blob> {
+  async makeZipArchive(
+    metadata: TraceMetadata,
+    onProgressUpdate?: OnProgressUpdateType,
+  ): Promise<Blob> {
     const outputFilesSoFar = new Set<File>();
     const outputFilenameToFiles = new Map<string, File[]>();
 
@@ -183,6 +188,16 @@ export class LoadedFiles<T extends FileReader> {
 
     this.legacyReaders.forEach(tryPushOutputLegacyFile);
     this.nonPerfettoReaders.forEach(tryPushOutputLegacyFile);
+
+    const metadataToSave = toJSON(metadata);
+    if (metadataToSave !== undefined) {
+      const metadataBuffer = utf8Encode(metadataToSave);
+      const metadataFile = new File(
+        [metadataBuffer as unknown as ArrayBuffer],
+        'winscope_metadata.json',
+      );
+      tryPushOutputFile(metadataFile, metadataFile.name);
+    }
 
     const archiveFiles = [...outputFilenameToFiles.entries()]
       .map(([filename, files]) => {

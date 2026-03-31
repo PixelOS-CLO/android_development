@@ -24,6 +24,7 @@ import {makeWarningInvalidPerfettoTrace} from '@parsers/helpers/warnings';
 import {UserNotifierChecker} from '@services/testing/user_notifier_checker';
 import {FileReader} from '@trace_api/file_reader';
 import {FilesSource} from '@trace_api/files_source';
+import {ScreenRecordingOffsets} from '@trace_api/trace_metadata';
 import {TraceType} from '@trace_api/trace_type';
 import {makeSpyQueryResult, makeSpyRowIterator,} from '@trace_processor/testing/test_utils';
 import {TraceProcessorProxy} from '@trace_processor/trace_processor';
@@ -341,7 +342,11 @@ describe('FileLoader', () => {
       'traces/elapsed_and_real_timestamp/screen_recording_metadata.json',
     );
     const result = await loadFiles([screenRecording, metadata]);
-    expectLoadResult(result, 1, []);
+    const offsets: ScreenRecordingOffsets = {
+      elapsedRealTimeNanos: 0n,
+      realToElapsedTimeOffsetNanos: 1732721670187419904n,
+    };
+    expectLoadResult(result, 1, [], undefined, offsets);
   });
 
   async function loadFiles(
@@ -360,11 +365,17 @@ describe('FileLoader', () => {
     numberOfFileReaders: number,
     expectedWarnings: UserWarning[],
     timezoneInfo?: TimezoneInfo,
+    offsets?: ScreenRecordingOffsets,
   ) {
     userNotifierChecker.expectAdded(expectedWarnings);
     userNotifierChecker.reset();
     expect(getAllReaders(result).length).toBe(numberOfFileReaders);
-    expect(result.timezoneInfo).toEqual(timezoneInfo);
+    if (!timezoneInfo && !offsets) {
+      expect(result.metadata).toBeUndefined();
+    } else {
+      expect(result.metadata?.timezoneInfo).toEqual(timezoneInfo);
+      expect(result.metadata?.screenRecordingOffsets).toEqual(offsets);
+    }
   }
 
   function checkLoadedFileReaders(

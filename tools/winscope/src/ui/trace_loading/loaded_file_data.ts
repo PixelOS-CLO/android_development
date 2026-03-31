@@ -16,7 +16,6 @@
 
 import {assertDefined} from '@common/assert';
 import {DOWNLOAD_FILENAME_REGEX, ILLEGAL_FILENAME_CHARACTERS_REGEX, OnProgressUpdateType, removeDirFromFileName, removeExtensionFromFilename,} from '@common/io';
-import {TimezoneInfo} from '@common/time/time';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {TimestampConverter, UTC_TIMEZONE_INFO,} from '@common/time/timestamp_converter';
 import {UserTimestamp} from '@common/time/user_timestamp';
@@ -40,6 +39,7 @@ import {FrameMapper} from '@trace_api/frame_mapper';
 import {Parser} from '@trace_api/parser';
 import {Trace} from '@trace_api/trace';
 import {TraceFile} from '@trace_api/trace_file';
+import {TraceMetadata} from '@trace_api/trace_metadata';
 import {isTraceTypeWithViewer, TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {QueryResult} from '@trace_processor/query_result';
@@ -69,7 +69,7 @@ export class LoadedFileData {
   private lostPerfettoPackets = 0;
   private traceTypesWithParsingErrors: Map<TraceType, ParsingErrorType> =
     new Map();
-  private timezoneInfo: TimezoneInfo = UTC_TIMEZONE_INFO;
+  private metadata: TraceMetadata = {};
   private traceGeometryData: TraceGeometryData = new TraceGeometryData();
   private traces: Traces | undefined;
 
@@ -90,6 +90,9 @@ export class LoadedFileData {
       ...result.nonPerfetto,
       ...result.perfetto,
     ];
+    if (result.metadata && allReaders.length > 0) {
+      this.metadata = result.metadata;
+    }
     this.downloadArchiveFilename = this.makeDownloadArchiveFilename(
       allReaders,
       source,
@@ -98,9 +101,6 @@ export class LoadedFileData {
       this.lostPerfettoPackets = result.lostPerfettoPackets;
       this.traceTypesWithParsingErrors = result.traceTypesWithParsingErrors;
       this.traceGeometryData = result.traceGeometryData;
-    }
-    if (result.timezoneInfo) {
-      this.timezoneInfo = result.timezoneInfo;
     }
 
     const {legacy, nonPerfetto} = this.updateTimestamps(
@@ -120,7 +120,7 @@ export class LoadedFileData {
   async makeZipArchiveWithLoadedTraceFiles(
     onProgressUpdate?: OnProgressUpdateType,
   ): Promise<Blob> {
-    return this.loadedFiles.makeZipArchive(onProgressUpdate);
+    return this.loadedFiles.makeZipArchive(this.metadata, onProgressUpdate);
   }
 
   getLoadedFileReaders(): FileReader[] {
@@ -482,9 +482,6 @@ export class LoadedFileData {
 
     this.lostPerfettoPackets = result.lostPerfettoPackets;
     this.traceGeometryData = result.traceGeometryData;
-    if (result.timezoneInfo) {
-      this.timezoneInfo = result.timezoneInfo;
-    }
 
     if (result.perfetto.length === 0) {
       return;
@@ -520,7 +517,7 @@ export class LoadedFileData {
       } else {
         const timestamp = trace.getEntry(0).getTimestamp();
         const utcOffset = await getResolvedUTCOffset(
-          this.timezoneInfo,
+          this.metadata.timezoneInfo ?? UTC_TIMEZONE_INFO,
           timestamp,
           this.getTimezoneNsFromPerfetto,
         );
