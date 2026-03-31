@@ -37,7 +37,7 @@ import {TimeRange, Timestamp} from '@common/time/time';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {UserTimestamp} from '@common/time/user_timestamp';
 import {getLogger} from '@compat/logging';
-import {objectUrlFromSafeSource} from '@compat/safevalues';
+import {objectUrlFromSafeSource, unwrapSafeUrl} from '@compat/safevalues';
 import {Analytics} from '@logging/analytics';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {EmitEvent, WinscopeEventEmitter,} from '@messaging/winscope_event_emitter';
@@ -557,7 +557,8 @@ export class TimelineComponent
     const timelineData = this.timelineData();
 
     const valueNs = parseBigIntStrippingUnit(target.value);
-    const isBoottime = valueNs < TIME_UNIT_TO_NANO.d * 365n * 3n; // ~ 3 years, no Android smartphone had winscope traces back in 1973 yet.
+    const isBoottime = valueNs < TIME_UNIT_TO_NANO.d * BigInt(365) * BigInt(3); // ~ 3 years, no Android smartphone had winscope traces
+    // back in 1973 yet.
 
     const timestamp = isBoottime
       ? timelineData
@@ -644,7 +645,7 @@ export class TimelineComponent
         range.containsTimestamp(bookmark),
       );
     }
-    const clickedNs = (range.startNs + range.endNs) / 2n;
+    const clickedNs = (range.startNs + range.endNs) / BigInt(2);
     if (rangeContainsBookmark) {
       const closestBookmark = this.bookmarks.reduce((prev, curr) => {
         if (clickedNs - curr.getValueNs() < 0) return prev;
@@ -878,7 +879,7 @@ export class TimelineComponent
         .getValue();
       if (video.frameData !== undefined) {
         this.videoUrl = this.sanitizer.bypassSecurityTrustUrl(
-          objectUrlFromSafeSource(video.frameData),
+          unwrapSafeUrl(objectUrlFromSafeSource(video.frameData)),
         );
         this.thumbnail.set(video.thumbnail);
         this.changeDetectorRef.detectChanges();

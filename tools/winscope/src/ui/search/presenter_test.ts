@@ -167,7 +167,7 @@ describe('PresenterSearch', () => {
 
   it('handles search for unsuccessful query', async () => {
     const testQuery = 'unsuccessful query';
-    presenter.onSearchQueryClick(testQuery, 1);
+    await presenter.onSearchQueryClick(testQuery, 1);
     await presenter.onAppEvent(new TraceSearchFailed());
     expect(uiData.lastTraceFailed).toEqual(true);
     expect(uiData.currentSearches).toEqual([new CurrentSearch(1, testQuery)]);

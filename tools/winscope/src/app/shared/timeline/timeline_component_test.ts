@@ -396,7 +396,7 @@ describe('TimelineComponent', () => {
     const timelineData = component.timelineData();
 
     expect(timelineData.getCurrentPosition()?.timestamp.getValueNs()).toEqual(
-      100n,
+      BigInt(100),
     );
 
     const nextEntryButton = dom.get(nextEntrySelector);
@@ -420,7 +420,7 @@ describe('TimelineComponent', () => {
     const timelineData = component.timelineData();
 
     expect(timelineData.getCurrentPosition()?.timestamp.getValueNs()).toEqual(
-      100n,
+      BigInt(100),
     );
     const prevEntryButton = dom.get(prevEntrySelector);
     prevEntryButton.checkDisabled(true);

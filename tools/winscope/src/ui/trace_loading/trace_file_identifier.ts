@@ -461,7 +461,8 @@ export class TraceFileIdentifier<T extends FileReader>
       const buffer = new Uint8Array(await file.file.arrayBuffer());
       const text = utf8Decode(buffer);
       try {
-        const data = JSON.parse(text);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data = JSON.parse(text) as any;
         // external screen recording metadata JSON
         if (
           data.realToElapsedTimeOffsetNanos !== undefined &&

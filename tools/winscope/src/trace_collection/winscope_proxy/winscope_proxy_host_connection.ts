@@ -79,7 +79,7 @@ export class WinscopeProxyHostConnection extends AdbHostConnection<WinscopeProxy
     try {
       const devices: WinscopeProxyDeviceConnectionResponse[] = JSON.parse(
         resp.text,
-      );
+      ) as WinscopeProxyDeviceConnectionResponse[];
       const curDevs = new Map<string, WinscopeProxyDeviceConnectionResponse>(
         devices.map((d) => [d.id, d]),
       );

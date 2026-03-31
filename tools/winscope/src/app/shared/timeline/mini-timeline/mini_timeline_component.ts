@@ -449,11 +449,11 @@ export class MiniTimelineComponent {
   }
 
   private zoomIn(zoomOn?: Timestamp) {
-    this.zoom({nominator: 6n, denominator: 7n}, zoomOn);
+    this.zoom({nominator: BigInt(6), denominator: BigInt(7)}, zoomOn);
   }
 
   private zoomOut(zoomOn?: Timestamp) {
-    this.zoom({nominator: 8n, denominator: 7n}, zoomOn);
+    this.zoom({nominator: BigInt(8), denominator: BigInt(7)}, zoomOn);
   }
 
   private zoom(
@@ -471,7 +471,7 @@ export class MiniTimelineComponent {
     const cursorPosition = this.currentTracePosition().timestamp;
     const currentMiddle = currentZoomRange.from
       .add(currentZoomRange.to)
-      .div(2n);
+      .div(BigInt(2));
 
     let newFrom: Timestamp;
     let newTo: Timestamp;
