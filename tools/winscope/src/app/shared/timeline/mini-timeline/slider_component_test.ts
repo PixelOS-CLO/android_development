@@ -25,6 +25,7 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeConverterZeroRteOffsets} from '@common/time/testing/test_helpers';
@@ -34,6 +35,10 @@ import {TracePosition} from '@trace_api/trace_position';
 import {MIN_SLIDER_WIDTH, SliderComponent} from './slider_component';
 
 describe('SliderComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: SliderComponent;
   let dom: DOMTestHelper<SliderComponent>;
   const leftCropperSelector = '.slider .cropper.left';

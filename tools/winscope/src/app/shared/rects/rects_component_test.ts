@@ -27,6 +27,7 @@ import {MatSliderModule} from '@angular/material/slider';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections/collapsible_section_title_component';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {UserOptionsComponent} from '@app/shared/user_options/user_options_component';
 import {assertDefined} from '@common/assert';
 import {Box3D} from '@common/geometry/box3d';
@@ -50,6 +51,10 @@ import {UiRect3D} from '@ui/shared/rects/ui_rect3d';
 import {RectsComponent} from './rects_component';
 
 describe('RectsComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const rectGroup0 = makeRectWithGroupId(0);
   const rectGroup1 = makeRectWithGroupId(1);
   const rectGroup2 = makeRectWithGroupId(2);

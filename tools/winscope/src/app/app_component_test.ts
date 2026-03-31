@@ -41,6 +41,7 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {Mediator} from '@app/mediator';
 import {AngularViewer} from '@app/shared/angular_viewer';
 import {MatDrawer, MatDrawerContainer, MatDrawerContent,} from '@app/shared/bottomnav/bottom_drawer_component';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {TimelineComponent} from '@app/shared/timeline/timeline_component';
 import {CollectTracesComponent} from '@app/trace_collection/collect_traces_component';
 import {WdpSetupComponent} from '@app/trace_collection/wdp_setup_component';
@@ -170,6 +171,10 @@ class MockMatDrawerContainer {}
 class MockMatDrawerContent {}
 
 describe('AppComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const reader = new TestFileReaderBuilder().setTimestamps([]).build();
   const converter = makeConverterZeroRteOffsets();
 

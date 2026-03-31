@@ -16,6 +16,7 @@
 
 import {ComponentRef} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {Trace} from '@trace_api/trace';
@@ -30,6 +31,10 @@ import {ViewerSurfaceFlinger} from './viewer_surface_flinger';
 import {ViewerSurfaceFlingerComponent} from './viewer_surface_flinger_component';
 
 describe('ViewerSurfaceFlinger', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const node = new HierarchyTreeBuilder()
     .setId('Test Trace')
     .setName('entry 1')

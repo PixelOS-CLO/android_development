@@ -53,6 +53,8 @@ import {ColumnSpec, LogField, LogHeader, UiDataLog,} from '@ui/shared/log/ui_dat
 import {TextFilter} from '@ui/shared/user_input/text_filter';
 import {LogFilterChangeDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
 
+import {setupTestEnvironment} from './test_environment';
+
 type LogViewerComponent =
   | ViewerProtologComponent
   | ViewerTransactionsComponent
@@ -70,6 +72,10 @@ export abstract class AbstractLogViewerComponentTest<
   protected readonly testField = new LogField(this.testSpec, 'VALUE');
 
   execute() {
+    beforeAll(() => {
+      setupTestEnvironment();
+    });
+
     describe('Log viewer component', () => {
       describe('common', () => {
         let dom: DOMTestHelper<T>;

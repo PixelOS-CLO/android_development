@@ -19,6 +19,7 @@ import {Component, TemplateRef, viewChild} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {DiffType} from '@ui/shared/tree/diff_type';
@@ -28,6 +29,10 @@ import {UiTreeNode} from '@ui/shared/tree/ui_tree_node';
 import {TreeNodeComponent} from './tree_node_component';
 
 describe('TreeNodeComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let fixture: ComponentFixture<TreeNodeComponent<UiTreeNode>>;
   let component: TreeNodeComponent<UiTreeNode>;
   let dom: DOMTestHelper<TreeNodeComponent<UiTreeNode>>;

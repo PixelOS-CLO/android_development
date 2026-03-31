@@ -16,6 +16,7 @@
 
 import {ComponentRef} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {makeConverterNoRteOffsets} from '@common/time/testing/test_helpers';
 import {Traces} from '@trace_api/traces';
@@ -27,6 +28,10 @@ import {ViewerSearch} from './viewer_search';
 import {ViewerSearchComponent} from './viewer_search_component';
 
 describe('ViewerSearch', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let traces: Traces;
   let viewer: ViewerSearch;
   let componentRef: ComponentRef<ViewerSearchComponent>;

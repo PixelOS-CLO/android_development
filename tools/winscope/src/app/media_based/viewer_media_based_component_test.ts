@@ -21,6 +21,7 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {getFixtureFile} from '@common/testing/io_helpers';
 import {waitToBeCalled} from '@common/testing/spy_utils';
@@ -32,6 +33,10 @@ import {CanvasEntry, MediaBasedTraceEntry, VideoEntry,} from '@trace/media_based
 import {ViewerMediaBasedComponent} from './viewer_media_based_component';
 
 describe('ViewerMediaBasedComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: ViewerMediaBasedComponent;
   let dom: DOMTestHelper<ViewerMediaBasedComponent>;
   let screenshotImage: ImageBitmap;

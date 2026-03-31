@@ -24,6 +24,7 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {Rect} from '@common/geometry/rect';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
@@ -36,6 +37,10 @@ import {TraceType} from '@trace_api/trace_type';
 import {DefaultTimelineRowComponent} from './default_timeline_row_component';
 
 describe('DefaultTimelineRowComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const converter = makeConverterZeroRteOffsets();
 
   let component: DefaultTimelineRowComponent;

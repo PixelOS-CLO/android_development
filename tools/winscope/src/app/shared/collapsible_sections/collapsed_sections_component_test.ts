@@ -17,6 +17,7 @@
 import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {CollapsibleSectionType} from '@ui/shared/collapsible_sections/collapsible_section_type';
 import {CollapsibleSections} from '@ui/shared/collapsible_sections/collapsible_sections';
@@ -24,6 +25,10 @@ import {CollapsibleSections} from '@ui/shared/collapsible_sections/collapsible_s
 import {CollapsedSectionsComponent} from './collapsed_sections_component';
 
 describe('CollapsedSectionsComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: CollapsedSectionsComponent;
   let dom: DOMTestHelper<CollapsedSectionsComponent>;
 

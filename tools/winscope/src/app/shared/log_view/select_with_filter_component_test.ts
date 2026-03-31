@@ -25,12 +25,17 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 
 import {SelectWithFilterComponent} from './select_with_filter_component';
 
 describe('SelectWithFilterComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const filterInputField = '.select-filter';
   let component: SelectWithFilterComponent;
   let dom: DOMTestHelper<SelectWithFilterComponent>;
