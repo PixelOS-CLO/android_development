@@ -15,7 +15,7 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {Component, ElementRef, Inject, input, output, TemplateRef, viewChild,} from '@angular/core';
+import {Component, ElementRef, inject, input, output, TemplateRef, viewChild,} from '@angular/core';
 import {FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatFormFieldModule} from '@angular/material/form-field';
@@ -61,10 +61,7 @@ export class ActiveSearchComponent {
   searchQueryControl = new FormControl('', Validators.required);
 
   private textArea = viewChild(HTMLTextAreaElement);
-
-  constructor(
-    @Inject(ElementRef) readonly elementRef: ElementRef<HTMLElement>,
-  ) {}
+  readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
 
   updateText(text: string) {
     this.searchQueryControl.setValue(text);

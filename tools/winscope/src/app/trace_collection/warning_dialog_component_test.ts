@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {Component, Inject} from '@angular/core';
+import {Component, inject} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -141,7 +141,7 @@ describe('WarningDialogComponent', () => {
     dialogResult: WarningDialogResult | undefined;
     singleSelection: boolean | undefined;
 
-    constructor(@Inject(MatDialog) public dialog: MatDialog) {}
+    dialog = inject(MatDialog);
 
     onClick() {
       const data: WarningDialogData = {

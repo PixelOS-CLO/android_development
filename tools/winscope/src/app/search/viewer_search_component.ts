@@ -17,7 +17,7 @@
 import {CdkAccordionItem, CdkAccordionModule} from '@angular/cdk/accordion';
 import {CdkMenuModule} from '@angular/cdk/menu';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, effect, ElementRef, HostListener, Inject, output, TemplateRef, viewChild, viewChildren,} from '@angular/core';
+import {ChangeDetectorRef, Component, effect, ElementRef, HostListener, inject, output, TemplateRef, viewChild, viewChildren,} from '@angular/core';
 import {FormControl, FormsModule, ReactiveFormsModule, ValidationErrors, Validators,} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatDividerModule} from '@angular/material/divider';
@@ -180,11 +180,10 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
   `;
   readonly SEARCH_VIEWS = SEARCH_VIEWS;
 
-  constructor(
-    @Inject(ElementRef) elementRef: ElementRef<HTMLElement>,
-    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
-  ) {
-    super(elementRef);
+  private changeDetectorRef = inject(ChangeDetectorRef);
+
+  constructor() {
+    super();
 
     effect(() => {
       const data = this.inputData();

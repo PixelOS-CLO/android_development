@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component, computed, ElementRef, Inject, input, output, TemplateRef, viewChild,} from '@angular/core';
+import {Component, computed, ElementRef, inject, input, output, TemplateRef, viewChild,} from '@angular/core';
 import {MatDividerModule} from '@angular/material/divider';
 import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections/collapsible_section_title_component';
 import {SearchBoxComponent} from '@app/shared/search_box/search_box_component';
@@ -84,6 +84,8 @@ export class PropertiesComponent {
     );
   });
 
+  private readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
+
   readonly heightPredictor = new PropertyNodeHeightPredictor(
     this.elementRef,
     (index: number) => {
@@ -92,10 +94,6 @@ export class PropertiesComponent {
   );
 
   private readonly tree = viewChild(TreeComponent<UiPropertyTreeNode>);
-
-  constructor(
-    @Inject(ElementRef) private readonly elementRef: ElementRef<HTMLElement>,
-  ) {}
 
   onFilterChange(detail: TextFilter) {
     this.filterChange.emit(detail);

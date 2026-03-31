@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {Inject, Injectable, NgZone} from '@angular/core';
+import {inject, Injectable, NgZone} from '@angular/core';
 import {MatSnackBar} from '@angular/material/snack-bar';
 import {assertDefined} from '@common/assert';
 import {NotificationType, UserNotification} from '@messaging/user_notification';
@@ -33,10 +33,8 @@ export class SnackBarOpener implements UserNotificationListener {
   private isOpen = false;
   private queue: Messages[] = [];
 
-  constructor(
-    @Inject(NgZone) private ngZone: NgZone,
-    @Inject(MatSnackBar) private snackBar: MatSnackBar,
-  ) {}
+  private ngZone = inject(NgZone);
+  private snackBar = inject(MatSnackBar);
 
   onNotifications(notifications: UserNotification[]) {
     const messages = this.convertNotificationsToMessages(notifications);

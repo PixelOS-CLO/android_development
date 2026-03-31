@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {Component, ComponentRef, ElementRef, Inject, Type} from '@angular/core';
+import {Component, ComponentRef, ElementRef, inject, Type} from '@angular/core';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {EmitEvent} from '@messaging/winscope_event_emitter';
 import {Trace} from '@trace_api/trace';
@@ -28,9 +28,7 @@ import {AngularViewer, ViewerComponent} from './angular_viewer';
 })
 class ViewerStubComponent implements ViewerComponent {
   text = '';
-  constructor(
-    @Inject(ElementRef) readonly elementRef: ElementRef<HTMLElement>,
-  ) {}
+  readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
 }
 
 export class ViewerStub implements AngularViewer {
