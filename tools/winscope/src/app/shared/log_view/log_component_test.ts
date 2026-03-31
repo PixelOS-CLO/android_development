@@ -43,9 +43,9 @@ import {Timestamp} from '@common/time/time';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {LogSelectFilter, LogTextFilter} from '@ui/shared/log/log_filters';
-import {ColumnSpec, LogEntry, LogField, LogHeader,} from '@ui/shared/log/ui_data_log';
+import {ColumnSpec, LogEntry, LogField, LogFilterChangeDetail, LogHeader, LogTextFilterChangeDetail,} from '@ui/shared/log/ui_data_log';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
-import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
+import {TimestampClickDetail} from '@ui/shared/viewers/viewer_event_details';
 
 import {LogComponent} from './log_component';
 import {SelectWithFilterComponent} from './select_with_filter_component';
