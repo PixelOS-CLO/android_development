@@ -572,7 +572,7 @@ describe('Mediator', () => {
       // keep timestamp for later
       await mediator.onWinscopeEvent(
         new RemoteToolTimestampReceived(() => {
-          return makeRealTimestamp(BigInt(1659107089233029344));
+          return makeRealTimestamp(BigInt('1659107089233029344'));
         }),
       );
       expect(timelineComponent.onWinscopeEvent).not.toHaveBeenCalled();
@@ -580,7 +580,7 @@ describe('Mediator', () => {
       // keep timestamp for later (replace previous one)
       await mediator.onWinscopeEvent(
         new RemoteToolTimestampReceived(() => {
-          return makeRealTimestamp(1659107090005226366n);
+          return makeRealTimestamp(BigInt('1659107090005226366'));
         }),
       );
       expect(timelineComponent.onWinscopeEvent).not.toHaveBeenCalled();

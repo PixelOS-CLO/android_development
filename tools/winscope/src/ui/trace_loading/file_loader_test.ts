@@ -187,7 +187,7 @@ describe('FileLoader', () => {
 
     const onEventSpy = spyOn(TraceFileIdentifier.prototype, 'onWinscopeEvent');
     const testEvent = new BugreportFileSelected('f1');
-    fileLoader.onWinscopeEvent(testEvent);
+    await fileLoader.onWinscopeEvent(testEvent);
     expect(onEventSpy).toHaveBeenCalledOnceWith(testEvent);
   });
 

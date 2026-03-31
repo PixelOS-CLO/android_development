@@ -1168,7 +1168,7 @@ describe('AppComponent', () => {
         legacy: [],
         nonPerfetto: [
           new TestFileReaderAndParserBuilder()
-            .setTimestamps([makeRealTimestamp(1n)])
+            .setTimestamps([makeRealTimestamp(BigInt(1))])
             .setType(TraceType.SCREEN_RECORDING)
             .build(),
         ],

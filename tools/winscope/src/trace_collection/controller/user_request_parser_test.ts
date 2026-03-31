@@ -18,7 +18,7 @@ import {AdbDeviceState} from '@trace_collection/adb_device_connection';
 import {ConnectionStateListener} from '@trace_collection/connection_state_listener';
 import {MockAdbDeviceConnection} from '@trace_collection/mock/mock_adb_device_connection';
 import {AdbFileIdentifier, TraceTarget} from '@trace_collection/trace_target';
-import {UiTraceTarget} from '@trace_collection/ui_trace_target';
+import {UiTraceTarget} from '@trace_collection/ui/ui_trace_target';
 import {UserRequest, UserRequestConfig} from '@trace_collection/user_request';
 
 import {PerfettoSessionModerator} from './perfetto_session_moderator';

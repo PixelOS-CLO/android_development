@@ -54,7 +54,7 @@ describe('PropertyTreeNodeDataViewComponent', () => {
 
   it('can emit timestamp', () => {
     const spy = spyOn(component.timestampClick, 'emit');
-    const ts = makeRealTimestamp(BigInt(1659126889102158832));
+    const ts = makeRealTimestamp(BigInt('1659126889102158832'));
     const node = UiPropertyTreeNode.from(
       new PropertyTreeBuilder()
         .setRootId('test node')

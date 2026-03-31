@@ -162,7 +162,9 @@ describe('DefaultTimelineRowComponent', () => {
     const rectHeight = component.canvasDrawer.getScaledCanvasHeight();
     const rectWidth = rectHeight;
 
-    expect(assertDefined(component.hoveringEntry).getValueNs()).toBe(10n);
+    expect(assertDefined(component.hoveringEntry).getValueNs()).toBe(
+      BigInt(10),
+    );
     expect(drawRectSpy).toHaveBeenCalledTimes(1);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, 0, rectWidth, rectHeight),
