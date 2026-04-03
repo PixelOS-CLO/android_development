@@ -15,8 +15,8 @@
  */
 
 import {HttpRequest, HttpRequestHeaderType, HttpRequestStatus, HttpResponse,} from '@common/http_request';
-import {waitToBeCalled} from '@test/unit/spy_utils';
-import {AdbDeviceConnection, AdbDeviceState,} from '@trace_collection/adb/adb_device_connection';
+import {waitToBeCalled} from '@common/testing/spy_utils';
+import {AdbDeviceConnection, AdbDeviceState,} from '@trace_collection/adb_device_connection';
 import {ConnectionState} from '@trace_collection/connection_state';
 import {ConnectionStateListener} from '@trace_collection/connection_state_listener';
 

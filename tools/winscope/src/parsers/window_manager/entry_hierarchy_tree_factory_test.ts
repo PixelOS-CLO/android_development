@@ -18,7 +18,7 @@ import {assertDefined} from '@common/assert';
 import {Rect} from '@common/geometry/rect';
 import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {ColumnType, QueryResult, RowIterator,} from '@trace_processor/query_result';
-import {makeSpyQueryResult, makeSpyRowIterator, setupMockIteratorWithRows,} from '@trace_processor/test_utils';
+import {makeSpyQueryResult, makeSpyRowIterator, setupMockIteratorWithRows,} from '@trace_processor/testing/test_utils';
 import {TraceProcessor} from '@trace_processor/trace_processor';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {RectsForTrace, SnapshotRects} from '@tree_node/rect_extractor_result';
@@ -83,11 +83,17 @@ describe('EntryHierarchyTreeFactory', () => {
       const trees = makeHierarchyTrees();
       expect(trees.length).toBe(2);
       expect(
-        trees[0].getEagerPropertyByName('focusedDisplayId')?.getValue(),
-      ).toEqual(14n);
+        trees[0]
+          .getEagerPropertyByName('focusedDisplayId')
+          ?.getValue()
+          ?.toString(),
+      ).toEqual('14');
       expect(
-        trees[1].getEagerPropertyByName('focusedDisplayId')?.getValue(),
-      ).toEqual(12n);
+        trees[1]
+          .getEagerPropertyByName('focusedDisplayId')
+          ?.getValue()
+          ?.toString(),
+      ).toEqual('12');
 
       const displayContent = assertDefined(
         trees[0].getChildByName('Container1'),

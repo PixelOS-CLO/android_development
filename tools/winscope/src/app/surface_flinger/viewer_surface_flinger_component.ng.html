@@ -1,0 +1,132 @@
+<!--
+Copyright (C) 2025 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+ou may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<div class="card-grid">
+  <collapsed-sections
+    [class.empty]="sections.areAllSectionsExpanded()"
+    [sections]="sections"
+    (sectionChange)="sections.onCollapseStateChange($event, false)"
+  >
+  </collapsed-sections>
+
+  @let data = inputData();
+  @let currStore = store();
+
+  <rects-view
+    class="rects-view"
+    [class.collapsed]="sections.isSectionCollapsed(CollapsibleSectionType.RECTS)"
+    [class.disabled-component]="data?.isPlaybackInitializing"
+    [title]="getRectsTitle()"
+    [store]="currStore"
+    [isStackBased]="true"
+    [rects]="data?.rectsToDraw ?? []"
+    [highlightedItem]="data?.highlightedItem ?? ''"
+    [displays]="data?.displays ?? []"
+    [shadingModes]="shadingModes"
+    [dependencies]="data?.dependencies ?? []"
+    [userOptions]="data?.rectsUserOptions ?? {}"
+    [pinnedIds]="pinnedIds()"
+    [isDarkMode]="data?.isDarkMode ?? false"
+    [rectSpec]="data?.rectSpec"
+    [allRectSpecs]="data?.allRectSpecs"
+    (collapseButtonClicked)="sections.onCollapseStateChange(CollapsibleSectionType.RECTS, true)"
+    (rectsDblClick)="onRectsDblClick.emit($event)"
+    (rectTypeButtonClick)="onRectTypeButtonClick.emit($event)"
+    (highlightedIdChange)="onHighlightedIdChange.emit($event)"
+    (optionsChange)="onRectsUserOptionsChange.emit($event)"
+  ></rects-view>
+
+  <hierarchy-view
+    class="hierarchy-view"
+    [class.collapsed]="sections.isSectionCollapsed(CollapsibleSectionType.HIERARCHY)"
+    [class.disabled-component]="data?.isPlaybackInitializing"
+    [nodeRows]="data?.hierarchyNodes ?? []"
+    [dependencies]="data?.dependencies ?? []"
+    [highlightedItem]="data?.highlightedItem ?? ''"
+    [pinnedItems]="data?.pinnedItems ?? []"
+    [textFilter]="data?.hierarchyFilter"
+    [store]="currStore"
+    [userOptions]="data?.hierarchyUserOptions ?? {}"
+    [rectIdToShowState]="data?.rectIdToShowState"
+    (collapseButtonClicked)="sections.onCollapseStateChange(CollapsibleSectionType.HIERARCHY, true)"
+    (filterChange)="onHierarchyFilterChange.emit($event)"
+    (highlightedNodeChange)="onHighlightedNodeChange.emit($event)"
+    (pinnedItemChange)="onHierarchyPinnedChange.emit($event)"
+    (optionsChange)="onHierarchyUserOptionsChange.emit($event)"
+    (rectShowStateChange)="onRectShowStateChange.emit($event)"
+  ></hierarchy-view>
+
+  @if (!arePropertiesCollapsed()) {
+    <div
+      class="properties"
+      [class.disabled-component]="data?.isPlaybackPlaying || data?.isPlaybackInitializing"
+    >
+      @if (data?.isPlaybackPlaying) {
+        <div class="disabled-message user-notification mat-body-1">
+          Properties disabled due to playback
+        </div>
+      }
+      @let curatedCollapsed =
+        sections.isSectionCollapsed(CollapsibleSectionType.CURATED_PROPERTIES);
+      @let dumpCollapsed = sections.isSectionCollapsed(CollapsibleSectionType.PROPERTIES);
+      <surface-flinger-property-groups
+        #propertyGroups
+        class="property-groups"
+        [class.empty]="!data?.curatedProperties && !dumpCollapsed"
+        [class.collapsed]="curatedCollapsed"
+        [properties]="data?.curatedProperties"
+        (collapseButtonClicked)="
+          sections.onCollapseStateChange(CollapsibleSectionType.CURATED_PROPERTIES, true)
+        "
+        (highlightedIdChange)="onHighlightedIdChange.emit($event)"
+      ></surface-flinger-property-groups>
+
+      @if (!curatedCollapsed && !dumpCollapsed) {
+        <resizer
+          class="small-icon-container"
+          dragAxis="vertical"
+          [dependentView]="propertyGroups.elementRef.nativeElement"
+          [store]="currStore"
+          [storeKey]="'sfPropertiesHeight'"
+        >
+        </resizer>
+      }
+
+      <properties-view
+        class="properties-view"
+        [class.disabled]="data?.isPlaybackPlaying || data?.isPlaybackInitializing"
+        [class.collapsed]="dumpCollapsed"
+        [title]="propertiesTitle"
+        [userOptions]="data?.propertiesUserOptions ?? {}"
+        [nodeRows]="data?.propertyNodes ?? []"
+        [highlightedProperty]="data?.highlightedProperty ?? ''"
+        [traceType]="TraceType.SURFACE_FLINGER"
+        [store]="currStore"
+        [isProtoDump]="true"
+        placeholderText="No selected entry or layer."
+        [textFilter]="data?.propertiesFilter"
+        (collapseButtonClicked)="
+          sections.onCollapseStateChange(CollapsibleSectionType.PROPERTIES, true)
+        "
+        (filterChange)="onPropertiesFilterChange.emit($event)"
+        (optionsChange)="onPropertiesUserOptionsChange.emit($event)"
+        (highlightedPropertyChange)="onHighlightedPropertyChange.emit($event)"
+        (timestampClick)="onTimestampClick.emit($event)"
+        (propagatePropertyClick)="onPropagatePropertyClick.emit($event)"
+      ></properties-view>
+    </div>
+  }
+</div>

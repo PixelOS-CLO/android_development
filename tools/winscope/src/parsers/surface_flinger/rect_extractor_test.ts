@@ -20,7 +20,7 @@ import {Region} from '@common/geometry/region';
 import {TransformMatrix} from '@common/geometry/transform_matrix';
 import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {ColumnType, QueryResult, RowIterator,} from '@trace_processor/query_result';
-import {makeSpyQueryResult, makeSpyRowIterator, setupMockIteratorWithRows,} from '@trace_processor/test_utils';
+import {makeSpyQueryResult, makeSpyRowIterator, setupMockIteratorWithRows,} from '@trace_processor/testing/test_utils';
 import {RectsForTrace, SnapshotRects} from '@tree_node/rect_extractor_result';
 import {TraceRect} from '@tree_node/trace_rect';
 import {TraceRectBuilder} from '@tree_node/trace_rect_builder';

@@ -45,7 +45,6 @@
       ["String", "Use 'string' instead."],
       ["Number", "Use 'number' instead."],
       ["Boolean", "Use 'boolean' instead."],
-      // Add tests in google3/javascript/typescript/tslint/test/googleConfig/ban_types.ts.lint
       ["AnyDuring(?!((CelloJs|AngularIvy|Drive|1TF|AllAsUnknown|GoogPromiseThen|Search|DWE|Assisted)Migration)).*",
        "AnyDuringMigration is a quick-fix used during TypeScript migrations, and should be removed as soon as possible. See http://go/any_during_migration."]
     ],

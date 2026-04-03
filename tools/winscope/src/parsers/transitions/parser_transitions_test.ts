@@ -15,8 +15,8 @@
  */
 
 import {assertDefined} from '@common/assert';
-import {makeRealTimestamp, timestampEqualityTester,} from '@common/time/test_helpers';
-import {getPerfettoParser} from '@test/unit/parsers/fixture_utils';
+import {makeRealTimestamp, timestampEqualityTester,} from '@common/time/testing/test_helpers';
+import {getPerfettoParser} from '@parsers/testing/fixture_utils';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {Parser} from '@trace_api/parser';
 import {TraceType} from '@trace_api/trace_type';
@@ -65,9 +65,9 @@ describe('PerfettoParserTransitions', () => {
     it('extracts eager properties', async () => {
       const entry0 = await parser.getEntry(0);
 
-      expect(entry0.getEagerPropertyByName('transitionId')?.getValue()).toBe(
-        32n,
-      );
+      expect(
+        entry0.getEagerPropertyByName('transitionId')?.getValue()?.toString(),
+      ).toBe('32');
       expect(
         entry0.getEagerPropertyByName('transitionType')?.formattedValue(),
       ).toBe('OPEN');
@@ -139,7 +139,7 @@ describe('PerfettoParserTransitions', () => {
 
       const properties = await entry0.getAllProperties();
 
-      expect(properties.getChildByName('id')?.getValue()).toBe(32);
+      expect(properties.getChildByName('id')?.getValue<number>()).toBe(32);
       expect(properties.getChildByName('createTimeNs')?.formattedValue()).toBe(
         '2023-11-21, 13:30:25.429',
       );
@@ -149,7 +149,7 @@ describe('PerfettoParserTransitions', () => {
       expect(properties.getChildByName('finishTimeNs')?.formattedValue()).toBe(
         '2023-11-21, 13:30:25.970',
       );
-      expect(entry0.getEagerPropertyByName('status')?.getValue()).toBe(
+      expect(entry0.getEagerPropertyByName('status')?.getValue<string>()).toBe(
         'played',
       );
 

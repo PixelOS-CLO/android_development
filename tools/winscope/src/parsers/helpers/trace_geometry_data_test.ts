@@ -16,7 +16,7 @@
 
 import {Rect} from '@common/geometry/rect';
 import {TransformMatrix} from '@common/geometry/transform_matrix';
-import {makeSpyQueryResult, makeSpyRowIterator, setupMockIteratorWithRows,} from '@trace_processor/test_utils';
+import {makeSpyQueryResult, makeSpyRowIterator, setupMockIteratorWithRows,} from '@trace_processor/testing/test_utils';
 import {TraceProcessor} from '@trace_processor/trace_processor';
 
 import {buildTraceGeometryData, TraceGeometryData} from './trace_geometry_data';

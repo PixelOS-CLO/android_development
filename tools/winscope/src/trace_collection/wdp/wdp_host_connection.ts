@@ -17,7 +17,7 @@
 import {showPopupWindow} from '@common/window';
 import {getLogger, Logger} from '@compat/logging';
 import {AdbConnectionType} from '@trace_collection/adb_connection_type';
-import {AdbHostConnection} from '@trace_collection/adb/adb_host_connection';
+import {AdbHostConnection} from '@trace_collection/adb_host_connection';
 import {ConnectionState} from '@trace_collection/connection_state';
 import {ConnectionStateListener} from '@trace_collection/connection_state_listener';
 
@@ -72,17 +72,19 @@ export class WdpHostConnection extends AdbHostConnection<WdpDeviceConnection> {
   }
 
   private async handleRequestDevicesResponse(data: string) {
-    const resp: WdpRequestDevicesResponse = JSON.parse(data);
+    const resp: WdpRequestDevicesResponse = JSON.parse(
+      data,
+    ) as WdpRequestDevicesResponse;
     if (
       resp.error?.type === 'ORIGIN_NOT_ALLOWLISTED' &&
       resp.error.approveUrl !== undefined
     ) {
       const popup = this.showWindow(resp.error.approveUrl);
       if (popup === false) {
-        this.listener.onError(`Please enable popups and try again.`);
+        void this.listener.onError(`Please enable popups and try again.`);
         return;
       }
-      this.setState(ConnectionState.UNAUTH);
+      void this.setState(ConnectionState.UNAUTH);
       return;
     } else if (resp.error !== undefined) {
       this.logger.error(
@@ -90,11 +92,11 @@ export class WdpHostConnection extends AdbHostConnection<WdpDeviceConnection> {
           resp.error,
         )}`,
       );
-      this.listener.onError(resp.error.message ?? 'Unknown WDP Error');
+      void this.listener.onError(resp.error.message ?? 'Unknown WDP Error');
       return;
     }
     await this.onRequestDevicesResponse(resp);
-    this.setState(ConnectionState.IDLE);
+    void this.setState(ConnectionState.IDLE);
     return;
   }
 

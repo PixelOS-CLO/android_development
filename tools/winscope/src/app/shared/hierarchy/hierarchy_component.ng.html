@@ -1,0 +1,109 @@
+<!--
+Copyright (C) 2025 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+ou may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<div class="view-header">
+  @let pinned = pinnedItems();
+  @let highlighted = highlightedItem();
+  <div class="title-section">
+    <collapsible-section-title
+      class="hierarchy-title"
+      title="HIERARCHY"
+      (collapseButtonClicked)="collapseButtonClicked.emit()"
+    ></collapsible-section-title>
+    <search-box
+      formFieldClass="applied-field mat-form-field-appearance-none"
+      subscriptSizing="dynamic"
+      [textFilter]="textFilter()"
+      (filterChange)="onFilterChange($event)"
+    ></search-box>
+  </div>
+  <user-options
+    class="view-controls"
+    [userOptions]="userOptions()"
+    (optionsChange)="optionsChange.emit($event)"
+    [traceType]="dependencies()[0]"
+    [logCallback]="Analytics.Navigation.logHierarchySettingsChanged"
+  >
+  </user-options>
+  @let treeWarnings = warnings();
+  @if (treeWarnings.length > 0) {
+    <div>
+      @for (warning of treeWarnings; track $index) {
+        <span
+          class="mat-body-1 warning"
+          [matTooltip]="warning.message"
+          [matTooltipDisabled]="disableTooltip(warningEl)"
+        >
+          <mat-icon class="warning-icon icon-small"> warning </mat-icon>
+          <span class="warning-message text-no-overflow" #warningEl>{{ warning.message }}</span>
+        </span>
+      }
+    </div>
+  }
+  @let tableProps = tableProperties() ?? undefined;
+  @if (tableProps !== undefined) {
+    <properties-table class="properties-table" [properties]="tableProps"></properties-table>
+  }
+
+  <ng-template #dataView let-node="node">
+    <hierarchy-tree-node-data-view [node]="node"></hierarchy-tree-node-data-view>
+  </ng-template>
+
+  @if (pinned.length > 0) {
+    <div class="pinned-items">
+      @for (pinnedItem of pinned; track pinnedItem.id) {
+        @let isItemHighlighted = isHighlighted(pinnedItem, highlighted);
+        <tree-node
+          class="node full-opacity"
+          [class]="pinnedItem.getDiff()"
+          [class.selected]="isItemHighlighted"
+          [class.clickable]="true"
+          [node]="pinnedItem"
+          [isPinned]="true"
+          [isInPinnedSection]="true"
+          [isSelected]="isItemHighlighted"
+          [dataView]="dataView"
+          (pinNodeChange)="onPinnedItemChange($event)"
+          (click)="onPinnedNodeClick($event, pinnedItem)"
+        ></tree-node>
+      }
+    </div>
+  }
+</div>
+<mat-divider></mat-divider>
+@if (showPlaceholderText()) {
+  <span class="mat-body-1 placeholder-text">{{ getPlaceholderText() }}</span>
+}
+@let rows = nodeRows();
+@if (rows.length > 0) {
+  <tree-view
+    class="tree"
+    [nodeRows]="rows"
+    [heightPredictor]="heightPredictor"
+    [isFlattened]="isFlattened()"
+    [useStoredExpandedState]="true"
+    [highlightedItem]="highlighted"
+    [pinnedItems]="pinned"
+    [itemsClickable]="true"
+    [rectIdToShowState]="rectIdToShowState()"
+    [store]="treeStorage"
+    [handleArrowPress]="true"
+    [dataView]="dataView"
+    (highlightedChange)="onHighlightedItemChange($event)"
+    (pinnedItemChange)="onPinnedItemChange($event)"
+    (rectShowStateChange)="onRectShowStateChange($event)"
+  ></tree-view>
+}

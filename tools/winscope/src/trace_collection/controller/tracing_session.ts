@@ -15,7 +15,7 @@
  */
 
 import {getLogger, Logger} from '@compat/logging';
-import {AdbDeviceConnection} from '@trace_collection/adb/adb_device_connection';
+import {AdbDeviceConnection} from '@trace_collection/adb_device_connection';
 import {TraceTarget} from '@trace_collection/trace_target';
 
 import {WINSCOPE_BACKUP_DIR} from './winscope_backup_dir';
@@ -85,7 +85,7 @@ export class TracingSession {
   }
 
   async onDestroy(device: AdbDeviceConnection) {
-    this.stop(device);
+    await this.stop(device);
   }
 
   private async setup(device: AdbDeviceConnection) {

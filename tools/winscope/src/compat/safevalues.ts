@@ -50,3 +50,10 @@ export function objectUrlFromSafeSource(source: Blob): string {
 export function trustedResourceUrl(url: string): string {
   return url;
 }
+
+/**
+ * Unwraps a SafeUrl back into a string.
+ */
+export function unwrapSafeUrl(url: string): string {
+  return url;
+}

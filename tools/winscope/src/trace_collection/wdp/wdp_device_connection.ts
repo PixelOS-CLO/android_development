@@ -19,7 +19,7 @@ import {binaryEncode, utf8Decode} from '@common/string_helpers';
 import {showPopupWindow} from '@common/window';
 import {getLogger, Logger} from '@compat/logging';
 import {UserNotifier} from '@services/user_notifier';
-import {AdbDeviceConnection, AdbDeviceConnectionListener, AdbDeviceState,} from '@trace_collection/adb/adb_device_connection';
+import {AdbDeviceConnection, AdbDeviceConnectionListener, AdbDeviceState,} from '@trace_collection/adb_device_connection';
 import {TraceTarget} from '@trace_collection/trace_target';
 import {makeWarningProxyTracingErrors, makeWarningProxyTracingWarnings,} from '@trace_collection/warnings';
 
@@ -154,7 +154,7 @@ export class WdpDeviceConnection extends AdbDeviceConnection {
     };
     const stream = this.createShellStream(dataListener);
     this.screenRecordingStreams.set(target.traceName, stream);
-    stream.complete.then(() => {
+    void stream.complete.then(() => {
       const stdout = utf8Decode(cmdOut.get());
       const index = stdout.indexOf('ERROR');
       if (index === -1) {
@@ -174,7 +174,7 @@ export class WdpDeviceConnection extends AdbDeviceConnection {
 
   private createShellStream(dataListener: DataListener): ShellStream {
     const errorListener = async (msg: string) => {
-      this.listener.onError(msg);
+      await this.listener.onError(msg);
     };
     const sock = new WebSocket(WdpDeviceConnection.WDP_ADB_URL);
     return this.streamProvider.createShellStream(
@@ -183,7 +183,7 @@ export class WdpDeviceConnection extends AdbDeviceConnection {
       dataListener,
       async (msg: string) => {
         this.logger.error(msg);
-        errorListener(msg);
+        await errorListener(msg);
       },
     );
   }

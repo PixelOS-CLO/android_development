@@ -19,7 +19,7 @@ import {Rect} from '@common/geometry/rect';
 import {UINT32_MAX} from '@common/math';
 import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {ColumnType, QueryResult, RowIterator,} from '@trace_processor/query_result';
-import {makeSpyQueryResult, makeSpyRowIterator, setupMockIteratorWithRows,} from '@trace_processor/test_utils';
+import {makeSpyQueryResult, makeSpyRowIterator, setupMockIteratorWithRows,} from '@trace_processor/testing/test_utils';
 import {TraceProcessor} from '@trace_processor/trace_processor';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {RectsForTrace, SnapshotRects} from '@tree_node/rect_extractor_result';
@@ -31,7 +31,7 @@ describe('EntryHierarchyTreeFactory', () => {
   it('makeTreeNodeId', () => {
     const row = makeSpyRowIterator();
     row.get.withArgs('node_id').and.returnValue(2n);
-    expect(makeTreeNodeId(row)).toBe('ViewNode2');
+    expect(makeTreeNodeId(row, 'TestWindow')).toBe('TestWindowViewNode2');
   });
 
   it('makeTreeNodeName', () => {
@@ -71,10 +71,10 @@ describe('EntryHierarchyTreeFactory', () => {
       ]);
       const trees = makeHierarchyTrees();
       expect(trees.length).toBe(1);
-      expect(trees[0].id).toBe('ViewNode13 TestClass@12345');
+      expect(trees[0].id).toBe('TestWindowViewNode13 TestClass@12345');
 
       const child = assertDefined(trees[0].getChildByName('TestClass@67890'));
-      expect(child.id).toBe('ViewNode20 TestClass@67890');
+      expect(child.id).toBe('TestWindowViewNode20 TestClass@67890');
     });
 
     it('builds hierarchy tree for multiple snapshots', () => {
@@ -87,8 +87,8 @@ describe('EntryHierarchyTreeFactory', () => {
       ]);
       const trees = makeHierarchyTrees();
       expect(trees.length).toBe(2);
-      expect(trees[0].id).toBe('ViewNode13 TestClass@12345');
-      expect(trees[1].id).toBe('ViewNode13 TestClass@54321');
+      expect(trees[0].id).toBe('TestWindowViewNode13 TestClass@12345');
+      expect(trees[1].id).toBe('TestWindowViewNode13 TestClass@54321');
     });
 
     it('builds trees with rects for multiple snapshots', () => {
@@ -165,6 +165,7 @@ describe('EntryHierarchyTreeFactory', () => {
         visibleRects,
         traceProcessor,
         mockTraceGeometryData,
+        'TestWindow',
       );
     }
   });

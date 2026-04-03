@@ -19,7 +19,7 @@ import {HttpRequestHeaderType, HttpResponse} from '@common/http_request';
 import {utf8Decode} from '@common/string_helpers';
 import {getLogger, Logger} from '@compat/logging';
 import {UserNotifier} from '@services/user_notifier';
-import {AdbDeviceConnection, AdbDeviceConnectionListener, AdbDeviceState,} from '@trace_collection/adb/adb_device_connection';
+import {AdbDeviceConnection, AdbDeviceConnectionListener, AdbDeviceState,} from '@trace_collection/adb_device_connection';
 import {ConnectionState} from '@trace_collection/connection_state';
 import {TraceTarget} from '@trace_collection/trace_target';
 import {makeWarningProxyTracingErrors} from '@trace_collection/warnings';
@@ -78,7 +78,7 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
           resolve(this.onSuccessFetchFile(response, filepath));
         },
         async (newState, errorText) => {
-          this.setState(newState, errorText);
+          await this.setState(newState, errorText);
           resolve(Uint8Array.from([]));
         },
         'arraybuffer',
@@ -100,7 +100,8 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
   ) => {
     try {
       const resp = utf8Decode(httpResponse.body);
-      const fileToPath = JSON.parse(resp);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fileToPath = JSON.parse(resp) as any;
       const encodedFileBuffer = fileToPath[filepath];
       return Uint8Array.from(window.atob(encodedFileBuffer), (c) =>
         c.charCodeAt(0),

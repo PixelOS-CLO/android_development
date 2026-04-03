@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import {assertTrue} from '@common/assert';
+
 /**
  * Utility functions for working with timestamps.
  */
@@ -27,6 +29,8 @@ const ISO_TIMESTAMP_REGEX =
 const ELAPSED_TIME_REGEX =
   /^(?=.)([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s)?([0-9]+ms)?([0-9]+ns)?$/;
 const NS_TIME_REGEX = /^\s*[0-9]+(\s?ns)?\s*$/;
+const FILENAME_TIME_REGEX =
+  /_[0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|(02)-(0[1-9]|[12][0-9]))_(0[0-9]|1[0-9]|2[0-3])_(0[0-9]|[1-5][0-9])_(0[0-9]|[1-5][0-9])$/;
 
 /**
  * Represents a timestamp string provided by a user.
@@ -83,6 +87,17 @@ export class UserTimestamp {
    */
   isISOFormat(): boolean {
     return ISO_TIMESTAMP_REGEX.test(this.timestampHuman);
+  }
+
+  /**
+   * Adds or replaces filename format timestamp (_YYYY-MM-DD_HH_MM) with new value.
+   *
+   * @return String with replaced timestamp.
+   */
+  addOrReplaceFilenameFormatTimestamp(newTs: string): string {
+    const newValue = '_' + newTs;
+    assertTrue(FILENAME_TIME_REGEX.test(newValue));
+    return this.timestampHuman.replace(FILENAME_TIME_REGEX, '') + newValue;
   }
 
   /**
