@@ -41,9 +41,9 @@ import {RequestedTraceTypes} from '@trace_collection/adb_files';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {AppFilesCollected, AppFilesUploaded, AppInitialized, AppRefreshDumpsRequest, AppResetRequest, AppTraceViewRequest, AppTraceViewRequestHandled,} from '@ui/shared/events/app_events';
 import {ActiveSearchQueriesUpdate, BookmarksChanged, BugreportFileSelected, BugreportFileSelectionRequest, DarkModeToggled, FilterPresetApplyRequest, FilterPresetSaveRequest, NoTraceTargetsSelectedEvent,} from '@ui/shared/events/misc_events';
-import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@ui/shared/events/tabbed_view_events';
 import {PlaybackSpeedChange, PlaybackStateChangeHandled, PlaybackStateChangeRequest,} from '@ui/shared/playback/events';
 import {PlaybackState} from '@ui/shared/playback/playback_state';
+import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@ui/shared/viewers/tabbed_view_events';
 import {Viewer, ViewType} from '@ui/shared/viewers/viewer';
 import {PlaybackStateChangePropagate} from '@ui/timeline/playback_events';
 import {TimelineData} from '@ui/timeline/timeline_data';
@@ -151,7 +151,7 @@ export class Mediator {
   }
 
   private async onAppInitialized(event: WinscopeEvent) {
-    this.abtChromeExtensionProtocol.onWinscopeEvent(event);
+    void this.abtChromeExtensionProtocol.onWinscopeEvent(event);
   }
 
   private async onAppFilesUploaded(event: AppFilesUploaded) {
@@ -295,7 +295,7 @@ export class Mediator {
   private async onScreenRecordingChange(event: ScreenRecordingChange) {
     this.screenRecordingTrace = event.trace;
     this.timelineData.updateCurrentScreenRecordingTrace(event.trace);
-    this.timelineComponent?.onWinscopeEvent(event);
+    await this.timelineComponent?.onWinscopeEvent(event);
     for (const viewer of this.viewers) {
       await viewer.onWinscopeEvent(event);
     }
@@ -336,7 +336,7 @@ export class Mediator {
       (viewer) => viewer.getViewType() === ViewType.GLOBAL_SEARCH,
     );
     const trace = await this.loadedFileData.tryCreateSearchTrace(event.query);
-    this.timelineComponent?.onWinscopeEvent(new TraceSearchCompleted());
+    await this.timelineComponent?.onWinscopeEvent(new TraceSearchCompleted());
     if (!trace) {
       await searchViewer?.onWinscopeEvent(new TraceSearchFailed());
       return;
@@ -399,7 +399,7 @@ export class Mediator {
   }
 
   private async onPlaybackSpeedChange(event: PlaybackSpeedChange) {
-    this.handlePlaybackSpeedChange(event);
+    void this.handlePlaybackSpeedChange(event);
   }
 
   private async onBookmarksChanged(event: BookmarksChanged) {
@@ -534,7 +534,7 @@ export class Mediator {
         new ShowTraceUploadWarning(warning.message),
       );
     }
-    this.loadedFileData.addFiles(result, source);
+    await this.loadedFileData.addFiles(result, source);
   }
 
   private async propagateTracePosition(
@@ -794,9 +794,9 @@ export class Mediator {
       if (viewer === undefined) {
         return;
       }
-      viewer.onWinscopeEvent(event);
+      void viewer.onWinscopeEvent(event);
     }
-    this.propagateToOverlays(event);
+    void this.propagateToOverlays(event);
     return this.timelineComponent?.onWinscopeEvent(event);
   }
 

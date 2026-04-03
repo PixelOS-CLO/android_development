@@ -16,7 +16,7 @@
 
 import {assertDefined} from '@common/assert';
 import {Rect} from '@common/geometry/rect';
-import {DOWNLOAD_FILENAME_REGEX, unzipFile} from '@common/io';
+import {DOWNLOAD_FILENAME_REGEX, getFileExtension, unzipFile} from '@common/io';
 import {getFixtureFile} from '@common/testing/io_helpers';
 import {ASIA_TIMEZONE_INFO, makeRealTimestamp, timestampEqualityTester,} from '@common/time/testing/test_helpers';
 import {TimezoneInfo} from '@common/time/time';
@@ -35,8 +35,9 @@ import {FilesSource} from '@trace_api/files_source';
 import {FrameMapper} from '@trace_api/frame_mapper';
 import {Parser} from '@trace_api/parser';
 import {TraceFile} from '@trace_api/trace_file';
+import {TraceMetadata} from '@trace_api/trace_metadata';
 import {TraceType} from '@trace_api/trace_type';
-import {makeSpyQueryResult} from '@trace_processor/test_utils';
+import {makeSpyQueryResult} from '@trace_processor/testing/test_utils';
 import {TraceProcessorProxy} from '@trace_processor/trace_processor';
 
 import {FileLoader, FileLoaderResult} from './file_loader';
@@ -45,6 +46,10 @@ import {ParsingErrorType} from './parsing_error_type';
 import {makeWarningIncompleteFrameMapping} from './warnings';
 
 describe('LoadedFileData', () => {
+  // YYYY-MM-DD_HH_MM_SS$
+  const filenameTsRegex =
+    '[0-9]{4}-((0[13578]|1[02])-(0[1-9]|[12][0-9]|3[01])|(0[469]|11)-(0[1-9]|[12][0-9]|30)|(02)-(0[1-9]|[12][0-9]))_(0[0-9]|1[0-9]|2[0-3])_(0[0-9]|[1-5][0-9])_(0[0-9]|[1-5][0-9])$';
+
   const emptyTraceGeometryData = new TraceGeometryData();
   const ts0 = makeRealTimestamp(0n);
   const ts1 = makeRealTimestamp(1n);
@@ -159,6 +164,10 @@ describe('LoadedFileData', () => {
     await loadedFileData.addFiles(res, FilesSource.TEST);
     expectLoadResult(2, []);
 
+    expect(loadedFileData.getDownloadArchiveFilename()).toMatch(
+      new RegExp(`${FilesSource.TEST}_`),
+    );
+
     const fileReaders = loadedFileData.getLoadedFileReaders();
     expect(
       fileReaders.every(
@@ -200,6 +209,52 @@ describe('LoadedFileData', () => {
     expect(DOWNLOAD_FILENAME_REGEX.test(downloadFilename)).toBeTrue();
   });
 
+  it('adds source to archive name for download if all files come from same archive', async () => {
+    const archive = await getFixtureFile(
+      'archives/deployment_full_trace_phone_perfetto.zip',
+      'deployment_full_trace_phone_perfetto',
+    );
+    const expectedRegex = new RegExp(
+      `${FilesSource.TEST}_deployment_full_trace_phone_perfetto_`,
+    );
+    await checkDownloadFilename(archive, expectedRegex);
+  });
+
+  it('retains archive name for download without source if source already present', async () => {
+    const archive = await getFixtureFile(
+      'archives/deployment_full_trace_phone_perfetto.zip',
+      FilesSource.TEST + '_deployment_full_trace_phone_perfetto',
+    );
+    const expectedRegex = new RegExp(
+      `${FilesSource.TEST}_deployment_full_trace_phone_perfetto_`,
+    );
+    await checkDownloadFilename(archive, expectedRegex);
+  });
+
+  it('replaces previous upload time of archive to current upload time', async () => {
+    const originalName = 'test_2026-03-27_11_59_12.zip';
+    const archive = await getFixtureFile('archives/winscope.zip', originalName);
+    await checkDownloadFilename(archive, new RegExp(`test_${filenameTsRegex}`));
+    expect(loadedFileData.getDownloadArchiveFilename()).not.toEqual(
+      originalName,
+    );
+  });
+
+  it('replaces previous upload time of file to current upload time', async () => {
+    const originalName = 'SurfaceFlinger_2026-03-27_11_59_12.pb';
+    const archive = await getFixtureFile(
+      'traces/elapsed_and_real_timestamp/SurfaceFlinger.pb',
+      originalName,
+    );
+    await checkDownloadFilename(
+      archive,
+      new RegExp(`SurfaceFlinger_${filenameTsRegex}`),
+    );
+    expect(loadedFileData.getDownloadArchiveFilename()).not.toEqual(
+      originalName,
+    );
+  });
+
   it('surfaces information about packet loss', async () => {
     const res = {
       legacy: [],
@@ -207,9 +262,9 @@ describe('LoadedFileData', () => {
       nonPerfetto: [],
       lostPerfettoPackets: 1,
       traceTypesWithParsingErrors: new Map<TraceType, ParsingErrorType>(),
-      timezoneInfo: undefined,
       traceGeometryData: emptyTraceGeometryData,
       warnings: [],
+      metadata: {},
     };
     await loadedFileData.addFiles(res, FilesSource.TEST);
     expect(loadedFileData.getLostPerfettoPackets()).toBe(1);
@@ -228,9 +283,9 @@ describe('LoadedFileData', () => {
       traceTypesWithParsingErrors: new Map<TraceType, ParsingErrorType>([
         [TraceType.INPUT_METHOD_CLIENTS, ParsingErrorType.DATA_INCORRECT],
       ]),
-      timezoneInfo: undefined,
       traceGeometryData: emptyTraceGeometryData,
       warnings: [],
+      metadata: {},
     };
     await loadedFileData.addFiles(res, FilesSource.TEST);
     expect(loadedFileData.getTraceTypesWithParsingErrors()).toEqual(
@@ -256,9 +311,9 @@ describe('LoadedFileData', () => {
       nonPerfetto: [],
       lostPerfettoPackets: 1,
       traceTypesWithParsingErrors: new Map<TraceType, ParsingErrorType>(),
-      timezoneInfo: undefined,
       traceGeometryData,
       warnings: [],
+      metadata: {},
     };
     await loadedFileData.addFiles(res, FilesSource.TEST);
     expect(loadedFileData.getTraceGeometryData()).toEqual(traceGeometryData);
@@ -592,9 +647,9 @@ describe('LoadedFileData', () => {
       nonPerfetto: [],
       lostPerfettoPackets: 0,
       traceTypesWithParsingErrors: new Map<TraceType, ParsingErrorType>(),
-      timezoneInfo: undefined,
       traceGeometryData: emptyTraceGeometryData,
       warnings: [],
+      metadata: {},
     };
     await loadedFileData.addFiles(res, source);
   }
@@ -605,15 +660,19 @@ describe('LoadedFileData', () => {
     source: FilesSource = FilesSource.TEST,
     timezoneInfo?: TimezoneInfo,
   ) {
+    const metadata: TraceMetadata = {};
+    if (timezoneInfo) {
+      metadata.timezoneInfo = timezoneInfo;
+    }
     const res = {
       legacy: [],
       perfetto,
       nonPerfetto,
       lostPerfettoPackets: 0,
       traceTypesWithParsingErrors: new Map<TraceType, ParsingErrorType>(),
-      timezoneInfo,
       traceGeometryData: emptyTraceGeometryData,
       warnings: [],
+      metadata,
     };
     await loadedFileData.addFiles(res, source);
   }
@@ -637,13 +696,16 @@ describe('LoadedFileData', () => {
     );
   }
 
-  async function expectDownloadResult(expectedArchiveContents: string[]) {
+  async function expectDownloadResult(expFiles: string[]) {
     const zipArchive =
       await loadedFileData.makeZipArchiveWithLoadedTraceFiles();
-    const actualArchiveContents = (await unzipFile(zipArchive))
+    const archiveContents = (await unzipFile(zipArchive))
       .map((file) => file.name)
       .sort();
-    expect(actualArchiveContents).toEqual(expectedArchiveContents);
+    expect(archiveContents).toEqual(expFiles);
+
+    const archiveName = loadedFileData.getDownloadArchiveFilename();
+    expect(getFileExtension(archiveName)).toBeUndefined();
   }
 
   async function checkTraceIsNotDiscarded(
@@ -706,7 +768,7 @@ describe('LoadedFileData', () => {
       lostPerfettoPackets: 0,
       traceTypesWithParsingErrors: new Map<TraceType, ParsingErrorType>(),
       traceGeometryData: emptyTraceGeometryData,
-      timezoneInfo: undefined,
+      metadata: {},
     };
     await loadedFileData.addFiles(res, FilesSource.TEST);
     expectLoadResult(2, []);
@@ -720,5 +782,12 @@ describe('LoadedFileData', () => {
         ? [TraceType.SCREENSHOT, traceType]
         : [traceType, TraceType.SCREENSHOT],
     );
+  }
+
+  async function checkDownloadFilename(archive: File, expectedRegex: RegExp) {
+    const res = await loadFiles([archive]);
+    await loadedFileData.addFiles(res, FilesSource.TEST);
+    expect(loadedFileData.getDownloadArchiveFilename()).toMatch(expectedRegex);
+    userNotifierChecker.reset();
   }
 });

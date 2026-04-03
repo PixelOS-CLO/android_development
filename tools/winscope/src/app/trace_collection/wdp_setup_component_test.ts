@@ -18,12 +18,17 @@ import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {ConnectionState} from '@trace_collection/connection_state';
 
 import {WdpSetupComponent} from './wdp_setup_component';
 
 describe('WdpSetupComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: WdpSetupComponent;
   let dom: DOMTestHelper<WdpSetupComponent>;
 
@@ -71,6 +76,7 @@ describe('WdpSetupComponent', () => {
     expect(windowSpy).toHaveBeenCalledOnceWith(
       'https://tools.google.com/dlpage/android_web_device_proxy',
       '_blank',
+      undefined,
     );
 
     windowSpy.calls.reset();
@@ -78,6 +84,7 @@ describe('WdpSetupComponent', () => {
     expect(windowSpy).toHaveBeenCalledOnceWith(
       'http://go/web-device-proxy#setup',
       '_blank',
+      undefined,
     );
   });
 

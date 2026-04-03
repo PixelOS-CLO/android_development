@@ -34,13 +34,26 @@ ensure consistency and high quality.
 *   **Graphviz/DOT**: System architecture and conceptual diagrams should be
     written in `.dot` format. Keep the `.dot` source file next to the generated
     `.png` in the `images/` directory.
-*   **Screenshots**: It's helpful to the reader to provide screenshots from the
-    different tools used. Automatically generating screenshots can be
-    challenging to automate from the CLI. Instead, generate artifacts to open
-    with the tools (e.g. Perfetto traces to open with ui.perfetto.dev), add a
-    placeholder image in the markdown, and add a markdown comment with the word
-    TODO and instructions for how to produce the required screenshot using the
-    tool. Work with the user to have them generate the screenshot image.
+*   **Screenshots**: Providing screenshots from tools like AHAT or Perfetto is
+    highly encouraged.
+    *   **AHAT Screenshots**: Since AHAT runs as a local web server, screenshots
+        can be captured using a headless browser. However, connecting to
+        `localhost` from a headless browser in restricted environments can be
+        unreliable. A more robust method is to:
+        1.  Start `ahat` on a specific port.
+        2.  Use `curl` to save the target page's HTML and the `style.css` to
+            local files.
+        3.  Use `google-chrome --headless=new --screenshot=...
+            file://$PWD/page.html` to capture the image from the local file.
+    *   **Perfetto Screenshots**: Automatically generating screenshots for
+        `ui.perfetto.dev` is challenging. For these, generate the trace
+        artifact, add a placeholder image in the markdown, and add a markdown
+        comment with a TODO and instructions for how to produce the required
+        screenshot. Work with the user to have them generate the image.
+    *   **Standards**: When generating screenshots, use a display width of at
+        most 800 pixels. Crop the image to contain only relevant information and
+        remove unnecessary whitespace. Review every image for correctness,
+        clarity, and relevance.
 *   **Accessibility**: All images referenced in markdown should include
     descriptive alt text.
 

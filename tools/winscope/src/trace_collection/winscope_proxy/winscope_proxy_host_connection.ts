@@ -79,7 +79,7 @@ export class WinscopeProxyHostConnection extends AdbHostConnection<WinscopeProxy
     try {
       const devices: WinscopeProxyDeviceConnectionResponse[] = JSON.parse(
         resp.text,
-      );
+      ) as WinscopeProxyDeviceConnectionResponse[];
       const curDevs = new Map<string, WinscopeProxyDeviceConnectionResponse>(
         devices.map((d) => [d.id, d]),
       );
@@ -109,13 +109,13 @@ export class WinscopeProxyHostConnection extends AdbHostConnection<WinscopeProxy
           1000,
         );
       }
-      this.setState(ConnectionState.IDLE);
+      await this.setState(ConnectionState.IDLE);
     } catch (err) {
       getLogger('WinscopeProxyHostConnection').error(
         'Could not find devices',
         err,
       );
-      this.setState(
+      await this.setState(
         ConnectionState.ERROR,
         `Could not find devices. Received:\n${resp.text}`,
       );

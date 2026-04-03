@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component, Inject} from '@angular/core';
+import {Component, inject} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MAT_DIALOG_DATA, MatDialogModule} from '@angular/material/dialog';
@@ -32,7 +32,7 @@ import {MAT_DIALOG_DATA, MatDialogModule} from '@angular/material/dialog';
 export class WarningDialogComponent {
   selectedOptions: string[] = [];
 
-  constructor(@Inject(MAT_DIALOG_DATA) public data: WarningDialogData) {}
+  data: WarningDialogData = inject(MAT_DIALOG_DATA);
 
   updateSelectedOptions(clickedOption: string) {
     if (!this.selectedOptions.includes(clickedOption)) {

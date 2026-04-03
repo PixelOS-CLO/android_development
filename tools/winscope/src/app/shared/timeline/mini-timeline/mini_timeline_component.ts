@@ -16,7 +16,7 @@
 
 import {CdkMenuModule} from '@angular/cdk/menu';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, Inject, input, output, signal, viewChild,} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, inject, input, output, signal, viewChild,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {MiniTimelineDrawer} from '@app/shared/timeline/mini-timeline/drawer/mini_timeline_drawer';
@@ -112,9 +112,9 @@ export class MiniTimelineComponent {
   private lastMoves: WheelEvent[] = [];
   private lastRightClickTimeRange = signal<TimeRange | undefined>(undefined);
 
-  constructor(
-    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
-  ) {
+  private changeDetectorRef = inject(ChangeDetectorRef);
+
+  constructor() {
     effect(() => {
       const mouseXRatio = this.expandedTimelineMouseXRatio();
       if (!this.drawer) {
@@ -223,8 +223,8 @@ export class MiniTimelineComponent {
     );
   }
 
-  @HostListener('window:resize', ['$event'])
-  onResize(_: Event) {
+  @HostListener('window:resize')
+  onResize() {
     this.makeHiPPICanvas();
     this.drawer?.draw();
   }
@@ -449,11 +449,11 @@ export class MiniTimelineComponent {
   }
 
   private zoomIn(zoomOn?: Timestamp) {
-    this.zoom({nominator: 6n, denominator: 7n}, zoomOn);
+    this.zoom({nominator: BigInt(6), denominator: BigInt(7)}, zoomOn);
   }
 
   private zoomOut(zoomOn?: Timestamp) {
-    this.zoom({nominator: 8n, denominator: 7n}, zoomOn);
+    this.zoom({nominator: BigInt(8), denominator: BigInt(7)}, zoomOn);
   }
 
   private zoom(
@@ -471,7 +471,7 @@ export class MiniTimelineComponent {
     const cursorPosition = this.currentTracePosition().timestamp;
     const currentMiddle = currentZoomRange.from
       .add(currentZoomRange.to)
-      .div(2n);
+      .div(BigInt(2));
 
     let newFrom: Timestamp;
     let newTo: Timestamp;

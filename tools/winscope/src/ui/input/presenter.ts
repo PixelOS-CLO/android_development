@@ -28,7 +28,6 @@ import {InputEventType} from '@trace/input/input_event_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {FormatDispatchEntry} from '@ui/input/operations/format_dispatch_entry';
-import {TabbedViewSwitchRequest} from '@ui/shared/events/tabbed_view_events';
 import {AbstractLogViewerPresenter, NotifyLogViewCallbackType,} from '@ui/shared/log/abstract_log_viewer_presenter';
 import {LogSelectFilter} from '@ui/shared/log/log_filters';
 import {LogPresenter} from '@ui/shared/log/log_presenter';
@@ -40,6 +39,7 @@ import {makeInputRects} from '@ui/shared/rects/ui_rect_factory';
 import {VISIBLE_CHIP} from '@ui/shared/user_input/chip';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
 import {UserOptions} from '@ui/shared/user_input/user_options';
+import {TabbedViewSwitchRequest} from '@ui/shared/viewers/tabbed_view_events';
 import {convertRectIdToLayerorDisplayName, makeDisplayIdentifiers,} from '@ui/surface_flinger/presenter';
 
 import {InputEntry, UiData} from './ui_data';
@@ -251,7 +251,7 @@ export class Presenter extends AbstractLogViewerPresenter<
       assertStringOrUndefined(this.lastClickedId?.toString()) +
       ' ' +
       this.lastClickedName;
-    this.onHighlightedIdChange(id);
+    await this.onHighlightedIdChange(id);
     this.shouldHandleSpecificClicks = false;
   }
 
@@ -328,7 +328,7 @@ export class Presenter extends AbstractLogViewerPresenter<
     await super.updatePropertiesTree();
     await this.updateDispatchPropertiesTree();
     if (this.shouldHandleWindowPropertyHighlight) {
-      this.handleWindowPropertyHighlight();
+      await this.handleWindowPropertyHighlight();
     }
     await this.updateRects();
   }

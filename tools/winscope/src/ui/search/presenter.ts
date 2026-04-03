@@ -27,7 +27,8 @@ import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {QueryResult} from '@trace_processor/query_result';
 import {ActiveSearchQueriesUpdate} from '@ui/shared/events/misc_events';
-import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
+import {LogFilterChangeDetail, LogTextFilterChangeDetail,} from '@ui/shared/log/ui_data_log';
+import {TimestampClickDetail} from '@ui/shared/viewers/viewer_event_details';
 
 import {SearchResultPresenter} from './search_result_presenter';
 import {CurrentSearch, ListedSearch, SearchResult, UiData} from './ui_data';
@@ -108,7 +109,7 @@ export class Presenter {
 
   async onGlobalSearchSectionClick() {
     if (!this.uiData.initialized) {
-      this.emitWinscopeEvent(new InitializeTraceSearchRequest());
+      await this.emitWinscopeEvent(new InitializeTraceSearchRequest());
     }
   }
 
@@ -116,7 +117,7 @@ export class Presenter {
     const activeSearch = assertDefined(this.findActiveSearch(uid));
     this.resetActiveSearch(activeSearch, query);
     this.runningSearch = activeSearch.search;
-    this.emitWinscopeEvent(new TraceSearchRequest(query));
+    await this.emitWinscopeEvent(new TraceSearchRequest(query));
   }
 
   addSearch(query?: string) {
@@ -212,7 +213,7 @@ export class Presenter {
     this.resetActiveSearch(activeSearch, traceQuery);
     this.runningSearch = undefined;
     this.notifyViewChanged();
-    this.initializeResultPresenter(activeSearch, newTrace);
+    await this.initializeResultPresenter(activeSearch, newTrace);
   }
 
   private updateCurrentSearches() {

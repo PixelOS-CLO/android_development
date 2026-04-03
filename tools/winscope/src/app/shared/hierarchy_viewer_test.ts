@@ -19,6 +19,7 @@ import {TestBed} from '@angular/core/testing';
 import {HierarchyViewerComponentStub} from '@app/shared/hierarchy/testing/hierarchy_viewer_component_stub';
 import {MockViewer} from '@app/shared/testing/mock_hierarchy_viewer';
 import {MockPresenter} from '@app/shared/testing/mock_hierarchy_viewer_presenter';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {Trace} from '@trace_api/trace';
@@ -32,6 +33,10 @@ import {TextFilter} from '@ui/shared/user_input/text_filter';
 import {RectShowStateChangeDetail} from '@ui/shared/viewers/viewer_event_details';
 
 describe('AbstractHierarchyViewer', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let viewer: MockViewer;
   let trace: Trace<HierarchyTreeNode>;
   let componentRef: ComponentRef<HierarchyViewerComponentStub>;

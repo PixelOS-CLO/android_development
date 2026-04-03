@@ -16,7 +16,6 @@
 
 import {getFixtureFile} from '@common/testing/io_helpers';
 import {ASIA_TIMEZONE_INFO} from '@common/time/testing/test_helpers';
-import {TimezoneInfo} from '@common/time/time';
 import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
 import {ProcessedFiles} from '@legacy_file_readers/common/processed_files';
 import {TestFileReaderBuilder} from '@legacy_file_readers/testing/test_file_reader_builder';
@@ -93,6 +92,7 @@ describe('TraceFileIdentifier', () => {
         (file) => tryIdentifyPerfetto(file, []),
       );
       expect(result.perfetto.length).toBe(0);
+      expect(result.metadata?.timezoneInfo).toBeDefined();
 
       const actualLegacy = result.legacy.flatMap((p) => p.getFiles());
       expect(actualLegacy).toEqual([...pickedBugreportFiles, plainTraceFile]);
@@ -193,7 +193,7 @@ describe('TraceFileIdentifier', () => {
         (file) => tryIdentifyPerfetto(file, perfettoFiles),
       );
       expect(result.perfetto.length).toBe(0);
-      expect(result.legacy).toEqual([]);
+      expect(result.legacy.length).toBe(0);
       userNotifierChecker.expectAdded([makeWarningNoValidFiles()]);
     });
 
@@ -208,12 +208,7 @@ describe('TraceFileIdentifier', () => {
         legacyFile,
       ];
 
-      let identifiedTimezoneInfo: TimezoneInfo | undefined;
-      const tryIdentifyLegacyFiles = (
-        files: TraceFile[],
-        timezoneInfo?: TimezoneInfo,
-      ) => {
-        identifiedTimezoneInfo = timezoneInfo;
+      const tryIdentifyLegacyFiles = (files: TraceFile[]) => {
         return tryIdentifyLegacy(files);
       };
 
@@ -225,7 +220,7 @@ describe('TraceFileIdentifier', () => {
       );
       expect(result.legacy.flatMap((f) => f.getFiles())).toEqual([legacyFile]);
       expect(result.perfetto.length).toBe(0);
-      expect(identifiedTimezoneInfo).toEqual(ASIA_TIMEZONE_INFO);
+      expect(result.metadata?.timezoneInfo).toEqual(ASIA_TIMEZONE_INFO);
       userNotifierChecker.expectNone();
     });
 
@@ -245,6 +240,7 @@ describe('TraceFileIdentifier', () => {
         (file) => tryIdentifyPerfetto(file, []),
       );
       expect(result.perfetto.length).toBe(0);
+      expect(result.metadata?.timezoneInfo).toBeDefined();
       expect(
         result.legacy.flatMap((fileReaders) => {
           return fileReaders.getFiles().map((f) => f.file.name);
@@ -322,7 +318,8 @@ describe('TraceFileIdentifier', () => {
         (file) => tryIdentifyPerfetto(file, [perfettoSysTrace]),
       );
       expect(result.perfetto[0].getFiles()).toEqual([perfettoSysTrace]);
-      expect(result.criticalWarnings.length).toBe(0); // No warnings expected
+      expect(result.criticalWarnings.length).toBe(0);
+      expect(result.metadata?.timezoneInfo).toBeDefined();
       userNotifierChecker.expectNone();
     });
 
@@ -343,7 +340,8 @@ describe('TraceFileIdentifier', () => {
         (file) => tryIdentifyPerfetto(file, [perfetto, ...other]),
       );
       expect(result.perfetto[0].getFiles()).toEqual([perfetto]);
-      expect(result.legacy).toEqual([]);
+      expect(result.legacy.length).toBe(0);
+      expect(result.metadata?.timezoneInfo).toBeDefined();
       userNotifierChecker.expectNone();
     }
   });
@@ -390,7 +388,8 @@ describe('TraceFileIdentifier', () => {
         (file) => tryIdentifyPerfetto(file, [small, medium, large]),
       );
       expect(result.perfetto[0].getFiles()[0]).toEqual(large);
-      expect(result.legacy).toEqual([]);
+      expect(result.legacy.length).toBe(0);
+      expect(result.metadata).toBeUndefined();
       userNotifierChecker.expectAdded([
         makeWarningTraceOverridden(small.getDescriptor()),
         makeWarningTraceOverridden(medium.getDescriptor()),
@@ -416,7 +415,8 @@ describe('TraceFileIdentifier', () => {
         (file) => tryIdentifyPerfetto(file, [small, medium, large]),
       );
       expect(result.perfetto[0].getFiles()[0]).toEqual(large);
-      expect(result.legacy).toEqual([]);
+      expect(result.legacy.length).toBe(0);
+      expect(result.metadata).toBeUndefined();
       userNotifierChecker.expectNone();
     });
 
@@ -450,7 +450,8 @@ describe('TraceFileIdentifier', () => {
       expect(result.nonPerfetto.flatMap((f) => f.getFiles())).toEqual([
         screenRecording,
       ]);
-      expect(identifiedMetadata?.screenRecordingOffsets).toEqual({
+      expect(identifiedMetadata).toEqual(result.metadata);
+      expect(result.metadata?.screenRecordingOffsets).toEqual({
         elapsedRealTimeNanos: 0n,
         realToElapsedTimeOffsetNanos: 1732721670187419904n,
       });
@@ -467,7 +468,8 @@ describe('TraceFileIdentifier', () => {
         (file) => tryIdentifyPerfetto(file, [perfettoFile]),
       );
       expect(result.perfetto[0].getFiles()[0]).toEqual(perfettoFile);
-      expect(result.legacy).toEqual([]);
+      expect(result.legacy.length).toBe(0);
+      expect(result.metadata).toBeUndefined();
       userNotifierChecker.expectNone();
     }
   });
@@ -502,6 +504,7 @@ describe('TraceFileIdentifier', () => {
     );
 
     expect(result.perfetto.length).toBe(0);
+    expect(result.metadata?.timezoneInfo).toBeDefined();
     expect(result.criticalWarnings.length).toBe(1);
     const warning = result.criticalWarnings[0];
     expect(warning).toEqual(

@@ -139,7 +139,7 @@ export abstract class AbstractHierarchyViewerComponentTest<
         const timestampClickSpy = spyOn(component.onTimestampClick, 'emit');
         const detail = new TimestampClickDetail(
           undefined,
-          makeElapsedTimestamp(2n),
+          makeElapsedTimestamp(BigInt(2)),
         );
         properties.timestampClick.emit(detail);
         expect(timestampClickSpy).toHaveBeenCalledOnceWith(detail);

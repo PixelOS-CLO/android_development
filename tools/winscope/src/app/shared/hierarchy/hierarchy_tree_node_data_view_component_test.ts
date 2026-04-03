@@ -15,6 +15,7 @@
  */
 import {TestBed} from '@angular/core/testing';
 import {MatTooltipModule} from '@angular/material/tooltip';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeUiHierarchyNode} from '@ui/shared/hierarchy/testing/ui_hierarchy_tree_node_test_helpers';
 import {UiHierarchyTreeNode} from '@ui/shared/hierarchy/ui_hierarchy_tree_node';
@@ -23,6 +24,10 @@ import {VISIBLE_CHIP} from '@ui/shared/user_input/chip';
 import {HierarchyTreeNodeDataViewComponent} from './hierarchy_tree_node_data_view_component';
 
 describe('HierarchyTreeNodeDataViewComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let testNode: UiHierarchyTreeNode;
   let component: HierarchyTreeNodeDataViewComponent;
   let dom: DOMTestHelper<HierarchyTreeNodeDataViewComponent>;

@@ -30,7 +30,7 @@ const CUJ_ICON = 'label';
 const INPUT_ICON = 'touch_app';
 const SEARCH_ICON = 'search';
 
-interface TraceInfoMap {
+export declare interface TraceInfoMap {
   [key: number]: {
     name: string;
     icon: string;

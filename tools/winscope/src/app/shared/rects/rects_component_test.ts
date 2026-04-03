@@ -27,14 +27,15 @@ import {MatSliderModule} from '@angular/material/slider';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections/collapsible_section_title_component';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {UserOptionsComponent} from '@app/shared/user_options/user_options_component';
 import {assertDefined} from '@common/assert';
 import {Box3D} from '@common/geometry/box3d';
 import {TransformMatrix} from '@common/geometry/transform_matrix';
-import {waitToBeCalled} from '@common/spy_utils';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {Store} from '@common/store/store';
 import {checkTooltips, DOMTestHelper} from '@common/testing/dom_test_helpers';
+import {waitToBeCalled} from '@common/testing/spy_utils';
 import {TraceType} from '@trace_api/trace_type';
 import {Camera} from '@ui/shared/rects/camera';
 import {Canvas} from '@ui/shared/rects/canvas';
@@ -50,6 +51,10 @@ import {UiRect3D} from '@ui/shared/rects/ui_rect3d';
 import {RectsComponent} from './rects_component';
 
 describe('RectsComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const rectGroup0 = makeRectWithGroupId(0);
   const rectGroup1 = makeRectWithGroupId(1);
   const rectGroup2 = makeRectWithGroupId(2);
@@ -239,7 +244,7 @@ describe('RectsComponent', () => {
     await checkSelectedDisplay([0], [0]);
     const boundingBox = updateViewPositionSpy.calls.mostRecent().args[1];
 
-    dom.openMatSelect();
+    await dom.openMatSelect();
     const options = getDisplayOptions();
     options[1].click();
     await checkSelectedDisplay([0, 1], [0, 1], true);
@@ -265,7 +270,7 @@ describe('RectsComponent', () => {
     ]);
     await checkSelectedDisplay([0], [0]);
 
-    dom.openMatSelect();
+    await dom.openMatSelect();
     const [display0, display1] = dom
       .getMatSelectPanel()
       .findAll('mat-option .option-only-button');
@@ -484,7 +489,7 @@ describe('RectsComponent', () => {
     await checkSelectedDisplay([1], [1]);
   });
 
-  it('draws mini rects with non-present group id', () => {
+  it('draws mini rects with non-present group id', async () => {
     dom.setComponentInput('displays', [
       {displayId: 10, groupId: 0, name: 'Display 0', isActive: false},
     ]);
@@ -494,7 +499,7 @@ describe('RectsComponent', () => {
     resetSpies();
     dom.detectChanges();
     checkAllSpiesCalled(2);
-    expect(
+    await expect(
       updateRectsSpy.calls
         .all()
         .forEach((call) => expect(call.args[0].length).toBe(1)),
@@ -798,7 +803,7 @@ describe('RectsComponent', () => {
 
     dom.setComponentInput('rects', component.rects().concat([rectGroup1]));
     dom.detectChanges();
-    dom.openMatSelect();
+    await dom.openMatSelect();
     getDisplayOptions()[1].click();
     await checkSelectedDisplay([0, 1], [0, 1], true);
 

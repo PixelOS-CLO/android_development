@@ -24,10 +24,11 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {Rect} from '@common/geometry/rect';
-import {waitToBeCalled} from '@common/spy_utils';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
+import {waitToBeCalled} from '@common/testing/spy_utils';
 import {makeConverterZeroRteOffsets} from '@common/time/testing/test_helpers';
 import {TimeRange} from '@common/time/time';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
@@ -36,6 +37,10 @@ import {TraceType} from '@trace_api/trace_type';
 import {DefaultTimelineRowComponent} from './default_timeline_row_component';
 
 describe('DefaultTimelineRowComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const converter = makeConverterZeroRteOffsets();
 
   let component: DefaultTimelineRowComponent;
@@ -67,7 +72,7 @@ describe('DefaultTimelineRowComponent', () => {
   });
 
   it('can draw entries', async () => {
-    setTraceAndSelectionRange(10n, 110n);
+    setTraceAndSelectionRange(BigInt(10), BigInt(110));
     const drawRectSpy = spyOn(
       component.canvasDrawer,
       'drawRect',
@@ -107,7 +112,7 @@ describe('DefaultTimelineRowComponent', () => {
   });
 
   it('can draw entries zoomed in', async () => {
-    setTraceAndSelectionRange(60n, 85n);
+    setTraceAndSelectionRange(BigInt(60), BigInt(85));
     const drawRectSpy = spyOn(component.canvasDrawer, 'drawRect');
     await dom.detectChangesAndRenderingDone();
 
@@ -127,7 +132,7 @@ describe('DefaultTimelineRowComponent', () => {
   });
 
   it('can draw hovering entry', async () => {
-    setTraceAndSelectionRange(10n, 110n);
+    setTraceAndSelectionRange(BigInt(10), BigInt(110));
     await dom.detectChangesAndRenderingDone();
 
     const drawRectSpy = spyOn(
@@ -157,7 +162,9 @@ describe('DefaultTimelineRowComponent', () => {
     const rectHeight = component.canvasDrawer.getScaledCanvasHeight();
     const rectWidth = rectHeight;
 
-    expect(assertDefined(component.hoveringEntry).getValueNs()).toBe(10n);
+    expect(assertDefined(component.hoveringEntry).getValueNs()).toBe(
+      BigInt(10),
+    );
     expect(drawRectSpy).toHaveBeenCalledTimes(1);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, 0, rectWidth, rectHeight),
@@ -172,14 +179,14 @@ describe('DefaultTimelineRowComponent', () => {
   });
 
   it('can draw correct entry on click of first entry', async () => {
-    setTraceAndSelectionRange(10n, 110n);
+    setTraceAndSelectionRange(BigInt(10), BigInt(110));
     await dom.detectChangesAndRenderingDone();
     // 9 rect draws - 4 entry rects present + 4 for redraw + 1 for selected entry
-    await drawCorrectEntryOnClick(0, 10n, 9);
+    await drawCorrectEntryOnClick(0, BigInt(10), 9);
   });
 
   it('can draw correct entry on click of middle entry', async () => {
-    setTraceAndSelectionRange(10n, 110n);
+    setTraceAndSelectionRange(BigInt(10), BigInt(110));
     await dom.detectChangesAndRenderingDone();
 
     const canvasWidth = Math.floor(
@@ -189,11 +196,11 @@ describe('DefaultTimelineRowComponent', () => {
     const entryPos = Math.floor((canvasWidth * 5) / 100);
 
     // 9 rect draws - 4 entry rects present + 4 for redraw + 1 for selected entry
-    await drawCorrectEntryOnClick(entryPos, 15n, 9);
+    await drawCorrectEntryOnClick(entryPos, BigInt(15), 9);
   });
 
   it('can draw correct entry on click when timeline zoomed in near start', async () => {
-    setTraceAndSelectionRange(10n, 15n);
+    setTraceAndSelectionRange(BigInt(10), BigInt(15));
     await dom.detectChangesAndRenderingDone();
 
     const canvasWidth = Math.floor(
@@ -203,11 +210,11 @@ describe('DefaultTimelineRowComponent', () => {
     const entryPos = Math.floor((canvasWidth * 2) / 5);
 
     // 7 rect draws - 3 entry rects present + 3 for redraw + 1 for selected entry
-    await drawCorrectEntryOnClick(entryPos, 12n, 7);
+    await drawCorrectEntryOnClick(entryPos, BigInt(12), 7);
   });
 
   it('can draw correct entry on click when timeline zoomed in near end', async () => {
-    setTraceAndSelectionRange(60n, 80n);
+    setTraceAndSelectionRange(BigInt(60), BigInt(80));
     await dom.detectChangesAndRenderingDone();
 
     const canvasWidth = Math.floor(
@@ -217,11 +224,11 @@ describe('DefaultTimelineRowComponent', () => {
     const entryPos = Math.floor((canvasWidth * 10) / 20);
 
     // 3 rect draws - 1 entry rects present + 1 for redraw + 1 for selected entry
-    await drawCorrectEntryOnClick(entryPos, 70n, 3);
+    await drawCorrectEntryOnClick(entryPos, BigInt(70), 3);
   });
 
   it('emits scroll event', async () => {
-    setTraceAndSelectionRange(10n, 110n);
+    setTraceAndSelectionRange(BigInt(10), BigInt(110));
     await dom.detectChangesAndRenderingDone();
     const spy = spyOn(component.onScrollEvent, 'emit');
     dom.dispatchEvent(new WheelEvent('wheel'));
@@ -229,7 +236,7 @@ describe('DefaultTimelineRowComponent', () => {
   });
 
   it('tracks mouse position', async () => {
-    setTraceAndSelectionRange(10n, 110n);
+    setTraceAndSelectionRange(BigInt(10), BigInt(110));
     await dom.detectChangesAndRenderingDone();
 
     const spy = spyOn(component.onMouseXRatioUpdate, 'emit');
@@ -256,10 +263,10 @@ describe('DefaultTimelineRowComponent', () => {
         .setType(TraceType.TRANSITION)
         .setEntries([{}, {}, {}, {}])
         .setTimestamps([
-          converter.makeTimestampFromRealNs(10n),
-          converter.makeTimestampFromRealNs(12n),
-          converter.makeTimestampFromRealNs(15n),
-          converter.makeTimestampFromRealNs(70n),
+          converter.makeTimestampFromRealNs(BigInt(10)),
+          converter.makeTimestampFromRealNs(BigInt(12)),
+          converter.makeTimestampFromRealNs(BigInt(15)),
+          converter.makeTimestampFromRealNs(BigInt(70)),
         ])
         .build(),
     );

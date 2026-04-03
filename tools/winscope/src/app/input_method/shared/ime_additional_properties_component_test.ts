@@ -19,6 +19,7 @@ import {MatDividerModule} from '@angular/material/divider';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections/collapsible_section_title_component';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeHierarchyNode, makePropertyNode,} from '@tree_node/testing/tree_node_test_helpers';
 import {ImeAdditionalProperties} from '@ui/input_method/ime_additional_properties';
@@ -27,6 +28,10 @@ import {CoordinatesTableComponent} from './coordinates_table_component';
 import {ImeAdditionalPropertiesComponent} from './ime_additional_properties_component';
 
 describe('ImeAdditionalPropertiesComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: ImeAdditionalPropertiesComponent;
   let dom: DOMTestHelper<ImeAdditionalPropertiesComponent>;
 

@@ -23,9 +23,9 @@ import {Trace} from '@trace_api/trace';
 import {TracePositionUpdate} from '@trace_api/trace_events';
 import {TraceType} from '@trace_api/trace_type';
 import {QueryResult, RowIterator} from '@trace_processor/query_result';
-import {makeSearchTraceSpies} from '@trace_processor/test_utils';
+import {makeSearchTraceSpies} from '@trace_processor/testing/test_utils';
 import {NotifyLogViewCallbackType} from '@ui/shared/log/abstract_log_viewer_presenter';
-import {AbstractLogViewerPresenterTest} from '@ui/shared/log/abstract_log_viewer_presenter_test';
+import {AbstractLogViewerPresenterTest} from '@ui/shared/log/testing/abstract_log_viewer_presenter_test';
 import {LogField, LogHeader} from '@ui/shared/log/ui_data_log';
 
 import {SearchResultPresenter} from './search_result_presenter';

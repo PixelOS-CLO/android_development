@@ -53,7 +53,7 @@ export abstract class AdbWebSocketStream extends WebSocketStream {
           this.onData(new Uint8Array(await e.data.arrayBuffer()));
         } else if (typeof e.data === 'string') {
           try {
-            adbResponse = JSON.parse(e.data);
+            adbResponse = JSON.parse(e.data) as AdbResponse;
           } catch (e) {
             this.logger.error('Failed to decode ADB JSON response: ' + e);
             throw new Error('Failed to decode ADB JSON response');
@@ -69,7 +69,7 @@ export abstract class AdbWebSocketStream extends WebSocketStream {
       } catch (error) {
         this.logger.error('WebSocket failed, state: ' + sock.readyState);
         const errMsg = adbResponse?.error?.message;
-        this.onError(
+        await this.onError(
           `Could not parse data:\nReceived: ${e.data}` +
             `\nError: ${(error as Error).message}.` +
             (errMsg ? `\nADB Error: ` + errMsg : ''),

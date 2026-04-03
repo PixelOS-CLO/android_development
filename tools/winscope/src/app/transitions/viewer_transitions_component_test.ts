@@ -65,7 +65,7 @@ class ViewerTransitionsComponentTest extends AbstractLogViewerComponentTest<View
     const trace = new TraceBuilder<HierarchyTreeNode>()
       .setType(TraceType.TRANSITION)
       .setEntries([this.transitionTree])
-      .setTimestamps([makeElapsedTimestamp(20n)])
+      .setTimestamps([makeElapsedTimestamp(BigInt(20))])
       .build();
     const entry = trace.getEntry(0);
 

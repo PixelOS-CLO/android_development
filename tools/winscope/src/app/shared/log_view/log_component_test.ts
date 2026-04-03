@@ -34,6 +34,7 @@ import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections
 import {PropertiesComponent} from '@app/shared/properties/properties_component';
 import {VirtualRow, VirtualScrollViewportComponent,} from '@app/shared/scroll/virtual_scroll_viewport_component';
 import {SearchBoxComponent} from '@app/shared/search_box/search_box_component';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventKey} from '@common/dom';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
@@ -42,14 +43,18 @@ import {Timestamp} from '@common/time/time';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {LogSelectFilter, LogTextFilter} from '@ui/shared/log/log_filters';
-import {ColumnSpec, LogEntry, LogField, LogHeader,} from '@ui/shared/log/ui_data_log';
+import {ColumnSpec, LogEntry, LogField, LogFilterChangeDetail, LogHeader, LogTextFilterChangeDetail,} from '@ui/shared/log/ui_data_log';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
-import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
+import {TimestampClickDetail} from '@ui/shared/viewers/viewer_event_details';
 
 import {LogComponent} from './log_component';
 import {SelectWithFilterComponent} from './select_with_filter_component';
 
 describe('LogComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const testColumn1: ColumnSpec = {
     name: 'test1',
     cssClass: 'test-1',
@@ -297,7 +302,7 @@ describe('LogComponent', () => {
     const spy = spyOn(component.timestampClick, 'emit');
     dom.findAndClick(`.${testColumn3.cssClass} button`);
     expect(spy).toHaveBeenCalledOnceWith(
-      new TimestampClickDetail(undefined, makeElapsedTimestamp(2n)),
+      new TimestampClickDetail(undefined, makeElapsedTimestamp(BigInt(2))),
     );
   });
 
@@ -544,7 +549,7 @@ describe('LogComponent', () => {
   });
 
   function setTooltipInputData(message: string | undefined) {
-    const entryTime = makeElapsedTimestamp(1n);
+    const entryTime = makeElapsedTimestamp(BigInt(1));
 
     const fields: LogField[] = [
       new LogField(
@@ -583,11 +588,11 @@ describe('LogComponent', () => {
     let entryTime: Timestamp;
     let fieldTime: Timestamp;
     if (elapsed) {
-      entryTime = makeElapsedTimestamp(1n);
-      fieldTime = makeElapsedTimestamp(2n);
+      entryTime = makeElapsedTimestamp(BigInt(1));
+      fieldTime = makeElapsedTimestamp(BigInt(2));
     } else {
-      entryTime = makeRealTimestamp(1n);
-      fieldTime = makeRealTimestamp(2n);
+      entryTime = makeRealTimestamp(BigInt(1));
+      fieldTime = makeRealTimestamp(BigInt(2));
     }
 
     const fields1: LogField[] = [

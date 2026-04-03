@@ -94,3 +94,17 @@ export interface ClickableProperty {
   tooltip: string | undefined;
   onClick: () => void;
 }
+
+export class LogFilterChangeDetail {
+  constructor(
+    public header: LogHeader,
+    public value: string[],
+  ) {}
+}
+
+export class LogTextFilterChangeDetail {
+  constructor(
+    public header: LogHeader,
+    public filter: TextFilter,
+  ) {}
+}

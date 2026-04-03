@@ -42,8 +42,8 @@ import {AdbFiles, RequestedTraceTypes} from '@trace_collection/adb_files';
 import {ConnectionState} from '@trace_collection/connection_state';
 import {ConnectionStateListener} from '@trace_collection/connection_state_listener';
 import {TraceCollectionController} from '@trace_collection/controller/trace_collection_controller';
-import {UiTraceTarget} from '@trace_collection/ui_trace_target';
 import {CheckboxConfiguration, makeDefaultDumpConfigMap, makeDefaultTraceConfigMap, makeProtologGroupOptions, makeScreenRecordingSelectionConfigs, SelectionConfiguration, TraceConfigurationMap, updateConfigsFromStore,} from '@trace_collection/ui/ui_trace_configuration';
+import {UiTraceTarget} from '@trace_collection/ui/ui_trace_target';
 import {UserRequest, UserRequestConfig} from '@trace_collection/user_request';
 import {AppRefreshDumpsRequest} from '@ui/shared/events/app_events';
 import {NoTraceTargetsSelectedEvent} from '@ui/shared/events/misc_events';
@@ -376,7 +376,7 @@ export class CollectTracesComponent
     const dumpConfig = this.dumpConfig();
     const requestedDumps = this.getRequests(dumpConfig);
     if (requestedDumps.length === 0) {
-      this.emitEvent(new NoTraceTargetsSelectedEvent());
+      void this.emitEvent(new NoTraceTargetsSelectedEvent());
       return;
     }
 
@@ -522,7 +522,7 @@ export class CollectTracesComponent
     this.targetTabIndex = 1;
     this.dumpConfig.set(
       updateConfigsFromStore(
-        JSON.parse(JSON.stringify(this.dumpConfig())),
+        JSON.parse(JSON.stringify(this.dumpConfig())) as TraceConfigurationMap,
         this.store(),
         this.storeKeyPrefixDumpConfig,
       ),
@@ -558,7 +558,7 @@ export class CollectTracesComponent
     );
 
     if (requestedTraces.length === 0) {
-      this.emitEvent(new NoTraceTargetsSelectedEvent());
+      void this.emitEvent(new NoTraceTargetsSelectedEvent());
       return;
     }
 

@@ -17,11 +17,16 @@
 import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 
 describe('CollapsibleSectionTitleComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   let component: CollapsibleSectionTitleComponent;
   let dom: DOMTestHelper<CollapsibleSectionTitleComponent>;
 

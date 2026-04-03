@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {MathUtils} from 'three/src/Three';
+import * as THREE from 'three';
 
 import {DraggableCanvasObject} from './draggable_canvas_object';
 import {MiniTimelineDrawer} from './mini_timeline_drawer';
@@ -86,6 +86,6 @@ export class DraggableCanvasObjectImpl implements DraggableCanvasObject {
 
   private clampPositionToRange(x: number): number {
     const range = this.getRange();
-    return MathUtils.clamp(x, range.from, range.to);
+    return THREE.MathUtils.clamp(x, range.from, range.to);
   }
 }

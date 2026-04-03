@@ -28,7 +28,6 @@ import {EMPTY_OBJ_STRING, FixedStringFormatter} from '@trace/formatters';
 import {LayerFlag} from '@trace/surface_flinger/layer_flag';
 import {DataHierarchyTreeNode, HierarchyTreeNode,} from '@tree_node/hierarchy_tree_node';
 import {PropertySource, PropertyTreeNode} from '@tree_node/property_tree_node';
-import {TabbedViewSwitchRequest} from '@ui/shared/events/tabbed_view_events';
 import {AbstractHierarchyViewerPresenter, NotifyHierarchyViewCallbackType,} from '@ui/shared/hierarchy/abstract_hierarchy_viewer_presenter';
 import {HierarchyPresenter, SelectedTree,} from '@ui/shared/hierarchy/hierarchy_presenter';
 import {UiHierarchyTreeNode} from '@ui/shared/hierarchy/ui_hierarchy_tree_node';
@@ -43,6 +42,7 @@ import {makeInputRects, makeUiRects} from '@ui/shared/rects/ui_rect_factory';
 import {VISIBLE_CHIP} from '@ui/shared/user_input/chip';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
 import {UserOptions} from '@ui/shared/user_input/user_options';
+import {TabbedViewSwitchRequest} from '@ui/shared/viewers/tabbed_view_events';
 
 import {UiData} from './ui_data';
 

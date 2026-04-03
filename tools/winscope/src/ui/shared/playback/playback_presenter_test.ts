@@ -20,8 +20,8 @@ import {TransformMatrix} from '@common/geometry/transform_matrix';
 import {makeRealTimestamp} from '@common/time/testing/test_helpers';
 import {Timer} from '@common/time/timer';
 import {EmitEvent} from '@messaging/winscope_event_emitter';
-import {getPerfettoParser} from '@parsers/fixture_utils';
 import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
+import {getPerfettoParser} from '@parsers/testing/fixture_utils';
 import {Parser} from '@trace_api/parser';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {makeEmptyTrace} from '@trace_api/testing/trace_test_helpers';
@@ -346,7 +346,7 @@ describe('PlaybackPresenter', () => {
 
       it('does not skip entries while playing through the trace', async () => {
         setUpTestEnvironment();
-        presenter.changeSpeed(2);
+        await presenter.changeSpeed(2);
         await presenter.play(0, PlaybackState.FORWARDS, undefined);
         await waitStoppedPlaying(presenter);
         expect(emitEventSpy).toHaveBeenCalledTimes(8);
@@ -355,7 +355,7 @@ describe('PlaybackPresenter', () => {
 
       async function getExecutionTime(speed: number): Promise<number> {
         setUpTestEnvironment();
-        presenter.changeSpeed(speed);
+        await presenter.changeSpeed(speed);
         const start = Date.now();
         return new Promise<number>((resolve) => {
           const spy = spyOn(presenter, 'pause');

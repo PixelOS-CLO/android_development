@@ -19,7 +19,7 @@ import {SelectionModel} from '@angular/cdk/collections';
 import {CdkMenuModule} from '@angular/cdk/menu';
 import {ScrollingModule} from '@angular/cdk/scrolling';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, Inject, input, output, viewChild, viewChildren,} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, inject, input, output, viewChild, viewChildren,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
@@ -34,9 +34,9 @@ import {isElementOverflowing, isElementVisible, KeyboardEventKey,} from '@common
 import {Timestamp} from '@common/time/time';
 import {Timer} from '@common/time/timer';
 import {LogFilter, LogSelectFilter, LogTextFilter,} from '@ui/shared/log/log_filters';
-import {ClickableProperty, LogEntry, LogField, LogFieldValue, LogHeader,} from '@ui/shared/log/ui_data_log';
+import {ClickableProperty, LogEntry, LogField, LogFieldValue, LogFilterChangeDetail, LogHeader, LogTextFilterChangeDetail,} from '@ui/shared/log/ui_data_log';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
-import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
+import {TimestampClickDetail} from '@ui/shared/viewers/viewer_event_details';
 
 import {SelectWithFilterComponent} from './select_with_filter_component';
 
@@ -64,6 +64,9 @@ import {SelectWithFilterComponent} from './select_with_filter_component';
 })
 export class LogComponent {
   Array = Array;
+
+  private readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
   headers = input.required<LogHeader[]>();
   entries = input.required<LogEntry[]>();
@@ -110,11 +113,7 @@ export class LogComponent {
 
   private lastClickedTimestamp: Timestamp | undefined;
 
-  constructor(
-    @Inject(ElementRef) private readonly elementRef: ElementRef<HTMLElement>,
-    @Inject(ChangeDetectorRef)
-    private readonly changeDetectorRef: ChangeDetectorRef,
-  ) {
+  constructor() {
     effect(() => {
       if (this.checkScrollViewportCount() > 0) {
         this.virtualScrollViewport().checkViewportSize();
@@ -174,8 +173,8 @@ export class LogComponent {
     this.updateTableMarginEnd();
   }
 
-  @HostListener('window:resize', ['$event'])
-  onResize(_: Event) {
+  @HostListener('window:resize')
+  onResize() {
     this.updateTableMarginEnd();
     this.virtualScrollViewport().checkViewportSize();
   }

@@ -25,9 +25,8 @@ import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {HierarchyTreeBuilder} from '@tree_node/testing/hierarchy_tree_builder';
 import {ProtologEntry, UiData} from '@ui/protolog/ui_data';
 import {LogSelectFilter} from '@ui/shared/log/log_filters';
-import {LogField, LogHeader} from '@ui/shared/log/ui_data_log';
+import {LogField, LogHeader, LogTextFilterChangeDetail,} from '@ui/shared/log/ui_data_log';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
-import {LogTextFilterChangeDetail} from '@ui/shared/viewers/viewer_event_details';
 
 import {ViewerProtologComponent} from './viewer_protolog_component';
 
@@ -76,7 +75,7 @@ class ViewerProtologComponentTest extends AbstractLogViewerComponentTest<ViewerP
       .setId('Protolog')
       .setName('tree')
       .build();
-    const ts = makeElapsedTimestamp(10n);
+    const ts = makeElapsedTimestamp(BigInt(10));
     const trace = new TraceBuilder<HierarchyTreeNode>()
       .setEntries([tree, tree])
       .setTimestamps([ts, ts])

@@ -73,7 +73,7 @@ export class TraceCollectionController {
   }
 
   async requestDevices() {
-    this.host.requestDevices();
+    void this.host.requestDevices();
   }
 
   async onDestroy(device: AdbDeviceConnection) {
@@ -143,7 +143,7 @@ export class TraceCollectionController {
       this.logger.debug(`Fetching file ${filepath} from device`);
       const data = await device.pullFile(filepath);
       const filename = removeDirFromFileName(filepath);
-      adbData.push(new File([data], filename));
+      adbData.push(new File([data as BlobPart], filename));
       this.listener.onProgressUpdate(
         'Fetching files...',
         (100 * index) / paths.length,

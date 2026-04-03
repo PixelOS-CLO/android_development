@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import {CdkAccordionModule} from '@angular/cdk/accordion';
 import {CdkVirtualScrollViewport, ScrollingModule,} from '@angular/cdk/scrolling';
 import {CommonModule} from '@angular/common';
 import {ComponentFixtureAutoDetect, TestBed} from '@angular/core/testing';
@@ -21,16 +22,22 @@ import {FormsModule} from '@angular/forms';
 import {MatOptionModule, MatPseudoCheckboxModule} from '@angular/material/core';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 
 import {SelectWithFilterComponent} from './select_with_filter_component';
 
 describe('SelectWithFilterComponent', () => {
+  beforeAll(() => {
+    setupTestEnvironment();
+  });
+
   const filterInputField = '.select-filter';
   let component: SelectWithFilterComponent;
   let dom: DOMTestHelper<SelectWithFilterComponent>;
@@ -53,6 +60,8 @@ describe('SelectWithFilterComponent', () => {
         ScrollingModule,
         SelectWithFilterComponent,
         CdkVirtualScrollViewport,
+        MatIconModule,
+        CdkAccordionModule,
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(SelectWithFilterComponent);
@@ -139,11 +148,11 @@ describe('SelectWithFilterComponent', () => {
     options[0].click();
     await checkSelectValue(['0']);
 
-    const pinnedOptions = getPinnedOptions();
+    const pinnedOptions = await getPinnedOptions();
     expect(pinnedOptions.length).toBe(1);
     pinnedOptions[0].click();
     await checkSelectValue([]);
-    expect(getPinnedOptions().length).toBe(0);
+    expect((await getPinnedOptions()).length).toBe(0);
   });
 
   it('resets filter on close', async () => {
@@ -322,10 +331,15 @@ describe('SelectWithFilterComponent', () => {
     });
   }
 
-  function getPinnedOptions(): Array<DOMTestHelper<SelectWithFilterComponent>> {
-    return dom
-      .getMatSelectPanel()
-      .findAll('.selected-options .selected-option');
+  async function getPinnedOptions(): Promise<
+    Array<DOMTestHelper<SelectWithFilterComponent>>
+  > {
+    const panel = dom.getMatSelectPanel();
+    if (!panel.find('.accordion-item-body')) {
+      panel.find('.accordion-item-header')?.click();
+      await dom.whenStable();
+    }
+    return panel.findAll('.selected-options .selected-option');
   }
 
   async function checkSelectValue(expValues: string[], expOpts = expValues) {
@@ -336,7 +350,7 @@ describe('SelectWithFilterComponent', () => {
     if (!dom.isMatSelectOpen()) {
       await dom.openMatSelect();
     }
-    const pinnedOptions = getPinnedOptions();
+    const pinnedOptions = await getPinnedOptions();
     expect(pinnedOptions.length).toEqual(expOpts.length);
     pinnedOptions.forEach((option, index) => {
       option.checkTextExact(expOpts[index]);
