@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 import {assertDefined} from '@common/assert';
-import {intdefDescriptors} from '@compat/test/protobuf';
-import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
-import {PERFETTO_TRACE_PACKET_ROOT, registerDescriptors, TamperedMessageType,} from '@trace/proto_utils/tampered_message_type';
+import {getIntdefDescriptors} from '@compat/test/protobuf';
+import {Registry, TamperedMessageType,} from '@trace/proto_utils/tampered_message_type';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
+import {PropertyTreeBuilder} from '@tree_node/testing/property_tree_builder';
 
 import {TranslateIntDef} from './translate_intdef';
 
@@ -26,11 +26,10 @@ describe('TranslateIntDef', () => {
   let operation: TranslateIntDef;
   let rootType: TamperedMessageType;
 
-  beforeAll(() => {
-    registerDescriptors(intdefDescriptors);
-    rootType = assertDefined(
-      PERFETTO_TRACE_PACKET_ROOT.lookupType('RootMessage'),
-    );
+  beforeAll(async () => {
+    const registry = Registry.getInstance();
+    registry.parseDescriptors(await getIntdefDescriptors());
+    rootType = assertDefined(registry.getType('winscope.test2.RootMessage'));
   });
 
   it('translates intdef from stored mapping', () => {

@@ -1,0 +1,263 @@
+<!--
+Copyright (C) 2025 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+ou may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<mat-card class="collect-card">
+  <mat-card-header>
+    <mat-card-title class="title">Collect Traces</mat-card-title>
+  </mat-card-header>
+
+  @let currState = state();
+  @let adbIsSuccessful = adbSuccess();
+
+  @if (controller) {
+    <mat-card-content class="collect-card-content">
+      <mat-tab-group
+        [mat-stretch-tabs]="false"
+        class="connection-tabs"
+        [selectedIndex]="connectionTabIndex"
+        (selectedTabChange)="onConnectionChange($event.tab.textLabel)"
+        (animationDone)="onConnectionTabAnimationDone()"
+      >
+        <mat-tab [disabled]="disableTraceSection()" [label]="AdbConnectionType.WDP">
+          <ng-template mat-tab-label>
+            <span>{{ AdbConnectionType.WDP }} (Recommended)</span>
+          </ng-template>
+          <div class="tabbed-section">
+            @if (!adbIsSuccessful) {
+              <wdp-setup [state]="currState" (retryConnection)="onRetryConnection()"></wdp-setup>
+            }
+            <ng-container [ngTemplateOutlet]="connectionContent"></ng-container>
+          </div>
+        </mat-tab>
+        <mat-tab [disabled]="disableTraceSection()" [label]="AdbConnectionType.WINSCOPE_PROXY">
+          <div class="tabbed-section">
+            @if (!adbIsSuccessful) {
+              <winscope-proxy-setup
+                [state]="currState"
+                (retryConnection)="onRetryConnection($event)"
+              ></winscope-proxy-setup>
+            }
+            <ng-container [ngTemplateOutlet]="connectionContent"></ng-container>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+
+      <div class="refresh-connection-container">
+        <button
+          mat-icon-button
+          class="refresh-connection no-touch-target-button"
+          (click)="onRetryConnection()"
+          matTooltip="Refresh connection"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+      @let changingConnection = isChangingConnection();
+      @if (changingConnection) {
+        <div class="changing-connection-progress">
+          <load-progress message="Changing connection..."> </load-progress>
+        </div>
+      }
+
+      <ng-template #connectionContent>
+        @if (!changingConnection) {
+          @if (showAllDevices()) {
+            <div class="devices-connecting">
+              @if (controller.getDevices().length === 0) {
+                <div class="no-device-detected">
+                  <span class="mat-body-3 icon">
+                    <mat-icon inline fontIcon="phonelink_erase"></mat-icon>
+                  </span>
+                  <span class="mat-body-1 message">No devices detected</span>
+                </div>
+              }
+              @if (controller.getDevices().length > 0) {
+                <div class="device-selection">
+                  <p class="mat-body-1 instruction">Select a device:</p>
+                  <mat-action-list>
+                    @for (device of controller.getDevices(); track device.id) {
+                      <mat-list-item
+                        [disabled]="device.state === AdbDeviceState.OFFLINE"
+                        (click)="onDeviceClick(device)"
+                        class="available-device"
+                      >
+                        <mat-icon matListItemIcon>
+                          {{ getDeviceStateIcon(device.state) }}
+                        </mat-icon>
+                        <p matListItemTitle>{{ getDeviceName(device) }}</p>
+                        @if (deviceNeedsAuthFromWinscope(device)) {
+                          <mat-icon-button
+                            matListItemMeta
+                            class="material-symbols-outlined authorize-btn"
+                            matTooltip="Authorize device"
+                            (click)="onAuthorizeButtonClick($event, device)"
+                          >
+                            <mat-icon>lock_open</mat-icon>
+                          </mat-icon-button>
+                        }
+                      </mat-list-item>
+                    }
+                  </mat-action-list>
+                </div>
+              }
+            </div>
+          }
+          @if (showTraceCollectionConfig()) {
+            <div class="trace-collection-config">
+              <div class="selected-device">
+                <div class="device-info">
+                  <mat-icon>smartphone</mat-icon>
+                  <p class="mat-body-1 name text-no-overflow">{{ selectedDeviceName() }}</p>
+                </div>
+
+                <div class="device-actions">
+                  <button
+                    color="primary"
+                    class="change-btn"
+                    mat-stroked-button
+                    (click)="onChangeDeviceButton()"
+                    [disabled]="isTracingOrLoading()"
+                  >
+                    Change device
+                  </button>
+                  <button
+                    color="primary"
+                    class="fetch-btn"
+                    mat-stroked-button
+                    (click)="fetchExistingTraces()"
+                    [disabled]="isTracingOrLoading()"
+                  >
+                    Fetch traces from last session
+                  </button>
+                </div>
+              </div>
+
+              @let currStore = store();
+
+              <mat-tab-group
+                [mat-stretch-tabs]="false"
+                [selectedIndex]="targetTabIndex"
+                class="target-tabs"
+              >
+                <mat-tab label="Trace" [disabled]="disableTraceSection()">
+                  <div class="tabbed-section">
+                    @if (currState === ConnectionState.IDLE) {
+                      <div class="trace-section">
+                        <trace-config
+                          title="Trace targets"
+                          [(traceConfig)]="traceConfig"
+                          [store]="currStore"
+                          [traceConfigStoreKey]="storeKeyPrefixTraceConfig"
+                        ></trace-config>
+                        <div class="start-btn">
+                          <button
+                            color="primary"
+                            mat-raised-button
+                            (click)="startTracing()"
+                            class="no-touch-target-button"
+                          >
+                            Start trace
+                          </button>
+                        </div>
+                      </div>
+                    }
+                    @if (isTracingOrLoading()) {
+                      <div class="tracing-progress">
+                        <load-progress
+                          [icon]="progressIcon"
+                          [message]="progressMessage"
+                          [progressPercentage]="progressPercentage"
+                        >
+                        </load-progress>
+                        @if (isTracing()) {
+                          <div class="end-btn">
+                            <button
+                              color="primary"
+                              mat-raised-button
+                              [disabled]="currState !== ConnectionState.TRACING"
+                              (click)="endTrace()"
+                              class="no-touch-target-button"
+                            >
+                              End trace
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </mat-tab>
+                <mat-tab label="Dump" [disabled]="isTracingOrLoading()">
+                  <div class="tabbed-section">
+                    @let refresh = refreshDumps();
+                    @if (currState === ConnectionState.IDLE && !refresh) {
+                      <div class="dump-section">
+                        <trace-config
+                          title="Dump targets"
+                          [(traceConfig)]="dumpConfig"
+                          [store]="currStore"
+                          [traceConfigStoreKey]="storeKeyPrefixDumpConfig"
+                        ></trace-config>
+                        @if (!refresh) {
+                          <div class="dump-btn">
+                            <button
+                              color="primary"
+                              mat-raised-button
+                              (click)="dumpState()"
+                              class="no-touch-target-button"
+                            >
+                              Dump state
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
+                    @if (isDumpingState()) {
+                      <load-progress
+                        class="dumping-state"
+                        [progressPercentage]="progressPercentage"
+                        [message]="progressMessage"
+                      >
+                      </load-progress>
+                    }
+                  </div>
+                </mat-tab>
+              </mat-tab-group>
+            </div>
+          }
+          @if (currState === ConnectionState.ERROR) {
+            <div class="unknown-error">
+              <div class="error-wrapper mat-body-1">
+                <mat-icon class="error-icon">error</mat-icon>
+                Error:
+              </div>
+              <pre> {{ errorText }} </pre>
+              <div class="error-retry-btn">
+                <button
+                  color="primary"
+                  class="retry-btn no-touch-target-button"
+                  mat-raised-button
+                  (click)="onRetryButton()"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          }
+        }
+      </ng-template>
+    </mat-card-content>
+  }
+</mat-card>

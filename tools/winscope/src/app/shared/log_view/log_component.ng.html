@@ -1,0 +1,282 @@
+<!--
+Copyright (C) 2025 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+ou may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+@let componentTitle = title();
+@if (componentTitle) {
+  <div class="view-header">
+    <div class="title-section">
+      <collapsible-section-title
+        class="log-title"
+        [title]="componentTitle"
+        (collapseButtonClicked)="collapseButtonClicked.emit()"
+      ></collapsible-section-title>
+    </div>
+  </div>
+}
+
+<div class="entries" [class.padded]="padEntries()">
+  @let currHeaders = headers();
+  @let showTraceTimes = showTraceEntryTimes();
+  @if (currHeaders.length > 0) {
+    <div class="headers table-header">
+      @if (showTraceTimes) {
+        <div class="time time-controls cell">
+          <ng-container [ngTemplateOutlet]="timeControls"></ng-container>
+        </div>
+      }
+      @for (header of currHeaders; track $index) {
+        @if (header.filter === undefined) {
+          <div
+            #headerEl
+            class="mat-body-2 header text-no-overflow"
+            [class]="header.spec.cssClass"
+            [matTooltip]="header.spec.name"
+            [matTooltipDisabled]="disableHeaderTooltip(headerEl)"
+            matTooltipPosition="above"
+          >
+            @if (!showTraceTimes && showTimeControls() && $index === 0) {
+              <mat-icon
+                class="time-controls-trigger with-header-text"
+                color="primary"
+                [cdkMenuTriggerFor]="timeControlsMenu"
+                #menuTrigger="cdkMenuTriggerFor"
+                (mouseenter)="menuTrigger.open()"
+                [cdkMenuTriggerData]="{trigger: menuTrigger}"
+                [cdkMenuPosition]="[
+                  {originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom'},
+                ]"
+                >move_down</mat-icon
+              >
+
+              <ng-template let-trigger="trigger" #timeControlsMenu>
+                <div class="context-menu time-controls-menu" (mouseleave)="trigger.close()" cdkMenu>
+                  <div class="context-menu-item-container">
+                    <span class="menu-item time-controls" [cdkMenuItemDisabled]="true" cdkMenuItem>
+                      <ng-container [ngTemplateOutlet]="timeControls"></ng-container>
+                    </span>
+                  </div>
+                </div>
+              </ng-template>
+            }
+            <span>{{ header.spec.name }}</span>
+          </div>
+        } @else {
+          <div class="filter mat-body-2" [class]="header.spec.cssClass">
+            @if (isLogSelectFilter(header.filter)) {
+              <select-with-filter
+                [label]="header.spec.name"
+                [options]="header.filter.options"
+                [outerFilterWidth]="header.filter.outerFilterWidthCss"
+                [innerFilterWidth]="header.filter.innerFilterWidthCss"
+                formFieldClass="log-select-filter mat-form-field-appearance-none no-ripple-field"
+                subscriptSizing="dynamic"
+                (selectChange)="onFilterChange($event, header)"
+              >
+              </select-with-filter>
+            }
+            @if (isLogTextFilter(header.filter)) {
+              <search-box
+                [textFilter]="header.filter.textFilter"
+                [label]="header.spec.name"
+                [filterName]="header.spec.name"
+                [formFieldClass]="
+                  'wide-field center-field mat-form-field-appearance-none no-ripple-field ' +
+                  header.spec.cssClass +
+                  (header.filter.textFilter.filterString.length === 0 ? ' mat-body-2' : '')
+                "
+                (filterChange)="onSearchBoxChange($event, header)"
+              ></search-box>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <ng-template #timeControls>
+    <button
+      color="primary"
+      mat-icon-button
+      class="time-button go-to-first-entry"
+      (click)="onGoToFirstEntryClick()"
+      matTooltip="Go to first entry"
+      matTooltipPosition="above"
+    >
+      <mat-icon>first_page</mat-icon>
+    </button>
+    <button
+      color="primary"
+      mat-icon-button
+      class="time-button go-to-current-entry"
+      (click)="onGoToCurrentEntryClick()"
+      matTooltip="Go to current entry"
+      matTooltipPosition="above"
+    >
+      <mat-icon>move_down</mat-icon>
+    </button>
+    <button
+      color="primary"
+      mat-icon-button
+      class="time-button go-to-last-entry"
+      (click)="onGoToLastEntryClick()"
+      matTooltip="Go to last entry"
+      matTooltipPosition="above"
+    >
+      <mat-icon>last_page</mat-icon>
+    </button>
+  </ng-template>
+
+  @let currEntries = entries();
+  @let isFetching = isFetchingData();
+  @if (!isFetching && currEntries.length === 0) {
+    <div class="placeholder-text mat-body-1">No entries found.</div>
+  }
+  @if (isFetching) {
+    <div class="fetching-data mat-body-1">
+      <span class="message-with-spinner">
+        <span>Fetching all data</span>
+        <mat-spinner [diameter]="20"></mat-spinner>
+      </span>
+    </div>
+  }
+  <virtual-scroll-viewport
+    #logContainer
+    [itemCount]="currEntries.length"
+    [heightPredictor]="heightPredictor()"
+    (visibleRangeChanged)="onVisibleRangeChanged()"
+    class="scroll"
+  >
+    @for (entry of currEntries; track $index) {
+      @let i = $index;
+      @if (isRowVisible(i)) {
+        <div
+          class="entry"
+          [attr.item-id]="i"
+          [class.current]="isCurrentEntry(i)"
+          [class.selected]="isSelectedEntry(i)"
+          (click)="onEntryClicked(i)"
+          virtualRow
+          [rowIndex]="i"
+        >
+          @let timeOnly = !areMultipleDatesPresent();
+          @if (showTraceTimes) {
+            <div class="time cell">
+              <button
+                mat-button
+                class="time-button"
+                color="primary"
+                (click)="onTraceEntryTimestampClick($event, entry)"
+                [disabled]="!entry.traceEntry.hasValidTimestamp()"
+              >
+                {{ entry.traceEntry.getTimestamp().format(timeOnly) }}
+              </button>
+            </div>
+          }
+          @for (field of entry.fields; track $index) {
+            @let fieldClass = getFieldClass(field, $index);
+            <div
+              [class]="fieldClass"
+              [cdkContextMenuDisabled]="!field.spec.canFilterBySingleOption"
+              [cdkContextMenuTriggerFor]="filterContextMenu"
+              [cdkContextMenuTriggerData]="{field}"
+            >
+              @if (!showFieldButton(entry, field) && !Array.isArray(field.value)) {
+                <span
+                  class="mat-body-1 field-value"
+                  [matTooltip]="field.tooltip"
+                  matTooltipPosition="above"
+                  >{{ field.format(timeOnly) }}</span
+                >
+              }
+              @if (showFieldButton(entry, field)) {
+                <button
+                  mat-button
+                  class="time-button"
+                  color="primary"
+                  (click)="onFieldButtonClick($event, entry, field)"
+                >
+                  {{ field.format(timeOnly) }}
+                </button>
+              }
+              @if (Array.isArray(field.value)) {
+                @for (item of field.value; track $index) {
+                  @if (isString(item)) {
+                    <span class="mat-body-1">{{ item }}</span>
+                  } @else {
+                    <button
+                      mat-button
+                      class="window-button"
+                      color="primary"
+                      [matTooltip]="item.tooltip"
+                      matTooltipPosition="above"
+                      matTooltipShowDelay="100"
+                      (click)="item.onClick()"
+                    >
+                      {{ item.propertyValue }}
+                    </button>
+                  }
+                }
+              }
+              @if (field.icon) {
+                <mat-icon aria-hidden="false" class="icon-small" [style]="{color: field.iconColor}">
+                  {{ field.icon }}
+                </mat-icon>
+              }
+              @if (field.spec.canCopy) {
+                <button
+                  mat-icon-button
+                  class="copy-button icon-button-small"
+                  [cdkCopyToClipboard]="field.value.toString()"
+                >
+                  <mat-icon>content_copy</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+  </virtual-scroll-viewport>
+
+  <ng-template #filterContextMenu let-field="field">
+    @let filter = findSelectFilterComponent(field);
+    @let filterMatchValue = field.getFilterValueMatch();
+    <div class="context-menu" cdkMenu #filterMenu="cdkMenu">
+      <div class="context-menu-item-container">
+        @if (filter === undefined) {
+          <span class="context-menu-item" [cdkMenuItemDisabled]="true" cdkMenuItem>
+            Filter disabled for this column.
+          </span>
+        } @else {
+          <span
+            class="context-menu-item"
+            (click)="excludeFromFilter(filter, filterMatchValue)"
+            cdkMenuItem
+          >
+            Exclude all "{{ filterMatchValue }}" entries
+          </span>
+          <span
+            class="context-menu-item"
+            (click)="setFilterSingleValue(filter, filterMatchValue)"
+            cdkMenuItem
+          >
+            Show only "{{ filterMatchValue }}" entries
+          </span>
+        }
+      </div>
+    </div>
+  </ng-template>
+</div>

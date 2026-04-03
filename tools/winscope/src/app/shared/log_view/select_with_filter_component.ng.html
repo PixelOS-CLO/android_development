@@ -1,0 +1,115 @@
+<!--
+Copyright (C) 2025 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+ou may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+@let textLabel = label();
+<mat-form-field
+  [style]="outerFormFieldStyle()"
+  [style.text-align]="'unset'"
+  [appearance]="appearance()"
+  [class]="formFieldClass()"
+  [matTooltip]="textLabel"
+  matTooltipPosition="above"
+  [matTooltipDisabled]="disableFormFieldTooltip(formField)"
+  subscriptSizing="dynamic"
+  [class.mat-body-2]="!selectWithFilter.value || selectWithFilter.value.length === 0"
+  #formField
+>
+  <mat-label>{{ textLabel }}</mat-label>
+  <mat-select
+    (opened)="onSelectOpened(filter)"
+    (closed)="onSelectClosed()"
+    [multiple]="true"
+    [disabled]="disabled()"
+    [value]="value()"
+    (selectionChange)="onSelectChange($event)"
+    panelWidth="''"
+    #selectWithFilter
+  >
+    @let nonHidden = nonHiddenOptions();
+    @let totalSelected = selectWithFilter.value?.length ?? 0;
+    @let allSelected = totalSelected === nonHidden.length;
+    <div class="select-filter-header">
+      <mat-form-field
+        class="select-filter mat-form-field-appearance-none"
+        [style]="innerFormFieldStyle()"
+        subscriptSizing="dynamic"
+      >
+        <mat-label>Filter options</mat-label>
+        <input
+          matInput
+          #filter
+          [(ngModel)]="filterString"
+          (ngModelChange)="onFilterStringChange()"
+        />
+      </mat-form-field>
+
+      <button
+        mat-flat-button
+        class="user-option"
+        [color]="allSelected ? 'primary' : undefined"
+        [class.not-enabled]="!allSelected"
+        (click)="onAllButtonClick()"
+        [matTooltip]="allButtonTooltip"
+        [matTooltipShowDelay]="500"
+        matTooltipPosition="right"
+        >All</button
+      >
+    </div>
+    @if (totalSelected > 0) {
+      <div class="selected-options">
+        <span class="mat-mdc-option mat-mdc-option-active mdc-list-item mdc-list-item--selected"
+          >Selected:</span
+        >
+        @for (option of selectedOptions(); track option) {
+          <div
+            class="mat-mdc-option mat-mdc-option-active mat-mdc-option-multiple mdc-list-item mdc-list-item--selected selected-option"
+            (click)="onSelectedOptionClick(option)"
+          >
+            <mat-pseudo-checkbox
+              color="primary"
+              state="checked"
+              class="mat-option-pseudo-checkbox"
+            ></mat-pseudo-checkbox>
+            <div class="mat-option-text">{{ option }}</div>
+          </div>
+        }
+      </div>
+    }
+    <mat-divider [vertical]="false"></mat-divider>
+    <cdk-virtual-scroll-viewport
+      [itemSize]="48"
+      [maxBufferPx]="1000"
+      [minBufferPx]="1000"
+      [style.height]="'60vh'"
+      [style.max-height]="scrollMaxHeight()"
+      [style.width]="scrollWidth()"
+      [style.min-width]="'100%'"
+      [style.max-width]="'50vw'"
+    >
+      <mat-option
+        *cdkVirtualFor="let option of nonHidden; index as i"
+        [value]="option"
+        class="option no-focus"
+        (click)="onOptClick($event, nonHiddenOptionToIndex[i], matOption)"
+        #matOption
+        >{{ option }}</mat-option
+      >
+    </cdk-virtual-scroll-viewport>
+    @for (option of hiddenOptions(); track option) {
+      <mat-option [value]="option" class="option hidden-option"></mat-option>
+    }
+  </mat-select>
+</mat-form-field>
