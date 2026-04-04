@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component, ElementRef, inject, input, output} from '@angular/core';
+import {Component, ElementRef, Inject, input, output} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatTooltipModule} from '@angular/material/tooltip';
@@ -46,7 +46,9 @@ export class SurfaceFlingerPropertyGroupsComponent {
   collapseButtonClicked = output<void>();
   readonly highlightedIdChange = output<string>();
 
-  readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
+  constructor(
+    @Inject(ElementRef) readonly elementRef: ElementRef<HTMLElement>,
+  ) {}
 
   getTransformType(transformNode: PropertyTreeNode | undefined): string {
     const typeFlags = transformNode?.formattedValue() ?? 'null';

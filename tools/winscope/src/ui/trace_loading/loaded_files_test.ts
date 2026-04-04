@@ -18,7 +18,6 @@ import {assertDefined} from '@common/assert';
 import {unzipFile} from '@common/io';
 import {makeElapsedTimestamp, makeRealTimestamp,} from '@common/time/testing/test_helpers';
 import {TimeRange} from '@common/time/time';
-import {UTC_TIMEZONE_INFO} from '@common/time/timestamp_converter';
 import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
 import {TestFileReaderBuilder} from '@legacy_file_readers/testing/test_file_reader_builder';
 import {TestLegacyFileReaderBuilder} from '@legacy_file_readers/testing/test_legacy_file_reader_builder';
@@ -26,7 +25,6 @@ import {UserWarning} from '@messaging/user_warning';
 import {UserNotifierChecker} from '@services/testing/user_notifier_checker';
 import {FileReader} from '@trace_api/file_reader';
 import {TraceFile} from '@trace_api/trace_file';
-import {toJSON, TraceMetadata} from '@trace_api/trace_metadata';
 import {TraceType} from '@trace_api/trace_type';
 
 import {LoadedFiles} from './loaded_files';
@@ -547,45 +545,12 @@ describe('LoadedFiles', () => {
     ]);
   });
 
-  it('makes zip archive with winscope metadata json', async () => {
-    const metadataTimezone = {timezoneInfo: UTC_TIMEZONE_INFO};
-    const [file1] = await expectDownloadResult(
-      ['winscope_metadata.json'],
-      metadataTimezone,
-    );
-    const expMetadata1 = assertDefined(toJSON(metadataTimezone));
-    expect((await file1.text()).trim()).toEqual(expMetadata1);
-
-    const screenRecordingOffsets = {
-      realToElapsedTimeOffsetNanos: 1n,
-      elapsedRealTimeNanos: 2n,
-    };
-    const metadataOffsets: TraceMetadata = {screenRecordingOffsets};
-    const [file2] = await expectDownloadResult(
-      ['winscope_metadata.json'],
-      metadataOffsets,
-    );
-    const expMetadata2 = assertDefined(toJSON(metadataOffsets));
-    expect((await file2.text()).trim()).toEqual(expMetadata2);
-
-    const metadataFull = {
-      timezoneInfo: UTC_TIMEZONE_INFO,
-      screenRecordingOffsets,
-    };
-    const [file3] = await expectDownloadResult(
-      ['winscope_metadata.json'],
-      metadataFull,
-    );
-    const expMetadata3 = assertDefined(toJSON(metadataFull));
-    expect((await file3.text()).trim()).toEqual(expMetadata3);
-  });
-
   it('makes zip archive with progress listener', async () => {
     loadReaders([], [legacyReaderSf0], [legacyReaderWm0]);
     expectLoadResult([], [legacyReaderSf0, legacyReaderWm0], []);
 
     const progressSpy = jasmine.createSpy();
-    await loadedFiles.makeZipArchive({}, progressSpy);
+    await loadedFiles.makeZipArchive(progressSpy);
 
     expect(progressSpy).toHaveBeenCalledTimes(5);
     expect(progressSpy).toHaveBeenCalledWith(0);
@@ -629,14 +594,11 @@ describe('LoadedFiles', () => {
     userNotifierChecker.expectAdded(expectedWarnings);
   }
 
-  async function expectDownloadResult(
-    expectedArchiveContents: string[],
-    metadata: TraceMetadata = {},
-  ): Promise<File[]> {
-    const zipArchive = await loadedFiles.makeZipArchive(metadata);
-    const archiveContents = await unzipFile(zipArchive);
-    const archiveFilenames = archiveContents.map((file) => file.name).sort();
-    expect(archiveFilenames).toEqual(expectedArchiveContents);
-    return archiveContents;
+  async function expectDownloadResult(expectedArchiveContents: string[]) {
+    const zipArchive = await loadedFiles.makeZipArchive();
+    const actualArchiveContents = (await unzipFile(zipArchive))
+      .map((file) => file.name)
+      .sort();
+    expect(actualArchiveContents).toEqual(expectedArchiveContents);
   }
 });

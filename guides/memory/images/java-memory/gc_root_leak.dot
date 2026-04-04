@@ -16,12 +16,20 @@ digraph G {
     fontname="Helvetica,Arial,sans-serif";
     node [fontname="Helvetica,Arial,sans-serif", shape=box, style="rounded,filled"];
     edge [fontname="Helvetica,Arial,sans-serif"];
+
+    // Overall layout
     rankdir=LR;
 
-    GCRoot [label="GC Root", fillcolor="#fbb4ae"];
-    ObjectA [label="Object A", fillcolor="#ccebc5"];
-    ObjectB [label="Object B", fillcolor="#ccebc5"];
-    ObjectC [label="Leaked Object", fillcolor="#decbe4", shape=hexagon];
+    GCRoot [label="GC Root\n(e.g., Static Variable)", fillcolor="#fbb4ae"];
+    List [label="java.util.ArrayList\n(sLeakedActivities)", fillcolor="#ccebc5"];
+    Array [label="Object[]\n(elementData)", fillcolor="#ccebc5"];
+    Activity [label="com.android.memorylab\n.LeakedActivity\n(The Leak)", fillcolor="#decbe4", shape=hexagon];
+    Context [label="android.content.Context\n(Entire View Hierarchy)", fillcolor="#fddaec"];
 
-    GCRoot -> ObjectA -> ObjectB -> ObjectC [label=" references"];
+    GCRoot -> List [label=" holds reference"];
+    List -> Array [label=" holds reference"];
+    Array -> Activity [label=" index 0"];
+    Activity -> Context [label=" holds reference"];
+
+    {rank=same; List; Array;}
 }

@@ -16,7 +16,7 @@
 
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
-import {NonPerfettoParserProvider} from '@parsers/testing/fixture_utils';
+import {NonPerfettoParserProvider} from '@parsers/fixture_utils';
 import {Parser} from '@trace_api/parser';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {makeEmptyTrace} from '@trace_api/testing/trace_test_helpers';
@@ -26,7 +26,7 @@ import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {NotifyLogViewCallbackType} from '@ui/shared/log/abstract_log_viewer_presenter';
-import {AbstractLogViewerPresenterTest} from '@ui/shared/log/testing/abstract_log_viewer_presenter_test';
+import {AbstractLogViewerPresenterTest} from '@ui/shared/log/abstract_log_viewer_presenter_test';
 import {LogHeader} from '@ui/shared/log/ui_data_log';
 
 import {Presenter} from './presenter';

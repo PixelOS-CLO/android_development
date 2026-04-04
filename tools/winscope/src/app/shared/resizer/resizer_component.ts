@@ -15,7 +15,7 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {Component, computed, effect, ElementRef, HostListener, inject, input,} from '@angular/core';
+import {Component, computed, effect, ElementRef, HostListener, Inject, input,} from '@angular/core';
 import {MatIconModule} from '@angular/material/icon';
 import {MouseEventButton} from '@common/mouse_event_button';
 import {Store} from '@common/store/store';
@@ -44,9 +44,9 @@ export class ResizerComponent {
     return this.dragAxis() === 'vertical';
   });
 
-  private readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
-
-  constructor() {
+  constructor(
+    @Inject(ElementRef) private readonly elementRef: ElementRef<HTMLElement>,
+  ) {
     const storedSizeEffect = effect(() => {
       const store = this.store();
       const storeKey = this.storeKey();

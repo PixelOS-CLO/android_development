@@ -26,7 +26,6 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {Store} from '@common/store/store';
@@ -37,10 +36,6 @@ import {ConfigurationOptions, TraceConfigurationMap,} from '@trace_collection/ui
 import {TraceConfigComponent} from './trace_config_component';
 
 describe('TraceConfigComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const storeKey = 'TestConfigSettings';
   const advancedSettingsButton = '.advanced-settings-button';
   const layersTraceKey = 'layers_trace';
@@ -129,7 +124,7 @@ describe('TraceConfigComponent', () => {
     );
     const layersConfig: ConfigurationOptions = JSON.parse(
       assertDefined(componentStore.get(storeKey + layersTraceKey)),
-    ) as ConfigurationOptions;
+    );
     layersConfig.checkboxConfigs = [];
     commonStore.add(storeKey + layersTraceKey, JSON.stringify(layersConfig));
 

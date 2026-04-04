@@ -257,8 +257,7 @@ export class TransitionTimelineComponent extends AbstractTimelineRowComponent<Hi
 
       let rowToUse = 0;
       while (
-        (rowAvailableFrom[rowToUse] ?? BigInt(0)) >
-        lifecycle.totalDuration.startNs
+        (rowAvailableFrom[rowToUse] ?? 0n) > lifecycle.totalDuration.startNs
       ) {
         rowToUse++;
       }

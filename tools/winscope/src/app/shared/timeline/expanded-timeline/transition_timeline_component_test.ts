@@ -25,11 +25,10 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {PENDING_TO_PLAY_COLOR} from '@app/shared/timeline/common/transition_timeline_helpers';
 import {Rect} from '@common/geometry/rect';
+import {waitToBeCalled} from '@common/spy_utils';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
-import {waitToBeCalled} from '@common/testing/spy_utils';
 import {makeConverterZeroRteOffsets} from '@common/time/testing/test_helpers';
 import {TimeRange, Timestamp} from '@common/time/time';
 import {SetFormatters} from '@parsers/operations/set_formatters';
@@ -42,25 +41,21 @@ import {HierarchyTreeBuilder} from '@tree_node/testing/hierarchy_tree_builder';
 import {TransitionTimelineComponent} from './transition_timeline_component';
 
 describe('TransitionTimelineComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: TransitionTimelineComponent;
   let dom: DOMTestHelper<TransitionTimelineComponent>;
 
   const converter = makeConverterZeroRteOffsets();
-  const time0 = converter.makeTimestampFromRealNs(BigInt(0));
-  const time5 = converter.makeTimestampFromRealNs(BigInt(5));
-  const time10 = converter.makeTimestampFromRealNs(BigInt(10));
-  const time20 = converter.makeTimestampFromRealNs(BigInt(20));
-  const time30 = converter.makeTimestampFromRealNs(BigInt(30));
-  const time35 = converter.makeTimestampFromRealNs(BigInt(35));
-  const time60 = converter.makeTimestampFromRealNs(BigInt(60));
-  const time85 = converter.makeTimestampFromRealNs(BigInt(85));
-  const time110 = converter.makeTimestampFromRealNs(BigInt(110));
-  const time120 = converter.makeTimestampFromRealNs(BigInt(120));
-  const time160 = converter.makeTimestampFromRealNs(BigInt(160));
+  const time0 = converter.makeTimestampFromRealNs(0n);
+  const time5 = converter.makeTimestampFromRealNs(5n);
+  const time10 = converter.makeTimestampFromRealNs(10n);
+  const time20 = converter.makeTimestampFromRealNs(20n);
+  const time30 = converter.makeTimestampFromRealNs(30n);
+  const time35 = converter.makeTimestampFromRealNs(35n);
+  const time60 = converter.makeTimestampFromRealNs(60n);
+  const time85 = converter.makeTimestampFromRealNs(85n);
+  const time110 = converter.makeTimestampFromRealNs(110n);
+  const time120 = converter.makeTimestampFromRealNs(120n);
+  const time160 = converter.makeTimestampFromRealNs(160n);
 
   const range10to110 = new TimeRange(time10, time110);
   const range0to160 = new TimeRange(time0, time160);

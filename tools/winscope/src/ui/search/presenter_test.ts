@@ -24,7 +24,7 @@ import {InitializeTraceSearchRequest, TraceAddRequest, TracePositionUpdate, Trac
 import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {QueryResult} from '@trace_processor/query_result';
-import {makeSearchTraceSpies} from '@trace_processor/testing/test_utils';
+import {makeSearchTraceSpies} from '@trace_processor/test_utils';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 
 import {Presenter} from './presenter';
@@ -167,7 +167,7 @@ describe('PresenterSearch', () => {
 
   it('handles search for unsuccessful query', async () => {
     const testQuery = 'unsuccessful query';
-    await presenter.onSearchQueryClick(testQuery, 1);
+    presenter.onSearchQueryClick(testQuery, 1);
     await presenter.onAppEvent(new TraceSearchFailed());
     expect(uiData.lastTraceFailed).toEqual(true);
     expect(uiData.currentSearches).toEqual([new CurrentSearch(1, testQuery)]);
@@ -267,8 +267,7 @@ describe('PresenterSearch', () => {
     }
     expect(uiData.currentSearches.length).toBe(1);
     expect(uiData.recentSearches.length).toBe(100);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const saved = JSON.parse(storage.get('recentSearches') ?? '{}') as any;
+    const saved = JSON.parse(storage.get('recentSearches') ?? '{}');
     expect(saved.searches.length).toBe(100);
   });
 

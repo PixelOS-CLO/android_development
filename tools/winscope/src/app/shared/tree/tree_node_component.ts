@@ -15,7 +15,7 @@
  */
 import {ClipboardModule} from '@angular/cdk/clipboard';
 import {CommonModule} from '@angular/common';
-import {Component, computed, ElementRef, inject, input, output, TemplateRef,} from '@angular/core';
+import {Component, computed, ElementRef, Inject, input, output, TemplateRef,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {assertDefined} from '@common/assert';
@@ -89,9 +89,10 @@ export class TreeNodeComponent<T extends UiTreeNode> {
     return Array.from({length: this.depth()}, (_, index) => index);
   });
 
-  private readonly el: HTMLElement = inject(ElementRef).nativeElement;
+  private readonly el: HTMLElement;
 
-  constructor() {
+  constructor(@Inject(ElementRef) elementRef: ElementRef<HTMLElement>) {
+    this.el = elementRef.nativeElement;
     this.el?.addEventListener('mousedown', this.nodeMouseDownEventListener);
   }
 

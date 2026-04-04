@@ -25,16 +25,11 @@ import {MatInputModule} from '@angular/material/input';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 
 import {ActiveSearchComponent} from './active_search_component';
 
 describe('ActiveSearchComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const testQuery = 'select * from table';
   let component: ActiveSearchComponent;
   let dom: DOMTestHelper<ActiveSearchComponent>;

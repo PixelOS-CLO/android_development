@@ -18,11 +18,12 @@ import {assertDefined} from '@common/assert';
 import {makeRealTimestamp} from '@common/time/testing/test_helpers';
 import {Timer} from '@common/time/timer';
 import {TracePositionUpdate} from '@trace_api/trace_events';
-import {setNumRowsSpyQueryResult} from '@trace_processor/testing/test_utils';
+import {setNumRowsSpyQueryResult} from '@trace_processor/test_utils';
 import {TraceProcessorProxy} from '@trace_processor/trace_processor';
-import {AbstractLogViewerPresenter, NotifyLogViewCallbackType,} from '@ui/shared/log/abstract_log_viewer_presenter';
-import {LogSelectFilter, LogTextFilter} from '@ui/shared/log/log_filters';
-import {LogHeader, UiDataLog} from '@ui/shared/log/ui_data_log';
+
+import {AbstractLogViewerPresenter, NotifyLogViewCallbackType,} from './abstract_log_viewer_presenter';
+import {LogSelectFilter, LogTextFilter} from './log_filters';
+import {LogHeader, UiDataLog} from './ui_data_log';
 
 export abstract class AbstractLogViewerPresenterTest<UiData extends UiDataLog> {
   execute() {

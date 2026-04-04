@@ -15,7 +15,7 @@
  */
 
 import {CdkDragEnd, CdkDragMove, CdkDragStart, DragDropModule,} from '@angular/cdk/drag-drop';
-import {ChangeDetectorRef, Component, effect, ElementRef, HostListener, inject, input, output, viewChild,} from '@angular/core';
+import {ChangeDetectorRef, Component, effect, ElementRef, HostListener, Inject, input, output, viewChild,} from '@angular/core';
 import {assertDefined} from '@common/assert';
 import {Point} from '@common/geometry/point';
 import {TimeRange, Timestamp} from '@common/time/time';
@@ -51,9 +51,7 @@ export class SliderComponent {
   cursorOffset = 0;
   slideStartX: number | undefined = undefined;
 
-  private cdr = inject(ChangeDetectorRef);
-
-  constructor() {
+  constructor(@Inject(ChangeDetectorRef) private cdr: ChangeDetectorRef) {
     effect(() => {
       const zoomRange = this.zoomRange();
       if (zoomRange !== undefined && !this.dragging) {
@@ -79,8 +77,8 @@ export class SliderComponent {
     this.cdr.detectChanges();
   }
 
-  @HostListener('window:resize')
-  onResize() {
+  @HostListener('window:resize', ['$event'])
+  onResize(_: Event) {
     this.syncDragPositionTo(this.zoomRange());
     this.syncCursorPositionTo(this.currentPosition().timestamp);
   }

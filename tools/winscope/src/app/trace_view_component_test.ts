@@ -28,7 +28,6 @@ import {MatTabsModule} from '@angular/material/tabs';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
 import {AngularViewer} from '@app/shared/angular_viewer';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {ViewerStub} from '@app/shared/viewer_stub';
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
@@ -40,17 +39,13 @@ import {ActiveTraceChanged} from '@trace_api/trace_events';
 import {TraceType} from '@trace_api/trace_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {FilterPresetApplyRequest, FilterPresetSaveRequest,} from '@ui/shared/events/misc_events';
-import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@ui/shared/viewers/tabbed_view_events';
+import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@ui/shared/events/tabbed_view_events';
 import {ViewType} from '@ui/shared/viewers/viewer';
 import {ParsingErrorType} from '@ui/trace_loading/parsing_error_type';
 
 import {TraceViewComponent} from './trace_view_component';
 
 describe('TraceViewComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const traceSf = makeEmptyTrace<HierarchyTreeNode>(TraceType.SURFACE_FLINGER);
   const traceWm = new TraceBuilder<object>()
     .setType(TraceType.WINDOW_MANAGER)

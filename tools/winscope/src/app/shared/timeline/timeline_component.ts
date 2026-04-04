@@ -16,7 +16,7 @@
 
 import {ClipboardModule} from '@angular/cdk/clipboard';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, computed, ElementRef, HostListener, inject, input, output, signal, viewChild, ViewEncapsulation,} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, ElementRef, HostListener, Inject, input, output, signal, viewChild, ViewEncapsulation,} from '@angular/core';
 import {AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators,} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatRippleModule} from '@angular/material/core';
@@ -37,7 +37,6 @@ import {TimeRange, Timestamp} from '@common/time/time';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {UserTimestamp} from '@common/time/user_timestamp';
 import {getLogger} from '@compat/logging';
-import {objectUrlFromSafeSource, unwrapSafeUrl} from '@compat/safevalues';
 import {Analytics} from '@logging/analytics';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {EmitEvent, WinscopeEventEmitter,} from '@messaging/winscope_event_emitter';
@@ -53,9 +52,9 @@ import {Traces} from '@trace_api/traces';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
 import {Thumbnail} from '@trace/media_based/thumbnail';
 import {BookmarksChanged, DarkModeToggled} from '@ui/shared/events/misc_events';
+import {TabbedViewSwitched} from '@ui/shared/events/tabbed_view_events';
 import {PlaybackSpeedChange, PlaybackStateChangeHandled, PlaybackStateChangeRequest,} from '@ui/shared/playback/events';
 import {PlaybackState} from '@ui/shared/playback/playback_state';
-import {TabbedViewSwitched} from '@ui/shared/viewers/tabbed_view_events';
 import {TimelineData} from '@ui/timeline/timeline_data';
 import {ExpandedTimelineToggled} from '@ui/timeline/timeline_events';
 
@@ -194,8 +193,10 @@ export class TimelineComponent
   private lastPlayState: PlaybackState | undefined;
   frameCanvasEntry: MediaBasedTraceEntry | undefined;
 
-  private sanitizer = inject(DomSanitizer);
-  private changeDetectorRef = inject(ChangeDetectorRef);
+  constructor(
+    @Inject(DomSanitizer) private sanitizer: DomSanitizer,
+    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
+  ) {}
 
   ngOnInit() {
     const timelineData = this.timelineData();
@@ -318,7 +319,7 @@ export class TimelineComponent
   async toggleExpand() {
     this.expanded = !this.expanded;
     this.changeDetectorRef.detectChanges();
-    void this.updateScreenRecordingVisualization();
+    this.updateScreenRecordingVisualization();
     this.changeDetectorRef.detectChanges();
     if (this.expanded) {
       Analytics.Navigation.logExpandedTimelineOpened();
@@ -330,7 +331,7 @@ export class TimelineComponent
     this.timelineData().setPosition(position);
     await this.updateScreenRecordingVisualization();
     if (this.playbackState !== PlaybackState.PAUSED) {
-      void this.emitEvent(
+      this.emitEvent(
         new PlaybackStateChangeRequest(
           assertDefined(this.currentTabTraceType()),
           this.playbackState,
@@ -388,8 +389,8 @@ export class TimelineComponent
     return TRACE_INFO[trace.type].name + (trace.isDump() ? ' Dump' : '');
   }
 
-  @HostListener('window:resize')
-  onResize() {
+  @HostListener('window:resize', ['$event'])
+  onResize(_: Event) {
     if (this.frameCanvasEntry) {
       this.renderFrameInExpandedTimeline(this.frameCanvasEntry);
     }
@@ -557,8 +558,7 @@ export class TimelineComponent
     const timelineData = this.timelineData();
 
     const valueNs = parseBigIntStrippingUnit(target.value);
-    const isBoottime = valueNs < TIME_UNIT_TO_NANO.d * BigInt(365) * BigInt(3); // ~ 3 years, no Android smartphone had winscope traces
-    // back in 1973 yet.
+    const isBoottime = valueNs < TIME_UNIT_TO_NANO.d * 365n * 3n; // ~ 3 years, no Android smartphone had winscope traces back in 1973 yet.
 
     const timestamp = isBoottime
       ? timelineData
@@ -645,7 +645,7 @@ export class TimelineComponent
         range.containsTimestamp(bookmark),
       );
     }
-    const clickedNs = (range.startNs + range.endNs) / BigInt(2);
+    const clickedNs = (range.startNs + range.endNs) / 2n;
     if (rangeContainsBookmark) {
       const closestBookmark = this.bookmarks.reduce((prev, curr) => {
         if (clickedNs - curr.getValueNs() < 0) return prev;
@@ -748,7 +748,7 @@ export class TimelineComponent
       case PlaybackState.BACKWARDS:
         this.disabledMessage = 'UI disabled due to playback initialization';
         this.setIsDisabled(true);
-        void this.emitEvent(
+        this.emitEvent(
           new PlaybackStateChangeRequest(
             currentTabTraceType,
             state,
@@ -758,7 +758,7 @@ export class TimelineComponent
         return;
 
       case PlaybackState.PAUSED:
-        void this.emitEvent(
+        this.emitEvent(
           new PlaybackStateChangeRequest(currentTabTraceType, state),
         );
         return;
@@ -805,7 +805,7 @@ export class TimelineComponent
     const storedDeselectedTraces = this.store().get(
       this.storeKeyDeselectedTraces,
     );
-    return JSON.parse(storedDeselectedTraces ?? '[]') as TraceType[];
+    return JSON.parse(storedDeselectedTraces ?? '[]');
   }
 
   private updateStoredDeselectedTraceTypes(clickedTrace: Trace<unknown>) {
@@ -879,7 +879,7 @@ export class TimelineComponent
         .getValue();
       if (video.frameData !== undefined) {
         this.videoUrl = this.sanitizer.bypassSecurityTrustUrl(
-          unwrapSafeUrl(objectUrlFromSafeSource(video.frameData)),
+          URL.createObjectURL(video.frameData),
         );
         this.thumbnail.set(video.thumbnail);
         this.changeDetectorRef.detectChanges();
@@ -969,7 +969,7 @@ export class TimelineComponent
   }
 
   private async drawThumbnail(ts: Timestamp) {
-    void this.drawScreenRecordingThumbnail(ts);
+    this.drawScreenRecordingThumbnail(ts);
   }
 
   private async drawScreenRecordingThumbnail(ts: Timestamp) {

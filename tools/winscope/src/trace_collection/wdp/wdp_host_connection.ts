@@ -72,19 +72,17 @@ export class WdpHostConnection extends AdbHostConnection<WdpDeviceConnection> {
   }
 
   private async handleRequestDevicesResponse(data: string) {
-    const resp: WdpRequestDevicesResponse = JSON.parse(
-      data,
-    ) as WdpRequestDevicesResponse;
+    const resp: WdpRequestDevicesResponse = JSON.parse(data);
     if (
       resp.error?.type === 'ORIGIN_NOT_ALLOWLISTED' &&
       resp.error.approveUrl !== undefined
     ) {
       const popup = this.showWindow(resp.error.approveUrl);
       if (popup === false) {
-        void this.listener.onError(`Please enable popups and try again.`);
+        this.listener.onError(`Please enable popups and try again.`);
         return;
       }
-      void this.setState(ConnectionState.UNAUTH);
+      this.setState(ConnectionState.UNAUTH);
       return;
     } else if (resp.error !== undefined) {
       this.logger.error(
@@ -92,11 +90,11 @@ export class WdpHostConnection extends AdbHostConnection<WdpDeviceConnection> {
           resp.error,
         )}`,
       );
-      void this.listener.onError(resp.error.message ?? 'Unknown WDP Error');
+      this.listener.onError(resp.error.message ?? 'Unknown WDP Error');
       return;
     }
     await this.onRequestDevicesResponse(resp);
-    void this.setState(ConnectionState.IDLE);
+    this.setState(ConnectionState.IDLE);
     return;
   }
 

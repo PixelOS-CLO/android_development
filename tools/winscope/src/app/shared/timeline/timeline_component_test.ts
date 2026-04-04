@@ -29,7 +29,6 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {MatDrawer, MatDrawerContainer, MatDrawerContent,} from '@app/shared/bottomnav/bottom_drawer_component';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {CanvasDrawer} from '@app/shared/timeline/expanded-timeline/canvas_drawer';
 import {DefaultTimelineRowComponent} from '@app/shared/timeline/expanded-timeline/default_timeline_row_component';
 import {ExpandedTimelineComponent} from '@app/shared/timeline/expanded-timeline/expanded_timeline_component';
@@ -54,7 +53,7 @@ import {TracePosition} from '@trace_api/trace_position';
 import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {QueryResult} from '@trace_processor/query_result';
-import {makeSearchTraceSpies} from '@trace_processor/testing/test_utils';
+import {makeSearchTraceSpies} from '@trace_processor/test_utils';
 import {CanvasEntry, MediaBasedTraceEntry, VideoEntry,} from '@trace/media_based/media_based_trace_entry';
 import {Thumbnail} from '@trace/media_based/thumbnail';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
@@ -68,24 +67,20 @@ import {PlaybackControlsComponent} from './playback_component';
 import {TimelineComponent} from './timeline_component';
 
 describe('TimelineComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const converter = makeConverterZeroRteOffsets();
 
-  const time90 = converter.makeTimestampFromRealNs(BigInt(90));
-  const time100 = converter.makeTimestampFromRealNs(BigInt(100));
-  const time101 = converter.makeTimestampFromRealNs(BigInt(101));
-  const time105 = converter.makeTimestampFromRealNs(BigInt(105));
-  const time110 = converter.makeTimestampFromRealNs(BigInt(110));
-  const time112 = converter.makeTimestampFromRealNs(BigInt(112));
+  const time90 = converter.makeTimestampFromRealNs(90n);
+  const time100 = converter.makeTimestampFromRealNs(100n);
+  const time101 = converter.makeTimestampFromRealNs(101n);
+  const time105 = converter.makeTimestampFromRealNs(105n);
+  const time110 = converter.makeTimestampFromRealNs(110n);
+  const time112 = converter.makeTimestampFromRealNs(112n);
 
-  const time2000 = converter.makeTimestampFromRealNs(BigInt(2000));
-  const time3000 = converter.makeTimestampFromRealNs(BigInt(3000));
-  const time4000 = converter.makeTimestampFromRealNs(BigInt(4000));
-  const time6000 = converter.makeTimestampFromRealNs(BigInt(6000));
-  const time8000 = converter.makeTimestampFromRealNs(BigInt(8000));
+  const time2000 = converter.makeTimestampFromRealNs(2000n);
+  const time3000 = converter.makeTimestampFromRealNs(3000n);
+  const time4000 = converter.makeTimestampFromRealNs(4000n);
+  const time6000 = converter.makeTimestampFromRealNs(6000n);
+  const time8000 = converter.makeTimestampFromRealNs(8000n);
 
   const position90 = TracePosition.fromTimestamp(time90);
   const position100 = TracePosition.fromTimestamp(time100);
@@ -224,11 +219,7 @@ describe('TimelineComponent', () => {
       TraceType.SURFACE_FLINGER,
       TraceType.SCREEN_RECORDING,
     ]);
-    testCurrentTimestampOnButtonClick(
-      prevEntryButton,
-      position110,
-      BigInt(110),
-    );
+    testCurrentTimestampOnButtonClick(prevEntryButton, position110, 110n);
 
     await updateActiveTrace(TraceType.WINDOW_MANAGER);
     expectSelectedTraceTypes([
@@ -245,11 +236,7 @@ describe('TimelineComponent', () => {
       TraceType.WINDOW_MANAGER,
       TraceType.PROTO_LOG,
     ]);
-    testCurrentTimestampOnButtonClick(
-      nextEntryButton,
-      position100,
-      BigInt(100),
-    );
+    testCurrentTimestampOnButtonClick(nextEntryButton, position100, 100n);
     checkActiveTraceHasOneEntry(nextEntryButton, prevEntryButton);
 
     // setting active trace that is already selected does not affect selection
@@ -260,11 +247,7 @@ describe('TimelineComponent', () => {
       TraceType.WINDOW_MANAGER,
       TraceType.PROTO_LOG,
     ]);
-    testCurrentTimestampOnButtonClick(
-      nextEntryButton,
-      position110,
-      BigInt(110),
-    );
+    testCurrentTimestampOnButtonClick(nextEntryButton, position110, 110n);
     checkActiveTraceHasOneEntry(nextEntryButton, prevEntryButton);
   });
 
@@ -274,14 +257,14 @@ describe('TimelineComponent', () => {
       .build();
 
     const timelineData = component.timelineData();
-    await timelineData.initialize(traces, undefined, converter);
+    timelineData.initialize(traces, undefined, converter);
     timelineData.setPosition(position100);
     dom.detectChanges();
     const nextEntryButton = dom.get(nextEntrySelector);
     const prevEntryButton = dom.get(prevEntrySelector);
     expect(timelineData.getActiveTrace()).toBeUndefined();
     expect(timelineData.getCurrentPosition()?.timestamp.getValueNs()).toEqual(
-      BigInt(100),
+      100n,
     );
 
     prevEntryButton.checkDisabled(true);
@@ -396,7 +379,7 @@ describe('TimelineComponent', () => {
     const timelineData = component.timelineData();
 
     expect(timelineData.getCurrentPosition()?.timestamp.getValueNs()).toEqual(
-      BigInt(100),
+      100n,
     );
 
     const nextEntryButton = dom.get(nextEntrySelector);
@@ -420,7 +403,7 @@ describe('TimelineComponent', () => {
     const timelineData = component.timelineData();
 
     expect(timelineData.getCurrentPosition()?.timestamp.getValueNs()).toEqual(
-      BigInt(100),
+      100n,
     );
     const prevEntryButton = dom.get(prevEntrySelector);
     prevEntryButton.checkDisabled(true);
@@ -453,36 +436,20 @@ describe('TimelineComponent', () => {
 
     expect(
       component.timelineData().getCurrentPosition()?.timestamp.getValueNs(),
-    ).toBe(BigInt(100));
+    ).toBe(100n);
     const nextEntryButton = dom.get(nextEntrySelector);
 
-    testCurrentTimestampOnButtonClick(
-      nextEntryButton,
-      position105,
-      BigInt(110),
-    );
+    testCurrentTimestampOnButtonClick(nextEntryButton, position105, 110n);
 
-    testCurrentTimestampOnButtonClick(
-      nextEntryButton,
-      position100,
-      BigInt(110),
-    );
+    testCurrentTimestampOnButtonClick(nextEntryButton, position100, 110n);
 
-    testCurrentTimestampOnButtonClick(nextEntryButton, position90, BigInt(100));
+    testCurrentTimestampOnButtonClick(nextEntryButton, position90, 100n);
 
     // No change when we are already on the last timestamp of the active trace
-    testCurrentTimestampOnButtonClick(
-      nextEntryButton,
-      position110,
-      BigInt(110),
-    );
+    testCurrentTimestampOnButtonClick(nextEntryButton, position110, 110n);
 
     // No change when we are after the last entry of the active trace
-    testCurrentTimestampOnButtonClick(
-      nextEntryButton,
-      position112,
-      BigInt(112),
-    );
+    testCurrentTimestampOnButtonClick(nextEntryButton, position112, 112n);
   });
 
   it('changes timestamp on previous entry button press', () => {
@@ -490,39 +457,23 @@ describe('TimelineComponent', () => {
 
     expect(
       component.timelineData().getCurrentPosition()?.timestamp.getValueNs(),
-    ).toBe(BigInt(100));
+    ).toBe(100n);
     const prevEntryButton = dom.get(prevEntrySelector);
 
     // In this state we are already on the first entry at timestamp 100, so
     // there is no entry to move to before and we just don't update the timestamp
-    testCurrentTimestampOnButtonClick(
-      prevEntryButton,
-      position105,
-      BigInt(105),
-    );
+    testCurrentTimestampOnButtonClick(prevEntryButton, position105, 105n);
 
-    testCurrentTimestampOnButtonClick(
-      prevEntryButton,
-      position110,
-      BigInt(100),
-    );
+    testCurrentTimestampOnButtonClick(prevEntryButton, position110, 100n);
 
     // Active entry here should be 110 so moving back means moving to 100.
-    testCurrentTimestampOnButtonClick(
-      prevEntryButton,
-      position112,
-      BigInt(100),
-    );
+    testCurrentTimestampOnButtonClick(prevEntryButton, position112, 100n);
 
     // No change when we are already on the first timestamp of the active trace
-    testCurrentTimestampOnButtonClick(
-      prevEntryButton,
-      position100,
-      BigInt(100),
-    );
+    testCurrentTimestampOnButtonClick(prevEntryButton, position100, 100n);
 
     // No change when we are before the first entry of the active trace
-    testCurrentTimestampOnButtonClick(prevEntryButton, position90, BigInt(90));
+    testCurrentTimestampOnButtonClick(prevEntryButton, position90, 90n);
   });
 
   it('performs expected action on arrow key press depending on input form focus', async () => {
@@ -555,7 +506,7 @@ describe('TimelineComponent', () => {
 
     expect(
       component.timelineData().getCurrentPosition()?.timestamp.getValueNs(),
-    ).toBe(BigInt(100));
+    ).toBe(100n);
 
     const timeInputField = dom.get('.time-input.nano');
 
@@ -563,29 +514,24 @@ describe('TimelineComponent', () => {
       timeInputField,
       position105,
       '110 ns',
-      BigInt(110),
+      110n,
     );
 
     testCurrentTimestampOnTimeInput(
       timeInputField,
       position100,
       '110 ns',
-      BigInt(110),
+      110n,
     );
 
-    testCurrentTimestampOnTimeInput(
-      timeInputField,
-      position90,
-      '100 ns',
-      BigInt(100),
-    );
+    testCurrentTimestampOnTimeInput(timeInputField, position90, '100 ns', 100n);
 
     // No change when we are already on the last timestamp of the active trace
     testCurrentTimestampOnTimeInput(
       timeInputField,
       position110,
       '110 ns',
-      BigInt(110),
+      110n,
     );
 
     // No change when we are after the last entry of the active trace
@@ -593,7 +539,7 @@ describe('TimelineComponent', () => {
       timeInputField,
       position112,
       '112 ns',
-      BigInt(112),
+      112n,
     );
   });
 
@@ -606,14 +552,9 @@ describe('TimelineComponent', () => {
       'makeTimestampFromBootTimeNs',
     ).and.callThrough();
 
-    testCurrentTimestampOnTimeInput(
-      timeInputField,
-      position105,
-      '10 ns',
-      BigInt(90),
-    );
+    testCurrentTimestampOnTimeInput(timeInputField, position105, '10 ns', 90n);
 
-    expect(spy).toHaveBeenCalledWith(BigInt(10));
+    expect(spy).toHaveBeenCalledWith(10n);
   });
 
   it('updates position based on human time input field using date time format', () => {
@@ -621,7 +562,7 @@ describe('TimelineComponent', () => {
 
     expect(
       component.timelineData().getCurrentPosition()?.timestamp.getValueNs(),
-    ).toBe(BigInt(100));
+    ).toBe(100n);
 
     const timeInputField = dom.get('.time-input.human');
 
@@ -629,21 +570,21 @@ describe('TimelineComponent', () => {
       timeInputField,
       position105,
       '1970-01-01, 00:00:00.000000110',
-      BigInt(110),
+      110n,
     );
 
     testCurrentTimestampOnTimeInput(
       timeInputField,
       position100,
       '1970-01-01, 00:00:00.000000110',
-      BigInt(110),
+      110n,
     );
 
     testCurrentTimestampOnTimeInput(
       timeInputField,
       position90,
       '1970-01-01, 00:00:00.000000100',
-      BigInt(100),
+      100n,
     );
 
     // No change when we are already on the last timestamp of the active trace
@@ -651,7 +592,7 @@ describe('TimelineComponent', () => {
       timeInputField,
       position110,
       '1970-01-01, 00:00:00.000000110',
-      BigInt(110),
+      110n,
     );
 
     // No change when we are after the last entry of the active trace
@@ -659,7 +600,7 @@ describe('TimelineComponent', () => {
       timeInputField,
       position112,
       '1970-01-01, 00:00:00.000000112',
-      BigInt(112),
+      112n,
     );
   });
 
@@ -668,7 +609,7 @@ describe('TimelineComponent', () => {
 
     expect(
       component.timelineData().getCurrentPosition()?.timestamp.valueOf(),
-    ).toBe(BigInt(100));
+    ).toBe(100n);
 
     const timeInputField = dom.get('.time-input.human');
 
@@ -676,7 +617,7 @@ describe('TimelineComponent', () => {
       timeInputField,
       position90,
       '1970-01-01T00:00:00.000000100',
-      BigInt(100),
+      100n,
     );
   });
 
@@ -685,7 +626,7 @@ describe('TimelineComponent', () => {
 
     expect(
       component.timelineData().getCurrentPosition()?.timestamp.valueOf(),
-    ).toBe(BigInt(100));
+    ).toBe(100n);
 
     const timeInputField = dom.get('.time-input.human');
 
@@ -693,7 +634,7 @@ describe('TimelineComponent', () => {
       timeInputField,
       position105,
       '00:00:00.000000110',
-      BigInt(110),
+      110n,
     );
   });
 
@@ -1171,7 +1112,7 @@ describe('TimelineComponent', () => {
     const hoverPreview = dom.get('.hover-preview').getHTMLElement();
     expect(hoverPreview.style.display).toBe('none');
 
-    const ts = converter.makeTimestampFromRealNs(BigInt(5025789000000));
+    const ts = converter.makeTimestampFromRealNs(5025789000000n);
     const miniTimeline = assertDefined(component.miniTimeline());
     miniTimeline.onHoverPositionUpdate.emit({posX: 10, ts, xRatio: 0.1});
     dom.detectChanges();
@@ -1566,7 +1507,7 @@ describe('TimelineComponent', () => {
       .setTimestamps(TraceType.SURFACE_FLINGER, [])
       .setTimestamps(TraceType.WINDOW_MANAGER, [time100])
       .build();
-    await c.timelineData().initialize(traces, undefined, converter);
+    c.timelineData().initialize(traces, undefined, converter);
     domHelper.setComponentInput('allTraces', traces);
     await domHelper.detectChangesAndWaitStable();
     domHelper.detectChanges();
@@ -1627,18 +1568,10 @@ describe('TimelineComponent', () => {
     nextEntryButton: DOMTestHelper<TimelineComponent>,
     prevEntryButton: DOMTestHelper<TimelineComponent>,
   ) {
-    testCurrentTimestampOnButtonClick(
-      prevEntryButton,
-      position110,
-      BigInt(100),
-    );
+    testCurrentTimestampOnButtonClick(prevEntryButton, position110, 100n);
     prevEntryButton.checkDisabled(true);
     nextEntryButton.checkDisabled(false);
-    testCurrentTimestampOnButtonClick(
-      nextEntryButton,
-      position100,
-      BigInt(110),
-    );
+    testCurrentTimestampOnButtonClick(nextEntryButton, position100, 110n);
     prevEntryButton.checkDisabled(false);
     nextEntryButton.checkDisabled(true);
   }
@@ -1647,17 +1580,13 @@ describe('TimelineComponent', () => {
     nextEntryButton: DOMTestHelper<TimelineComponent>,
     prevEntryButton: DOMTestHelper<TimelineComponent>,
   ) {
-    testCurrentTimestampOnButtonClick(prevEntryButton, position90, BigInt(90));
+    testCurrentTimestampOnButtonClick(prevEntryButton, position90, 90n);
     prevEntryButton.checkDisabled(true);
     nextEntryButton.checkDisabled(false);
-    testCurrentTimestampOnButtonClick(nextEntryButton, position90, BigInt(101));
+    testCurrentTimestampOnButtonClick(nextEntryButton, position90, 101n);
     prevEntryButton.checkDisabled(false);
     nextEntryButton.checkDisabled(false);
-    testCurrentTimestampOnButtonClick(
-      nextEntryButton,
-      position110,
-      BigInt(112),
-    );
+    testCurrentTimestampOnButtonClick(nextEntryButton, position110, 112n);
     prevEntryButton.checkDisabled(false);
     nextEntryButton.checkDisabled(true);
   }

@@ -19,8 +19,6 @@ import {ChangeDetectorRef, Component, Inject} from '@angular/core';
 import {assertDefined, assertUnreachable} from '@common/assert';
 import {Timer} from '@common/time/timer';
 import {getLogger, Logger} from '@compat/logging';
-import {trySanitizeUrl} from '@compat/safevalues';
-import {windowOpen} from '@compat/safevalues/dom';
 import {Message, MessageBugReport, MessageFiles, MessagePing, MessageTimestamp, MessageType, TimestampType,} from '@cross_tool/messages';
 
 @Component({
@@ -36,8 +34,8 @@ export class AppComponent {
   static readonly TARGET = 'http://localhost:8080';
   static readonly TARGET_FROM_ABT =
     'http://localhost:8080?source=openFromExtension'; // for manual testing only
-  static readonly TIMESTAMP_IN_BUGREPORT_MESSAGE = BigInt(1670509911000000000);
-  static readonly TIMESTAMP_IN_FILES_MESSAGE = BigInt(15725894416);
+  static readonly TIMESTAMP_IN_BUGREPORT_MESSAGE = 1670509911000000000n;
+  static readonly TIMESTAMP_IN_FILES_MESSAGE = 15725894416n;
 
   private winscope: Window | null = null;
   private target = AppComponent.TARGET;
@@ -98,7 +96,7 @@ export class AppComponent {
   private openWinscope() {
     this.printStatus('OPENING WINSCOPE');
 
-    this.winscope = windowOpen(window, trySanitizeUrl(this.target));
+    this.winscope = window.open(this.target);
     if (!this.winscope) {
       throw new Error('Failed to open winscope');
     }
@@ -172,7 +170,8 @@ export class AppComponent {
     const message = event.data as Message;
     if (!message.type) {
       this.logger.warn(
-        'Cross-tool protocol received unrecognized message: ' + message,
+        'Cross-tool protocol received unrecognized message:',
+        message,
       );
       return;
     }
@@ -180,7 +179,8 @@ export class AppComponent {
     switch (message.type) {
       case MessageType.PING:
         this.logger.warn(
-          'Cross-tool protocol received unexpected ping message: ' + message,
+          'Cross-tool protocol received unexpected ping message:',
+          message,
         );
         break;
       case MessageType.PONG:
@@ -188,24 +188,27 @@ export class AppComponent {
         break;
       case MessageType.BUGREPORT:
         this.logger.warn(
-          'Cross-tool protocol received unexpected bugreport message: ' +
-            message,
+          'Cross-tool protocol received unexpected bugreport message:',
+          message,
         );
         break;
       case MessageType.TIMESTAMP:
         this.logger.info(
-          'Cross-tool protocol received timestamp message: ' + message,
+          'Cross-tool protocol received timestamp message:',
+          message,
         );
         this.onMessageTimestampReceived(message as MessageTimestamp);
         break;
       case MessageType.FILES:
         this.logger.warn(
-          'Cross-tool protocol received unexpected files message: ' + message,
+          'Cross-tool protocol received unexpected files message:',
+          message,
         );
         break;
       default:
         this.logger.warn(
-          'Cross-tool protocol received unrecognized message: ' + message,
+          'Cross-tool protocol received unrecognized message:',
+          message,
         );
         break;
     }

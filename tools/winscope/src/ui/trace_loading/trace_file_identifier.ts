@@ -17,6 +17,7 @@
 import {assertDefined} from '@common/assert';
 import {getFileDirectory, isZipFile, unzipFile} from '@common/io';
 import {utf8Decode} from '@common/string_helpers';
+import {TimezoneInfo} from '@common/time/time';
 import {getLogger, Logger} from '@compat/logging';
 import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
 import {ProcessedFiles} from '@legacy_file_readers/common/processed_files';
@@ -42,14 +43,13 @@ export interface IdentifiedFiles<T extends FileReader> {
   nonPerfetto: T[];
   perfetto: T[];
   criticalWarnings: UserWarning[];
-  metadata?: TraceMetadata;
 }
 
 interface FilterResult {
   criticalWarnings: UserWarning[];
   legacy: TraceFile[];
   perfetto: TraceFile[];
-  metadata?: TraceMetadata;
+  timezoneInfo?: TimezoneInfo;
 }
 
 type IdentifyPerfettoFileStrategy<T> = (file: TraceFile) => Promise<T[]>;
@@ -59,6 +59,7 @@ type IdentifyPerfettoFileStrategy<T> = (file: TraceFile) => Promise<T[]>;
  */
 export type IdentifyLegacyFilesStrategy = (
   files: TraceFile[],
+  timezoneInfo?: TimezoneInfo,
 ) => Promise<ProcessedFiles<LegacyFileReader>>;
 
 /**
@@ -116,7 +117,7 @@ export class TraceFileIdentifier<T extends FileReader>
 
   async onWinscopeEvent(event: WinscopeEvent) {
     if (event instanceof BugreportFileSelected) {
-      await this.onBugreportFileSelected(event as BugreportFileSelected);
+      this.onBugreportFileSelected(event as BugreportFileSelected);
     }
   }
 
@@ -128,7 +129,7 @@ export class TraceFileIdentifier<T extends FileReader>
   ): Promise<IdentifiedFiles<T>> {
     const startTimeMs = Date.now();
 
-    const {result, isBugreport} = await this.filter(files);
+    const {result, metadata, isBugreport} = await this.filter(files);
 
     const size = result.legacy
       .concat(result.perfetto)
@@ -149,17 +150,16 @@ export class TraceFileIdentifier<T extends FileReader>
         perfetto: [],
         legacy: [],
         nonPerfetto: [],
-        metadata: result.metadata,
       };
     }
 
     let {supportedFiles: legacyFileReaders, unsupportedFiles} =
-      await tryIdentifyLegacy(result.legacy);
+      await tryIdentifyLegacy(result.legacy, result.timezoneInfo);
 
     let nonPerfettoParsers: T[] = [];
     if (unsupportedFiles.length > 0) {
       const {supportedFiles, unsupportedFiles: stillUnsupported} =
-        await tryIdentifyNonPerfetto(unsupportedFiles, result.metadata ?? {});
+        await tryIdentifyNonPerfetto(unsupportedFiles, metadata);
       nonPerfettoParsers = supportedFiles;
       unsupportedFiles = stillUnsupported;
     }
@@ -190,12 +190,12 @@ export class TraceFileIdentifier<T extends FileReader>
       legacy: legacyFileReaders,
       nonPerfetto: nonPerfettoParsers,
       perfetto: perfettoParsers,
-      metadata: result.metadata,
     };
   }
 
   private async filter(files: TraceFile[]): Promise<{
     result: FilterResult;
+    metadata: TraceMetadata;
     isBugreport: boolean;
   }> {
     const bugreportMainEntry = files.find((file) =>
@@ -203,10 +203,9 @@ export class TraceFileIdentifier<T extends FileReader>
     );
 
     const perfettoFiles = files.filter((file) => this.isPerfettoFile(file));
-    const metadataRes = await this.extractAndAnalyzeMetadata(files);
+    const {mFiles, metadata} = await this.extractAndAnalyzeMetadata(files);
     const legacyFiles = files.filter(
-      (file) =>
-        !this.isPerfettoFile(file) && !metadataRes.metadataFiles.includes(file),
+      (file) => !this.isPerfettoFile(file) && !mFiles.includes(file),
     );
 
     const isBugReportArchive = await this.isBugreport(
@@ -219,30 +218,22 @@ export class TraceFileIdentifier<T extends FileReader>
         perfetto: perfettoFiles,
         legacy: legacyFiles,
         criticalWarnings: [],
-        metadata: metadataRes.metadata,
       };
-      return {result, isBugreport: false};
+      return {result, metadata, isBugreport: false};
     }
 
     const bugreportData = await this.getBugreportData(
       assertDefined(bugreportMainEntry),
       files,
     );
-    if (bugreportData?.timezoneInfo) {
-      if (!metadataRes.metadata) {
-        metadataRes.metadata = {};
-      }
-      metadataRes.metadata.timezoneInfo = bugreportData.timezoneInfo;
-    }
 
-    const result = await this.filterBugreportForTraceFiles(
+    const result = await this.filterBugreport(
       assertDefined(bugreportMainEntry),
       perfettoFiles,
       legacyFiles,
       bugreportData,
-      metadataRes.metadata,
     );
-    return {result, isBugreport: true};
+    return {result, metadata, isBugreport: true};
   }
 
   private async getBugreportData(
@@ -341,12 +332,11 @@ export class TraceFileIdentifier<T extends FileReader>
     });
   }
 
-  private async filterBugreportForTraceFiles(
+  private async filterBugreport(
     bugreportMainEntry: TraceFile,
     perfettoFiles: TraceFile[],
     legacyFiles: TraceFile[],
     bugreportData?: BugreportData,
-    metadata?: TraceMetadata,
   ): Promise<FilterResult> {
     const isFileAllowlisted = (file: TraceFile) => {
       for (const traceDir of TraceFileIdentifier.BUGREPORT_LEGACY_FILES_ALLOWLIST) {
@@ -439,7 +429,7 @@ export class TraceFileIdentifier<T extends FileReader>
       criticalWarnings,
       perfetto: perfettoFile ? [perfettoFile] : [],
       legacy: unzippedLegacyFiles,
-      metadata,
+      timezoneInfo: bugreportData?.timezoneInfo,
     };
   }
 
@@ -454,47 +444,32 @@ export class TraceFileIdentifier<T extends FileReader>
 
   private async extractAndAnalyzeMetadata(
     files: TraceFile[],
-  ): Promise<{metadataFiles: TraceFile[]; metadata?: TraceMetadata}> {
-    const metadataFiles = [];
-    let metadata: TraceMetadata | undefined;
+  ): Promise<{mFiles: TraceFile[]; metadata: TraceMetadata}> {
+    const mFiles = [];
+    const metadata: TraceMetadata = {};
     for (const file of files) {
       const buffer = new Uint8Array(await file.file.arrayBuffer());
       const text = utf8Decode(buffer);
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data = JSON.parse(text) as any;
-        // external screen recording metadata JSON
+        const data = JSON.parse(text);
         if (
           data.realToElapsedTimeOffsetNanos !== undefined &&
           data.elapsedRealTimeNanos !== undefined
         ) {
-          const screenRecordingOffsets = {
+          metadata.screenRecordingOffsets = {
             realToElapsedTimeOffsetNanos: BigInt(
               data.realToElapsedTimeOffsetNanos,
             ),
             elapsedRealTimeNanos: BigInt(data.elapsedRealTimeNanos),
           };
-          metadata = {screenRecordingOffsets};
-          metadataFiles.push(file);
-          break;
-        }
-        // winscope metadata JSON from previous session download
-        if (data.timezoneInfo || data.screenRecordingOffsets) {
-          metadata = {};
-          if (data.timezoneInfo) {
-            metadata.timezoneInfo = data.timezoneInfo;
-          }
-          if (data.screenRecordingOffsets) {
-            metadata.screenRecordingOffsets = data.screenRecordingOffsets;
-          }
-          metadataFiles.push(file);
+          mFiles.push(file);
           break;
         }
       } catch {
         // swallow - looking for metadata json
       }
     }
-    return {metadata, metadataFiles};
+    return {metadata, mFiles};
   }
 
   private pickLargestFile(files: TraceFile[]): TraceFile | undefined {

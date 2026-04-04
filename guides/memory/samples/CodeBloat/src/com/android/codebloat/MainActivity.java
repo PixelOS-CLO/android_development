@@ -40,6 +40,18 @@ public class MainActivity extends Activity {
         list.add(1);
         sumArrayList(list);
 
+        // Touch ALL generated classes so they are loaded into memory
+        new Thread(() -> {
+            try {
+                for (int i = 0; i < 300; i++) {
+                    Class<?> clazz = Class.forName("com.android.codebloat.GeneratedClass" + i);
+                    clazz.getMethod("doSomething").invoke(null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+
         setContentView(tv);
     }
 }

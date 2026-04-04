@@ -23,7 +23,7 @@ import {ConnectionStateListener} from '@trace_collection/connection_state_listen
 import {MockAdbDeviceConnection} from '@trace_collection/mock/mock_adb_device_connection';
 import {MockAdbHostConnection} from '@trace_collection/mock/mock_adb_host_connection';
 import {AdbFileIdentifier, TraceTarget} from '@trace_collection/trace_target';
-import {UiTraceTarget} from '@trace_collection/ui/ui_trace_target';
+import {UiTraceTarget} from '@trace_collection/ui_trace_target';
 import {UserRequest} from '@trace_collection/user_request';
 import {makeWarningProxyTracingWarnings} from '@trace_collection/warnings';
 

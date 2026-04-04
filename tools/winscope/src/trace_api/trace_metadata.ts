@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import {TimezoneInfo} from '@common/time/time';
-
 /**
  * Metadata associated with a trace. Contains information needed to synchronize
  * and interpret the trace data.
@@ -26,11 +24,6 @@ export declare interface TraceMetadata {
    * trace's elapsed time base.
    */
   screenRecordingOffsets?: ScreenRecordingOffsets;
-
-  /**
-   * The timezone information for the trace.
-   */
-  timezoneInfo?: TimezoneInfo;
 }
 
 /**
@@ -49,29 +42,4 @@ export declare interface ScreenRecordingOffsets {
    * The relationship is: `elapsedTime = realTime - realToElapsedTimeOffsetNanos`.
    */
   realToElapsedTimeOffsetNanos: bigint;
-}
-
-export function toJSON(metadata: TraceMetadata): string | undefined {
-  if (!hasMetadata(metadata)) return undefined;
-  const obj = {
-    screenRecordingOffsets: metadata.screenRecordingOffsets
-      ? {
-          elapsedRealTimeNanos:
-            metadata.screenRecordingOffsets.elapsedRealTimeNanos.toString(),
-          realToElapsedTimeOffsetNanos:
-            metadata.screenRecordingOffsets.realToElapsedTimeOffsetNanos.toString(),
-        }
-      : undefined,
-    timezoneInfo: metadata.timezoneInfo,
-  };
-  const json = JSON.stringify(obj);
-  if (json === '{}') return undefined;
-  return json;
-}
-
-function hasMetadata(metadata: TraceMetadata): boolean {
-  const keys = Object.keys(metadata);
-  return keys.some((key) => {
-    return metadata[key as keyof TraceMetadata] !== undefined;
-  });
 }

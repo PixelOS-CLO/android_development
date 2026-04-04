@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 The Android Open Source Project
+ * Copyright (C) 2025 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-import {TestBed} from '@angular/core/testing';
-import {BrowserDynamicTestingModule, platformBrowserDynamicTesting,} from '@angular/platform-browser-dynamic/testing';
+import {waitToBeCalled} from '@common/spy_utils';
 
-export function setupTestEnvironment() {
-  TestBed.resetTestEnvironment();
-  TestBed.initTestEnvironment(
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting(),
-  );
+import {ThumbnailGenerator} from './thumbnail_generator';
+
+export function spyOnThumbnailGenerator() {
+  return spyOn(ThumbnailGenerator.prototype, 'generate').and.callThrough();
+}
+
+export async function waitForThumbnailGeneration(spy: jasmine.Spy) {
+  await waitToBeCalled(spy);
+  await spy.calls.mostRecent().returnValue;
 }

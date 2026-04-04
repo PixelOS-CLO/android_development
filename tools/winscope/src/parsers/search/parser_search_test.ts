@@ -15,9 +15,9 @@
  */
 
 import {makeConverterNoRteOffsets, makeElapsedTimestamp, makeZeroTimestamp, timestampEqualityTester,} from '@common/time/testing/test_helpers';
+import {getPerfettoParser} from '@parsers/fixture_utils';
 import {makeWarningTraceSearchQueryFailed} from '@parsers/helpers/warnings';
 import {ParserSurfaceFlinger} from '@parsers/surface_flinger/parser_surface_flinger';
-import {getPerfettoParser} from '@parsers/testing/fixture_utils';
 import {UserNotifierChecker} from '@services/testing/user_notifier_checker';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {TraceType} from '@trace_api/trace_type';

@@ -27,6 +27,7 @@ import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
+import {TabbedViewSwitchRequest} from '@ui/shared/events/tabbed_view_events';
 import {AbstractHierarchyViewerPresenter, NotifyHierarchyViewCallbackType,} from '@ui/shared/hierarchy/abstract_hierarchy_viewer_presenter';
 import {HierarchyPresenter} from '@ui/shared/hierarchy/hierarchy_presenter';
 import {UiHierarchyTreeNode} from '@ui/shared/hierarchy/ui_hierarchy_tree_node';
@@ -40,7 +41,6 @@ import {makeUiRects, makeVcUiRects} from '@ui/shared/rects/ui_rect_factory';
 import {VISIBLE_CHIP} from '@ui/shared/user_input/chip';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
 import {UserOptions} from '@ui/shared/user_input/user_options';
-import {TabbedViewSwitchRequest} from '@ui/shared/viewers/tabbed_view_events';
 
 import {SimplifyNamesVc} from './operations/simplify_names';
 import {UiData} from './ui_data';

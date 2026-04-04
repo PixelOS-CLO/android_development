@@ -108,14 +108,6 @@ def get_parser() -> argparse.ArgumentParser:
         help="Path to write the filtered manifest XML file.",
     )
     parser.add_argument(
-        "--output-build-manifest",
-        type=Path,
-        help=(
-            "Path to write the build manifest XML file. This manifest includes "
-            "all projects kept for the build."
-        ),
-    )
-    parser.add_argument(
         "-n",
         "--dry-run",
         action="store_true",
@@ -346,11 +338,8 @@ def remove_project_directories(
                     break
 
 
-def write_filtered_manifest(
-    manifest_content: str,
-    projects_to_keep_names: set[str],
-    output_path: Path,
-    arsp_mode: bool = True,
+def generate_arsp_filtered_manifest(
+    manifest_content: str, projects_to_keep_names: set[str], output_path: Path
 ) -> bool:
     """Creates a new manifest file containing only the projects we kept."""
     try:
@@ -359,62 +348,49 @@ def write_filtered_manifest(
         logging.error("Error parsing manifest content: %s", e)
         return False
 
-    if arsp_mode:
-        allowed_tags = {"remote", "default", "repo-hooks", "project"}
-        kept_projects_paths = set()
-        for child in list(root):
-            if child.tag not in allowed_tags:
+    allowed_tags = {"remote", "default", "repo-hooks", "project"}
+    kept_projects = set()
+    for child in list(root):
+        if child.tag not in allowed_tags:
+            root.remove(child)
+            continue
+
+        if child.tag == "remote":
+            if child.get("name") != "arsp":
                 root.remove(child)
-                continue
+        elif child.tag == "default":
+            if child.get("remote") != "arsp":
+                root.remove(child)
+        elif child.tag == "project":
+            project_name = child.get("name")
+            if project_name in projects_to_keep_names:
+                kept_projects.add(child.get("path"))
+                if "remote" in child.attrib:
+                    del child.attrib["remote"]
+            else:
+                root.remove(child)
 
-            if child.tag == "remote":
-                if child.get("name") != "arsp":
-                    root.remove(child)
-            elif child.tag == "default":
-                if child.get("remote") != "arsp":
-                    root.remove(child)
-            elif child.tag == "project":
-                project_name = child.get("name")
-                if project_name in projects_to_keep_names:
-                    kept_projects_paths.add(child.get("path"))
-                    if "remote" in child.attrib:
-                        del child.attrib["remote"]
-                else:
-                    root.remove(child)
-
-        # TODO(b/492541439): Make this not terrible.
-        if "vendor/google/certs" not in kept_projects_paths:
-            ET.SubElement(
-                root,
-                "project",
-                attrib={
-                    "path": "vendor/google/certs",
-                    "name": "platform/vendor/google_shared/desktop/certs",
-                    "revision": "main",
-                },
-            )
-        if "vendor/google/dev-keystore" not in kept_projects_paths:
-            ET.SubElement(
-                root,
-                "project",
-                attrib={
-                    "path": "vendor/google/dev-keystore",
-                    "name": "platform/vendor/google_shared/desktop/al-dev-keystore",
-                    "revision": "main",
-                },
-            )
-    else:
-        # Build manifest subset.
-        for child in list(root):
-            if child.tag == "project":
-                project_name = child.get("name")
-                if project_name not in projects_to_keep_names:
-                    root.remove(child)
-
-    try:
-        ET.indent(root, space="  ")
-    except AttributeError:
-        pass
+    # TODO(b/492541439): Make this not terrible.
+    if "vendor/google/certs" not in kept_projects:
+        ET.SubElement(
+            root,
+            "project",
+            attrib={
+                "path": "vendor/google/dev-keystore",
+                "name": "platform/vendor/google_shared/desktop/al-dev-keystore",
+                "revision": "main",
+            },
+        )
+    if "vendor/google/dev-keystore" not in kept_projects:
+        ET.SubElement(
+            root,
+            "project",
+            attrib={
+                "path": "vendor/google/certs",
+                "name": "platform/vendor/google_shared/desktop/certs",
+                "revision": "main",
+            },
+        )
 
     tree = ET.ElementTree(root)
     logging.info("Writing filtered manifest to: %s", output_path)
@@ -486,38 +462,18 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
 
     keep_groups_set = set(groups_to_keep)
     cli_keep_set = set(opts.projects_to_keep)
-    keep_project_names_for_output_manifest = set()
-    keep_project_names_for_build_manifest = set()
-
+    keep_project_names_for_manifest = set()
     for p in all_projects:
         if p not in projects_to_remove:
-            # Everything kept for the build goes in the build manifest.
-            keep_project_names_for_build_manifest.add(p["name"])
-
-            # Only groups-to-keep projects go into the output manifest.
             if set(p["groups"]) & keep_groups_set or p["name"] in cli_keep_set:
-                keep_project_names_for_output_manifest.add(p["name"])
+                keep_project_names_for_manifest.add(p["name"])
 
     if opts.output_manifest:
-        success = write_filtered_manifest(
-            manifest_content,
-            keep_project_names_for_output_manifest,
-            opts.output_manifest,
-            arsp_mode=True,
+        success = generate_arsp_filtered_manifest(
+            manifest_content, keep_project_names_for_manifest, opts.output_manifest
         )
         if not success:
             return 1
-
-    if opts.output_build_manifest:
-        success = write_filtered_manifest(
-            manifest_content,
-            keep_project_names_for_build_manifest,
-            opts.output_build_manifest,
-            arsp_mode=False,
-        )
-        if not success:
-            return 1
-
     if projects_to_remove:
         remove_project_directories(projects_to_remove, checkout_root, opts.dry_run)
     else:

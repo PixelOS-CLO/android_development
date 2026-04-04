@@ -16,7 +16,6 @@
 
 import {ComponentRef} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {makeEmptyTrace} from '@trace_api/testing/trace_test_helpers';
 import {Trace} from '@trace_api/trace';
@@ -29,10 +28,6 @@ import {ViewerMediaBasedComponent} from './viewer_media_based_component';
 import {ViewerScreenshot} from './viewer_screenshot';
 
 describe('ViewerScreenshot', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const trace: Trace<MediaBasedTraceEntry> = makeEmptyTrace(
     TraceType.SCREENSHOT,
   );

@@ -253,7 +253,7 @@ export class Presenter extends AbstractLogViewerPresenter<
   }
 
   protected override async updateFiltersInHeaders(headers: LogHeader[]) {
-    await Promise.all(
+    Promise.all(
       headers.map((header) => this.updateFilterByCustomQuery(header)),
     );
   }

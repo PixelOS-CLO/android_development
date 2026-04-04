@@ -15,7 +15,7 @@
  */
 import {DragDropModule} from '@angular/cdk/drag-drop';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, inject, input, NgZone, output, viewChild,} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, effect, ElementRef, HostListener, Inject, input, NgZone, output, viewChild,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
@@ -58,14 +58,12 @@ export class ViewerMediaBasedComponent {
     'frameCanvasElementOverlay',
   );
 
-  private sanitizer = inject(DomSanitizer);
-  readonly elementRef: ElementRef<HTMLElement> = inject(
-    ElementRef<HTMLElement>,
-  );
-  private changeDetectorRef = inject(ChangeDetectorRef);
-  private ngZone = inject(NgZone);
-
-  constructor() {
+  constructor(
+    @Inject(DomSanitizer) private sanitizer: DomSanitizer,
+    @Inject(ElementRef) readonly elementRef: ElementRef<HTMLElement>,
+    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
+    @Inject(NgZone) private ngZone: NgZone,
+  ) {
     effect(() => {
       this.calls++;
       const currCall = this.calls;
@@ -122,8 +120,8 @@ export class ViewerMediaBasedComponent {
     this.clearFrameSizeWorker();
   }
 
-  @HostListener('window:resize')
-  onResize() {
+  @HostListener('window:resize', ['$event'])
+  onResize(_: Event) {
     this.updateMaxContainerSize();
   }
 

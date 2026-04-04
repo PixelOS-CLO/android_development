@@ -272,9 +272,3 @@ flag {
     description: "A flag for Denise to test the voyager infra"
     bug: "456526598"
 }
-flag {
-    name: "test_voyager_e2e_flag_1"
-    namespace: "core_experiments_team_internal"
-    description: "A flag to test the voyager infra"
-    bug: "456526598"
-}

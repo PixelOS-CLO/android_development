@@ -13,23 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {Component, inject} from '@angular/core';
+import {Component, Inject} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import {MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef,} from '@angular/material/dialog';
 import {MatIconModule} from '@angular/material/icon';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 
 import {WarningDialogComponent, WarningDialogData, WarningDialogResult,} from './warning_dialog_component';
 
 describe('WarningDialogComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: TestHostComponent;
   let dom: DOMTestHelper<TestHostComponent>;
 
@@ -141,7 +136,7 @@ describe('WarningDialogComponent', () => {
     dialogResult: WarningDialogResult | undefined;
     singleSelection: boolean | undefined;
 
-    dialog = inject(MatDialog);
+    constructor(@Inject(MatDialog) public dialog: MatDialog) {}
 
     onClick() {
       const data: WarningDialogData = {

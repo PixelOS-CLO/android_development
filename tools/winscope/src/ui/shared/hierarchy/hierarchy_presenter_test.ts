@@ -296,7 +296,7 @@ describe('HierarchyPresenter', () => {
 
   it('disables show diff and generates non-diff tree if no prev entry available', async () => {
     const opts = {showDiff: {name: '', enabled: false, isUnavailable: false}};
-    await presenter.applyHierarchyUserOptionsChange(opts);
+    presenter.applyHierarchyUserOptionsChange(opts);
     await applyTracePositionUpdate();
     expect(opts['showDiff'].isUnavailable).toBeTrue();
     const trees = assertDefined(presenter.getAllFormattedTrees());

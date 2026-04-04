@@ -263,7 +263,7 @@ describe('AbstractLogViewerPresenter', () => {
 
   it('updates indices when filters change', async () => {
     await sendPositionUpdate(lastEntryPositionUpdate);
-    await presenter.onLogEntryClick(1);
+    presenter.onLogEntryClick(1);
     expect(uiData.currentIndex).toBe(3);
     expect(uiData.selectedIndex).toBe(1);
 

@@ -22,7 +22,6 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {FilterFlag} from '@common/filter_flag';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
@@ -30,10 +29,6 @@ import {TextFilter} from '@ui/shared/user_input/text_filter';
 import {SearchBoxComponent} from './search_box_component';
 
 describe('SearchBoxComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: SearchBoxComponent;
   let dom: DOMTestHelper<SearchBoxComponent>;
 

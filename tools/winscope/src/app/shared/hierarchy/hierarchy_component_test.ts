@@ -27,7 +27,6 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections/collapsible_section_title_component';
 import {VirtualRow, VirtualScrollViewportComponent,} from '@app/shared/scroll/virtual_scroll_viewport_component';
 import {SearchBoxComponent} from '@app/shared/search_box/search_box_component';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {TreeComponent} from '@app/shared/tree/tree_component';
 import {TreeNodeComponent} from '@app/shared/tree/tree_node_component';
 import {UserOptionsComponent} from '@app/shared/user_options/user_options_component';
@@ -49,10 +48,6 @@ import {HierarchyComponent} from './hierarchy_component';
 import {HierarchyTreeNodeDataViewComponent} from './hierarchy_tree_node_data_view_component';
 
 describe('HierarchyComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: HierarchyComponent;
   let dom: DOMTestHelper<HierarchyComponent>;
 

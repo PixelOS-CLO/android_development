@@ -15,12 +15,13 @@
  */
 
 import {makeElapsedTimestamp} from '@common/time/testing/test_helpers';
-import {spyOnThumbnailGenerator, waitForThumbnailGeneration,} from '@parsers/screen_recording/testing/test_helpers';
-import {NonPerfettoParserProvider} from '@parsers/testing/fixture_utils';
+import {NonPerfettoParserProvider} from '@parsers/fixture_utils';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {Parser} from '@trace_api/parser';
 import {TraceType} from '@trace_api/trace_type';
 import {MediaBasedTraceEntry, VideoEntry,} from '@trace/media_based/media_based_trace_entry';
+
+import {spyOnThumbnailGenerator, waitForThumbnailGeneration,} from './test_helpers';
 
 describe('ParserScreenRecordingLegacy', () => {
   let parser: Parser<MediaBasedTraceEntry>;

@@ -32,12 +32,11 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
 import {MatTabGroup, MatTabsModule} from '@angular/material/tabs';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {LoadProgressComponent} from '@app/trace_loading/load_progress_component';
 import {assertDefined} from '@common/assert';
+import {waitToBeCalled} from '@common/spy_utils';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
-import {waitToBeCalled} from '@common/testing/spy_utils';
 import {WinscopeEvent} from '@messaging/winscope_event';
 import {UserNotifierChecker} from '@services/testing/user_notifier_checker';
 import {TraceType} from '@trace_api/trace_type';
@@ -45,8 +44,8 @@ import {AdbConnectionType} from '@trace_collection/adb_connection_type';
 import {AdbDeviceConnection, AdbDeviceState,} from '@trace_collection/adb_device_connection';
 import {ConnectionState} from '@trace_collection/connection_state';
 import {MockAdbDeviceConnection} from '@trace_collection/mock/mock_adb_device_connection';
+import {UiTraceTarget} from '@trace_collection/ui_trace_target';
 import {makeProtologGroupOptions} from '@trace_collection/ui/ui_trace_configuration';
-import {UiTraceTarget} from '@trace_collection/ui/ui_trace_target';
 import {WdpDeviceConnection} from '@trace_collection/wdp/wdp_device_connection';
 import {WdpHostConnection} from '@trace_collection/wdp/wdp_host_connection';
 import {WinscopeProxyDeviceConnection} from '@trace_collection/winscope_proxy/winscope_proxy_device_connection';
@@ -62,10 +61,6 @@ import {WdpSetupComponent} from './wdp_setup_component';
 import {WinscopeProxySetupComponent} from './winscope_proxy_setup_component';
 
 describe('CollectTracesComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: CollectTracesComponent;
   let dom: DOMTestHelper<CollectTracesComponent>;
   let mockDevice: MockAdbDeviceConnection;

@@ -17,7 +17,6 @@
 import {Component, effect, ElementRef, input, viewChild} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {MatIconModule} from '@angular/material/icon';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {MouseEventButton} from '@common/mouse_event_button';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {Store} from '@common/store/store';
@@ -26,10 +25,6 @@ import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {ResizerComponent} from './resizer_component';
 
 describe('ResizerComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const horizontal = 'horizontal';
   const vertical = 'vertical';
 

@@ -16,6 +16,7 @@
 
 import {assertDefined} from '@common/assert';
 import {decompressGZipFile, isGZipFile, isZipFile, unzipFile} from '@common/io';
+import {TimezoneInfo} from '@common/time/time';
 import {TimestampConverter} from '@common/time/timestamp_converter';
 import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
 import {LegacyFileReaderFactory} from '@legacy_file_readers/common/legacy_file_reader_factory';
@@ -73,7 +74,7 @@ export interface FileLoaderResult {
   traceTypesWithParsingErrors: Map<TraceType, ParsingErrorType>;
   traceGeometryData: TraceGeometryData;
   warnings: UserWarning[];
-  metadata?: TraceMetadata;
+  timezoneInfo: TimezoneInfo | undefined;
 }
 
 /**
@@ -84,9 +85,10 @@ export interface FileLoaderResult {
  * - Reading and identifying files
  */
 export class FileLoader implements WinscopeEventListener, WinscopeEventEmitter {
-  private fileIdentifier = new TraceFileIdentifier<FileReaderAndParser>();
+  private traceFileFilter = new TraceFileIdentifier<FileReaderAndParser>();
   private traceGeometryData = new TraceGeometryData();
   private readonly timestampConverter: TimestampConverter;
+  private timezoneInfo: TimezoneInfo | undefined;
   private traceTypesWithParsingErrors: Map<TraceType, ParsingErrorType> =
     new Map();
 
@@ -95,11 +97,11 @@ export class FileLoader implements WinscopeEventListener, WinscopeEventEmitter {
   }
 
   setEmitEvent(callback: EmitEvent) {
-    this.fileIdentifier.setEmitEvent(callback);
+    this.traceFileFilter.setEmitEvent(callback);
   }
 
   async onWinscopeEvent(event: WinscopeEvent) {
-    await this.fileIdentifier.onWinscopeEvent(event);
+    await this.traceFileFilter.onWinscopeEvent(event);
   }
 
   async load(
@@ -117,8 +119,8 @@ export class FileLoader implements WinscopeEventListener, WinscopeEventEmitter {
         perfetto: [],
         traceTypesWithParsingErrors: new Map(),
         traceGeometryData: this.traceGeometryData,
+        timezoneInfo: this.timezoneInfo,
         warnings: [],
-        metadata: undefined,
       };
     }
 
@@ -136,8 +138,8 @@ export class FileLoader implements WinscopeEventListener, WinscopeEventEmitter {
       perfetto: identifiedFiles.perfetto,
       traceTypesWithParsingErrors,
       traceGeometryData: this.traceGeometryData,
+      timezoneInfo: this.timezoneInfo,
       warnings,
-      metadata: identifiedFiles.metadata,
     };
   }
 
@@ -153,8 +155,16 @@ export class FileLoader implements WinscopeEventListener, WinscopeEventEmitter {
   }> {
     const warnings: UserWarning[] = [];
 
-    const tryIdentifyLegacy = (files: TraceFile[]) => {
-      return this.processLegacyFiles(files, source, progressListener);
+    const tryIdentifyLegacy = (
+      files: TraceFile[],
+      timezoneInfo?: TimezoneInfo,
+    ) => {
+      return this.processLegacyFiles(
+        files,
+        timezoneInfo,
+        source,
+        progressListener,
+      );
     };
 
     const tryIdentifyNonPerfetto = (
@@ -178,7 +188,7 @@ export class FileLoader implements WinscopeEventListener, WinscopeEventEmitter {
       );
     };
 
-    const identifiedFiles = await this.fileIdentifier.identifyFiles(
+    const identifiedFiles = await this.traceFileFilter.identifyFiles(
       unzippedFiles,
       tryIdentifyLegacy,
       tryIdentifyNonPerfetto,
@@ -207,9 +217,14 @@ export class FileLoader implements WinscopeEventListener, WinscopeEventEmitter {
 
   private async processLegacyFiles(
     files: TraceFile[],
+    timezoneInfo: TimezoneInfo | undefined,
     source: FilesSource,
     progressListener: ProgressListener | undefined,
   ): Promise<ProcessedFiles<LegacyFileReader>> {
+    if (timezoneInfo) {
+      this.timezoneInfo = timezoneInfo;
+    }
+
     const startTimeMs = Date.now();
     const processed = await this.createFileReaderFactory().processFiles(
       files,

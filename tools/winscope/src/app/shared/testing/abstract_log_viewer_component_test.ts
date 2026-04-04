@@ -49,11 +49,9 @@ import {ViewerTransitionsComponent} from '@app/transitions/viewer_transitions_co
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeElapsedTimestamp} from '@common/time/testing/test_helpers';
-import {ColumnSpec, LogField, LogFilterChangeDetail, LogHeader, UiDataLog,} from '@ui/shared/log/ui_data_log';
+import {ColumnSpec, LogField, LogHeader, UiDataLog,} from '@ui/shared/log/ui_data_log';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
-import {TimestampClickDetail} from '@ui/shared/viewers/viewer_event_details';
-
-import {setupTestEnvironment} from './test_environment';
+import {LogFilterChangeDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
 
 type LogViewerComponent =
   | ViewerProtologComponent
@@ -72,10 +70,6 @@ export abstract class AbstractLogViewerComponentTest<
   protected readonly testField = new LogField(this.testSpec, 'VALUE');
 
   execute() {
-    beforeAll(() => {
-      setupTestEnvironment();
-    });
-
     describe('Log viewer component', () => {
       describe('common', () => {
         let dom: DOMTestHelper<T>;
@@ -115,7 +109,7 @@ export abstract class AbstractLogViewerComponentTest<
           expect(clickSpy).toHaveBeenCalledOnceWith(0);
 
           const timestampClickSpy = spyOn(component.onTimestampClick, 'emit');
-          const ts = makeElapsedTimestamp(BigInt(2));
+          const ts = makeElapsedTimestamp(2n);
           const tsDetail = new TimestampClickDetail(undefined, ts);
           logComponent.timestampClick.emit(tsDetail);
           expect(timestampClickSpy).toHaveBeenCalledOnceWith(tsDetail);

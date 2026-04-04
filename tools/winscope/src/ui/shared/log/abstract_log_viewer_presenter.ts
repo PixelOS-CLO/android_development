@@ -244,7 +244,7 @@ export abstract class AbstractLogViewerPresenter<
       if (this.initializeTraceSpecificData) {
         await this.initializeTraceSpecificData();
       }
-      void this.makeUiData().then(async () => {
+      this.makeUiData().then(async () => {
         await this.applyTracePositionUpdate(event);
         this.uiData.isFetchingData = false;
         this.notifyViewChanged();

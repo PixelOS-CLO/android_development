@@ -25,7 +25,6 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeConverterZeroRteOffsets} from '@common/time/testing/test_helpers';
@@ -35,21 +34,17 @@ import {TracePosition} from '@trace_api/trace_position';
 import {MIN_SLIDER_WIDTH, SliderComponent} from './slider_component';
 
 describe('SliderComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: SliderComponent;
   let dom: DOMTestHelper<SliderComponent>;
   const leftCropperSelector = '.slider .cropper.left';
   const rightCropperSelector = '.slider .cropper.right';
   const converter = makeConverterZeroRteOffsets();
-  const time100 = converter.makeTimestampFromRealNs(BigInt(100));
-  const time125 = converter.makeTimestampFromRealNs(BigInt(125));
-  const time126 = converter.makeTimestampFromRealNs(BigInt(126));
-  const time150 = converter.makeTimestampFromRealNs(BigInt(150));
-  const time175 = converter.makeTimestampFromRealNs(BigInt(175));
-  const time200 = converter.makeTimestampFromRealNs(BigInt(200));
+  const time100 = converter.makeTimestampFromRealNs(100n);
+  const time125 = converter.makeTimestampFromRealNs(125n);
+  const time126 = converter.makeTimestampFromRealNs(126n);
+  const time150 = converter.makeTimestampFromRealNs(150n);
+  const time175 = converter.makeTimestampFromRealNs(175n);
+  const time200 = converter.makeTimestampFromRealNs(200n);
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({

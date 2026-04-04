@@ -16,17 +16,12 @@
 
 import {TestBed} from '@angular/core/testing';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {PlaybackState} from '@ui/shared/playback/playback_state';
 
 import {PlaybackControlsComponent} from './playback_component';
 
 describe('PlaybackControlsComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: PlaybackControlsComponent;
   let dom: DOMTestHelper<PlaybackControlsComponent>;
 

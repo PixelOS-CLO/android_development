@@ -16,9 +16,9 @@
 
 import {assertDefined} from '@common/assert';
 import {DOWNLOAD_FILENAME_REGEX, ILLEGAL_FILENAME_CHARACTERS_REGEX, OnProgressUpdateType, removeDirFromFileName, removeExtensionFromFilename,} from '@common/io';
+import {TimezoneInfo} from '@common/time/time';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {TimestampConverter, UTC_TIMEZONE_INFO,} from '@common/time/timestamp_converter';
-import {UserTimestamp} from '@common/time/user_timestamp';
 import {getResolvedUTCOffset} from '@common/time/utc_offset_resolver';
 import {getLogger, Logger} from '@compat/logging';
 import {getReaderWithLatestRealToBootTimeOffset, getReaderWithLatestRealToMonotonicTimeOffset,} from '@legacy_file_readers/common/file_reader_helpers';
@@ -39,7 +39,6 @@ import {FrameMapper} from '@trace_api/frame_mapper';
 import {Parser} from '@trace_api/parser';
 import {Trace} from '@trace_api/trace';
 import {TraceFile} from '@trace_api/trace_file';
-import {TraceMetadata} from '@trace_api/trace_metadata';
 import {isTraceTypeWithViewer, TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {QueryResult} from '@trace_processor/query_result';
@@ -69,7 +68,7 @@ export class LoadedFileData {
   private lostPerfettoPackets = 0;
   private traceTypesWithParsingErrors: Map<TraceType, ParsingErrorType> =
     new Map();
-  private metadata: TraceMetadata = {};
+  private timezoneInfo: TimezoneInfo = UTC_TIMEZONE_INFO;
   private traceGeometryData: TraceGeometryData = new TraceGeometryData();
   private traces: Traces | undefined;
 
@@ -90,9 +89,6 @@ export class LoadedFileData {
       ...result.nonPerfetto,
       ...result.perfetto,
     ];
-    if (result.metadata && allReaders.length > 0) {
-      this.metadata = result.metadata;
-    }
     this.downloadArchiveFilename = this.makeDownloadArchiveFilename(
       allReaders,
       source,
@@ -101,6 +97,9 @@ export class LoadedFileData {
       this.lostPerfettoPackets = result.lostPerfettoPackets;
       this.traceTypesWithParsingErrors = result.traceTypesWithParsingErrors;
       this.traceGeometryData = result.traceGeometryData;
+    }
+    if (result.timezoneInfo) {
+      this.timezoneInfo = result.timezoneInfo;
     }
 
     const {legacy, nonPerfetto} = this.updateTimestamps(
@@ -120,7 +119,7 @@ export class LoadedFileData {
   async makeZipArchiveWithLoadedTraceFiles(
     onProgressUpdate?: OnProgressUpdateType,
   ): Promise<Blob> {
-    return this.loadedFiles.makeZipArchive(this.metadata, onProgressUpdate);
+    return this.loadedFiles.makeZipArchive(onProgressUpdate);
   }
 
   getLoadedFileReaders(): FileReader[] {
@@ -315,33 +314,21 @@ export class LoadedFileData {
   ): string {
     const files = fileReaders.flatMap((reader) => reader.getFiles());
     // set download archive file name, used to download all traces
-    let archiveFilename: string;
-    const currTime = this.getCurrTimeForFilename();
-
-    const parentArchive = fileReaders.at(0)?.getFiles().at(0)?.parentArchive;
+    let filenameWithCurrTime: string;
+    const currTime = new Date().toISOString().slice(0, -5).replace('T', '_');
     if (
-      parentArchive?.name &&
-      files.every((file) => file.parentArchive === parentArchive)
-    ) {
-      archiveFilename = this.makeArchiveFilenameFromParentArchive(
-        parentArchive.name,
-        source,
-        currTime,
-      );
-    } else if (
       this.downloadArchiveFilename ===
         LoadedFileData.DEFAULT_DOWNLOAD_ARCHIVE_NAME &&
       files.length === 1
     ) {
-      archiveFilename = this.makeArchiveFilenameFromFile(
-        files[0].file.name,
-        currTime,
-      );
+      const filenameNoDir = removeDirFromFileName(files[0].file.name);
+      const filenameNoDirOrExt = removeExtensionFromFilename(filenameNoDir);
+      filenameWithCurrTime = `${filenameNoDirOrExt}_${currTime}`;
     } else {
-      archiveFilename = `${source}_${currTime}`;
+      filenameWithCurrTime = `${source}_${currTime}`;
     }
 
-    const archiveFilenameNoIllegalChars = archiveFilename.replace(
+    const archiveFilenameNoIllegalChars = filenameWithCurrTime.replace(
       ILLEGAL_FILENAME_CHARACTERS_REGEX,
       '_',
     );
@@ -354,43 +341,6 @@ export class LoadedFileData {
       );
       return LoadedFileData.DEFAULT_DOWNLOAD_ARCHIVE_NAME;
     }
-  }
-
-  private getCurrTimeForFilename(): string {
-    const currTime = new Date();
-    // update timestamp value to include user's local timezone offset
-    currTime.setMinutes(currTime.getMinutes() - currTime.getTimezoneOffset());
-
-    // format as ISO string in current timezone
-    return currTime
-      .toISOString()
-      .slice(0, -5) // no seconds or 'Z'
-      .replace('T', '_')
-      .replace(ILLEGAL_FILENAME_CHARACTERS_REGEX, '_');
-  }
-
-  private makeArchiveFilenameFromParentArchive(
-    parentArchive: string,
-    source: FilesSource,
-    currTime: string,
-  ): string {
-    let archiveFilename = removeExtensionFromFilename(parentArchive);
-    if (!archiveFilename.startsWith(source)) {
-      archiveFilename = `${source}_${archiveFilename}`;
-    }
-    return this.addCurrTimeToFilename(archiveFilename, currTime);
-  }
-
-  private makeArchiveFilenameFromFile(filename: string, currTime: string) {
-    const filenameNoDir = removeDirFromFileName(filename);
-    const filenameNoDirOrExt = removeExtensionFromFilename(filenameNoDir);
-    return this.addCurrTimeToFilename(filenameNoDirOrExt, currTime);
-  }
-
-  private addCurrTimeToFilename(filename: string, currTime: string): string {
-    return new UserTimestamp(filename).addOrReplaceFilenameFormatTimestamp(
-      currTime,
-    );
   }
 
   private updateTimestamps(
@@ -482,6 +432,9 @@ export class LoadedFileData {
 
     this.lostPerfettoPackets = result.lostPerfettoPackets;
     this.traceGeometryData = result.traceGeometryData;
+    if (result.timezoneInfo) {
+      this.timezoneInfo = result.timezoneInfo;
+    }
 
     if (result.perfetto.length === 0) {
       return;
@@ -517,7 +470,7 @@ export class LoadedFileData {
       } else {
         const timestamp = trace.getEntry(0).getTimestamp();
         const utcOffset = await getResolvedUTCOffset(
-          this.metadata.timezoneInfo ?? UTC_TIMEZONE_INFO,
+          this.timezoneInfo,
           timestamp,
           this.getTimezoneNsFromPerfetto,
         );

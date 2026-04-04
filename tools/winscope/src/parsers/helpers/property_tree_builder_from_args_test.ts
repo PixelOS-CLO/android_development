@@ -18,7 +18,7 @@ import {assertDefined} from '@common/assert';
 import {convertSnakeToCamelCase} from '@common/string_helpers';
 import {getFakeProtoDescriptors} from '@compat/test/protobuf';
 import {ColumnType, RowIterator} from '@trace_processor/query_result';
-import {makeSpyRowIterator} from '@trace_processor/testing/test_utils';
+import {makeSpyRowIterator} from '@trace_processor/test_utils';
 import {Registry} from '@trace/proto_utils/tampered_message_type';
 import {TamperedMessageType} from '@trace/proto_utils/tampered_message_type';
 import {PropertySource, PropertyValue} from '@tree_node/property_tree_node';

@@ -15,7 +15,6 @@
  */
 
 import {TestBed} from '@angular/core/testing';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {DEFAULT_PROPERTY_FORMATTER} from '@trace/formatters';
 import {PropertyTreeBuilder} from '@tree_node/testing/property_tree_builder';
@@ -23,10 +22,6 @@ import {PropertyTreeBuilder} from '@tree_node/testing/property_tree_builder';
 import {CoordinatesTableComponent} from './coordinates_table_component';
 
 describe('CoordinatesTableComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let dom: DOMTestHelper<CoordinatesTableComponent>;
   let component: CoordinatesTableComponent;
 

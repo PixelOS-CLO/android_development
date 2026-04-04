@@ -35,6 +35,7 @@ import {makeIdMatchFilter, makeNodeFilter} from '@tree_node/helpers';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {PropertySource} from '@tree_node/property_tree_node';
 import {HierarchyTreeBuilder} from '@tree_node/testing/hierarchy_tree_builder';
+import {TabbedViewSwitchRequest} from '@ui/shared/events/tabbed_view_events';
 import {NotifyHierarchyViewCallbackType} from '@ui/shared/hierarchy/abstract_hierarchy_viewer_presenter';
 import {AbstractHierarchyViewerPresenterTest} from '@ui/shared/hierarchy/abstract_hierarchy_viewer_presenter_test';
 import {UiDataHierarchy} from '@ui/shared/hierarchy/ui_data_hierarchy';
@@ -42,7 +43,6 @@ import {UiHierarchyTreeNode} from '@ui/shared/hierarchy/ui_hierarchy_tree_node';
 import {TraceRectType} from '@ui/shared/rects/rect_spec';
 import {VISIBLE_CHIP} from '@ui/shared/user_input/chip';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
-import {TabbedViewSwitchRequest} from '@ui/shared/viewers/tabbed_view_events';
 
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';

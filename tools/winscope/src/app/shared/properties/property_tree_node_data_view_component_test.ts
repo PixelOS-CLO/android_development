@@ -16,7 +16,6 @@
 import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeRealTimestamp} from '@common/time/testing/test_helpers';
 import {DEFAULT_PROPERTY_FORMATTER, FixedStringFormatter, HEX_FORMATTER, TIMESTAMP_NODE_FORMATTER,} from '@trace/formatters';
@@ -28,10 +27,6 @@ import {TimestampClickDetail} from '@ui/shared/viewers/viewer_event_details';
 import {PropertyTreeNodeDataViewComponent} from './property_tree_node_data_view_component';
 
 describe('PropertyTreeNodeDataViewComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: PropertyTreeNodeDataViewComponent;
   let dom: DOMTestHelper<PropertyTreeNodeDataViewComponent>;
 
@@ -54,7 +49,7 @@ describe('PropertyTreeNodeDataViewComponent', () => {
 
   it('can emit timestamp', () => {
     const spy = spyOn(component.timestampClick, 'emit');
-    const ts = makeRealTimestamp(BigInt('1659126889102158832'));
+    const ts = makeRealTimestamp(1659126889102158832n);
     const node = UiPropertyTreeNode.from(
       new PropertyTreeBuilder()
         .setRootId('test node')

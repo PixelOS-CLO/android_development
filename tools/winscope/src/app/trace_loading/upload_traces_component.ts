@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, computed, inject, input, NgZone, output, signal,} from '@angular/core';
+import {ChangeDetectorRef, Component, computed, Inject, input, NgZone, output, signal,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatCheckboxModule} from '@angular/material/checkbox';
@@ -105,8 +105,10 @@ export class UploadTracesComponent
 
   private readonly discardLegacyStoreKey = 'discardLegacyFiles';
 
-  private changeDetectorRef = inject(ChangeDetectorRef);
-  private ngZone = inject(NgZone);
+  constructor(
+    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
+    @Inject(NgZone) private ngZone: NgZone,
+  ) {}
 
   ngOnInit() {
     const storage = this.storage();

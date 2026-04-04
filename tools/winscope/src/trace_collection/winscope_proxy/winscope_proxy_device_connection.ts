@@ -78,7 +78,7 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
           resolve(this.onSuccessFetchFile(response, filepath));
         },
         async (newState, errorText) => {
-          await this.setState(newState, errorText);
+          this.setState(newState, errorText);
           resolve(Uint8Array.from([]));
         },
         'arraybuffer',
@@ -100,8 +100,7 @@ export class WinscopeProxyDeviceConnection extends AdbDeviceConnection {
   ) => {
     try {
       const resp = utf8Decode(httpResponse.body);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fileToPath = JSON.parse(resp) as any;
+      const fileToPath = JSON.parse(resp);
       const encodedFileBuffer = fileToPath[filepath];
       return Uint8Array.from(window.atob(encodedFileBuffer), (c) =>
         c.charCodeAt(0),

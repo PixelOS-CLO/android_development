@@ -21,22 +21,17 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
+import {waitToBeCalled} from '@common/spy_utils';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {getFixtureFile} from '@common/testing/io_helpers';
-import {waitToBeCalled} from '@common/testing/spy_utils';
 import {Timer} from '@common/time/timer';
-import {NonPerfettoParserProvider} from '@parsers/testing/fixture_utils';
+import {NonPerfettoParserProvider} from '@parsers/fixture_utils';
 import {Parser} from '@trace_api/parser';
 import {CanvasEntry, MediaBasedTraceEntry, VideoEntry,} from '@trace/media_based/media_based_trace_entry';
 
 import {ViewerMediaBasedComponent} from './viewer_media_based_component';
 
 describe('ViewerMediaBasedComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: ViewerMediaBasedComponent;
   let dom: DOMTestHelper<ViewerMediaBasedComponent>;
   let screenshotImage: ImageBitmap;
@@ -152,7 +147,7 @@ describe('ViewerMediaBasedComponent', () => {
     expect(spy0).toHaveBeenCalledTimes(1);
     expect(spy1).not.toHaveBeenCalled();
 
-    await dom.openMatSelect();
+    dom.openMatSelect();
     const options = dom.getMatSelectPanel().findAll('mat-option');
 
     options[1].click();
@@ -241,13 +236,13 @@ describe('ViewerMediaBasedComponent', () => {
     const initialMaxWidth = getContainerMaxWidth();
     const newWindowHeight = window.innerHeight / 2;
     spyOnProperty(window, 'innerHeight').and.returnValue(newWindowHeight);
-    await resizeWindow();
+    resizeWindow();
     const maxWidthAfterNewWindowHeight = getContainerMaxWidth();
     expect(maxWidthAfterNewWindowHeight < initialMaxWidth).toBeTrue();
 
     const newWindowWidth = maxWidthAfterNewWindowHeight / 2;
     spyOnProperty(window, 'innerWidth').and.returnValue(newWindowWidth);
-    await resizeWindow();
+    resizeWindow();
     expect(getContainerMaxWidth() < maxWidthAfterNewWindowHeight).toBeTrue();
   });
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {Directive, ElementRef, inject, input, output} from '@angular/core';
+import {Directive, ElementRef, Inject, input, output} from '@angular/core';
 import {PersistentStore} from '@common/store/persistent_store';
 import {TraceType} from '@trace_api/trace_type';
 import {CollapsibleSectionType} from '@ui/shared/collapsible_sections/collapsible_section_type';
@@ -28,7 +28,7 @@ export class ViewerComponent<T> {
   TraceType = TraceType;
   CollapsibleSectionType = CollapsibleSectionType;
 
-  readonly elementRef = inject(ElementRef);
+  constructor(@Inject(ElementRef) readonly elementRef: ElementRef) {}
 
   readonly inputData = input<T>();
   readonly store = input<PersistentStore>();

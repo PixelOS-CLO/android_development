@@ -404,8 +404,8 @@ class SourceTrimmerTest(unittest.TestCase):
                 result = source_trimmer.process_groups_to_keep(raw_groups)
                 self.assertEqual(result, expected, msg=f"Failed test case: {name}")
 
-    def test_write_filtered_manifest_arsp_mode(self):
-        """Test manifest filtering with extra attributes removed (ARSP mode)."""
+    def test_generate_filtered_manifest_strict_filtering(self):
+        """Test manifest filtering with extra attributes removed."""
         manifest_input = """<?xml version="1.0" encoding="UTF-8"?>
 <manifest>
   <default revision="master" remote="arsp" />
@@ -421,8 +421,8 @@ class SourceTrimmerTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = pathlib.Path(tmpdir) / "filtered_manifest.xml"
-            source_trimmer.write_filtered_manifest(
-                manifest_input, projects_to_keep, output_path, arsp_mode=True
+            source_trimmer.generate_arsp_filtered_manifest(
+                manifest_input, projects_to_keep, output_path
             )
 
             tree = source_trimmer.ET.parse(output_path)
@@ -449,49 +449,11 @@ class SourceTrimmerTest(unittest.TestCase):
             self.assertEqual(project.get("name"), "platform/keep")
             self.assertNotIn("remote", project.attrib)
 
-    def test_write_filtered_manifest_build_mode(self):
-        """Test manifest filtering for build manifest."""
-        manifest_input = """<?xml version="1.0" encoding="UTF-8"?>
-<manifest>
-  <default revision="master" remote="ohd" />
-  <remote name="ohd" fetch=".." />
-  <project groups="keep" name="platform/keep" path="keep" remote="ohd" />
-  <project groups="discard" name="platform/drop" path="drop" remote="ohd" />
-  <repo-hooks in-project="platform/admin" enabled-list="pre-upload" />
-</manifest>
-"""
-        projects_to_keep = {"platform/keep"}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = pathlib.Path(tmpdir) / "build_manifest.xml"
-            source_trimmer.write_filtered_manifest(
-                manifest_input, projects_to_keep, output_path, arsp_mode=False
-            )
-
-            tree = source_trimmer.ET.parse(output_path)
-            root = tree.getroot()
-
-            # Verify 'ohd' remote and default are PRESERVED in build mode.
-            remotes = root.findall("remote")
-            self.assertEqual(len(remotes), 1)
-            self.assertEqual(remotes[0].get("name"), "ohd")
-
-            defaults = root.findall("default")
-            self.assertEqual(len(defaults), 1)
-            self.assertEqual(defaults[0].get("remote"), "ohd")
-
-            # Verify 'remote' attribute is KEPT on the project.
-            project = root.find("project")
-            self.assertEqual(project.get("name"), "platform/keep")
-            self.assertEqual(project.get("remote"), "ohd")
-
-            # Verify 'discard' project was removed.
-            all_projects = root.findall("project")
-            self.assertEqual(len(all_projects), 1)
+            # Verify other attributes like 'path' remain.
+            self.assertEqual(project.get("path"), "keep")
 
             # Verify repo-hooks is preserved.
             hooks = root.find("repo-hooks")
-            self.assertIsNotNone(hooks)
             self.assertEqual(hooks.get("in-project"), "platform/admin")
 
 

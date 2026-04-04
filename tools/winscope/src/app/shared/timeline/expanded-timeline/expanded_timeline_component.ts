@@ -56,8 +56,8 @@ export class ExpandedTimelineComponent {
   TRACE_INFO = TRACE_INFO;
   TraceType = TraceType;
 
-  @HostListener('window:resize')
-  onResize() {
+  @HostListener('window:resize', ['$event'])
+  onResize(_: Event) {
     this.resizeCanvases();
   }
 

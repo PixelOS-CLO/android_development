@@ -28,8 +28,5 @@ android_app {
         "androidx.lifecycle_lifecycle-livedata",
         "androidx.lifecycle_lifecycle-viewmodel",
     ],
-    lint: {
-        disabled_checks: ["GestureBackNavigation"],
-    },
     sdk_version: "current",
 }

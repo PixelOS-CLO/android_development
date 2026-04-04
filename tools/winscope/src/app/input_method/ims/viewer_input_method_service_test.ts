@@ -17,7 +17,6 @@
 import {ComponentRef} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
 import {ViewerInputMethodComponent} from '@app/input_method/shared/viewer_input_method_component';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {Trace} from '@trace_api/trace';
@@ -32,10 +31,6 @@ import {AdditionalPropertySelectedDetail, RectShowStateChangeDetail,} from '@ui/
 import {ViewerInputMethodService} from './viewer_input_method_service';
 
 describe('ViewerInputMethodService', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const node = new HierarchyTreeBuilder()
     .setId('Test Trace')
     .setName('entry 1')

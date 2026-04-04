@@ -41,16 +41,15 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {Mediator} from '@app/mediator';
 import {AngularViewer} from '@app/shared/angular_viewer';
 import {MatDrawer, MatDrawerContainer, MatDrawerContent,} from '@app/shared/bottomnav/bottom_drawer_component';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {TimelineComponent} from '@app/shared/timeline/timeline_component';
 import {CollectTracesComponent} from '@app/trace_collection/collect_traces_component';
 import {WdpSetupComponent} from '@app/trace_collection/wdp_setup_component';
 import {WinscopeProxySetupComponent} from '@app/trace_collection/winscope_proxy_setup_component';
 import {UploadTracesComponent} from '@app/trace_loading/upload_traces_component';
 import {assertDefined} from '@common/assert';
+import {waitToBeCalled} from '@common/spy_utils';
 import {Store} from '@common/store/store';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
-import {waitToBeCalled} from '@common/testing/spy_utils';
 import {makeConverterZeroRteOffsets, makeRealTimestamp,} from '@common/time/testing/test_helpers';
 import {Timestamp} from '@common/time/time';
 import {RequestData} from '@cross_tool/g3_proxy';
@@ -67,7 +66,7 @@ import {TraceType} from '@trace_api/trace_type';
 import {Traces} from '@trace_api/traces';
 import {AppRefreshDumpsRequest, AppResetRequest,} from '@ui/shared/events/app_events';
 import {BookmarksChanged, BugreportFileSelected, BugreportFileSelectionRequest,} from '@ui/shared/events/misc_events';
-import {TabbedViewSwitchRequest} from '@ui/shared/viewers/tabbed_view_events';
+import {TabbedViewSwitchRequest} from '@ui/shared/events/tabbed_view_events';
 import {ViewType} from '@ui/shared/viewers/viewer';
 import {TimelineData} from '@ui/timeline/timeline_data';
 import {LoadedFileData} from '@ui/trace_loading/loaded_file_data';
@@ -171,10 +170,6 @@ class MockMatDrawerContainer {}
 class MockMatDrawerContent {}
 
 describe('AppComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const reader = new TestFileReaderBuilder().setTimestamps([]).build();
   const converter = makeConverterZeroRteOffsets();
 
@@ -381,7 +376,7 @@ describe('AppComponent', () => {
     expect(pageTitle.getTitle()).toBe('Winscope');
 
     const traces = new Traces();
-    await component.timelineData.initialize(traces, undefined, converter);
+    component.timelineData.initialize(traces, undefined, converter);
     component.loadedFileData.getDownloadArchiveFilename = jasmine
       .createSpy()
       .and.returnValue('test_archive');
@@ -699,7 +694,7 @@ describe('AppComponent', () => {
   it('shows bugreport selection dialog', async () => {
     expect(dom.findInDocument('warning-dialog')).toBeUndefined();
     let eventHandled = false;
-    void component
+    component
       .onWinscopeEvent(new BugreportFileSelectionRequest(['f1', 'f2']))
       .then(() => {
         eventHandled = true;
@@ -955,11 +950,7 @@ describe('AppComponent', () => {
     });
 
     it('processes bookmarks', async () => {
-      await component.timelineData.initialize(
-        new Traces(),
-        undefined,
-        converter,
-      );
+      component.timelineData.initialize(new Traces(), undefined, converter);
       dom.detectChanges();
       const request: RequestData = {
         artifacts: [],
@@ -974,22 +965,18 @@ describe('AppComponent', () => {
         ?.args[0] as BookmarksChanged;
       expect(bookmarksChangedEvent).toBeInstanceOf(BookmarksChanged);
       expect(bookmarksChangedEvent.bookmarks.length).toEqual(2);
-      expect(bookmarksChangedEvent.bookmarks[0].getValueNs()).toEqual(
-        BigInt(10),
-      );
-      expect(bookmarksChangedEvent.bookmarks[1].getValueNs()).toEqual(
-        BigInt(20),
-      );
+      expect(bookmarksChangedEvent.bookmarks[0].getValueNs()).toEqual(10n);
+      expect(bookmarksChangedEvent.bookmarks[1].getValueNs()).toEqual(20n);
       expect(component.timelineComponent()?.bookmarks.length).toEqual(2);
     });
 
     it('processes timestamp', async () => {
       const traces = new TracesBuilder()
         .setTimestamps(TraceType.SURFACE_FLINGER, [
-          converter.makeTimestampFromNs(BigInt(10)),
+          converter.makeTimestampFromNs(10n),
         ])
         .build();
-      await component.timelineData.initialize(traces, undefined, converter);
+      component.timelineData.initialize(traces, undefined, converter);
       dom.detectChanges();
       component.timelineData.trySetActiveTrace(
         assertDefined(traces.getTrace(TraceType.SURFACE_FLINGER)),
@@ -1009,7 +996,7 @@ describe('AppComponent', () => {
         ?.args[0] as TracePositionUpdate;
       expect(tracePositionUpdateEvent).toBeInstanceOf(TracePositionUpdate);
       expect(tracePositionUpdateEvent.position.timestamp.getValueNs()).toEqual(
-        BigInt(15),
+        15n,
       );
       expect(tracePositionUpdateEvent.updateTimeline).toBeTrue();
     });
@@ -1019,11 +1006,7 @@ describe('AppComponent', () => {
         undefined,
       );
       spyOn(UserNotifier, 'add');
-      await component.timelineData.initialize(
-        new Traces(),
-        undefined,
-        converter,
-      );
+      component.timelineData.initialize(new Traces(), undefined, converter);
       dom.detectChanges();
       const request: RequestData = {
         artifacts: [],
@@ -1058,7 +1041,7 @@ describe('AppComponent', () => {
       const spy = component.loadedFileData.getTraces as jasmine.Spy;
       spy.and.returnValue(traces);
 
-      await component.timelineData.initialize(traces, undefined, converter);
+      component.timelineData.initialize(traces, undefined, converter);
       dom.detectChanges();
       const request: RequestData = {
         artifacts: [],
@@ -1094,7 +1077,7 @@ describe('AppComponent', () => {
 
   async function goToTraceView() {
     await buildTraces();
-    await component.timelineData.initialize(new Traces(), undefined, converter);
+    component.timelineData.initialize(new Traces(), undefined, converter);
     component.dataLoaded = true;
     showDataLoadedElements();
     dom.detectChanges();
@@ -1163,19 +1146,19 @@ describe('AppComponent', () => {
   }
 
   async function buildTraces() {
-    await component.loadedFileData.addFiles(
+    component.loadedFileData.addFiles(
       {
         legacy: [],
         nonPerfetto: [
           new TestFileReaderAndParserBuilder()
-            .setTimestamps([makeRealTimestamp(BigInt(1))])
+            .setTimestamps([makeRealTimestamp(1n)])
             .setType(TraceType.SCREEN_RECORDING)
             .build(),
         ],
         perfetto: [],
         lostPerfettoPackets: 0,
         traceTypesWithParsingErrors: new Map(),
-        metadata: {},
+        timezoneInfo: undefined,
         traceGeometryData: new TraceGeometryData(),
         warnings: [],
       },

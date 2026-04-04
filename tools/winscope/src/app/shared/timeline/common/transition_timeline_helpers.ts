@@ -181,10 +181,8 @@ function makeClampedTimeRange(
 
   // if start or end time is unknown, we render a short segment in the timeline
   // at the known timestamp with width equivalent to 1 ns
-  let start =
-    startTs?.getValueNs() ?? assertDefined(endTs).getValueNs() - BigInt(1);
-  let end =
-    endTs?.getValueNs() ?? assertDefined(startTs).getValueNs() + BigInt(1);
+  let start = startTs?.getValueNs() ?? assertDefined(endTs).getValueNs() - 1n;
+  let end = endTs?.getValueNs() ?? assertDefined(startTs).getValueNs() + 1n;
 
   // clamp the transition's rendered range to the visible timeline range
   start = assertDefined(getMax([start, visible.startNs]));

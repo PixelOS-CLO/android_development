@@ -25,7 +25,6 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {makeConverterZeroRteOffsets} from '@common/time/testing/test_helpers';
@@ -40,17 +39,13 @@ import {ExpandedTimelineComponent} from './expanded_timeline_component';
 import {TransitionTimelineComponent} from './transition_timeline_component';
 
 describe('ExpandedTimelineComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const converter = makeConverterZeroRteOffsets();
-  const time10 = converter.makeTimestampFromRealNs(BigInt(10));
-  const time11 = converter.makeTimestampFromRealNs(BigInt(11));
-  const time12 = converter.makeTimestampFromRealNs(BigInt(12));
-  const time30 = converter.makeTimestampFromRealNs(BigInt(30));
-  const time60 = converter.makeTimestampFromRealNs(BigInt(60));
-  const time110 = converter.makeTimestampFromRealNs(BigInt(110));
+  const time10 = converter.makeTimestampFromRealNs(10n);
+  const time11 = converter.makeTimestampFromRealNs(11n);
+  const time12 = converter.makeTimestampFromRealNs(12n);
+  const time30 = converter.makeTimestampFromRealNs(30n);
+  const time60 = converter.makeTimestampFromRealNs(60n);
+  const time110 = converter.makeTimestampFromRealNs(110n);
 
   let component: ExpandedTimelineComponent;
   let dom: DOMTestHelper<ExpandedTimelineComponent>;

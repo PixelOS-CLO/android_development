@@ -17,7 +17,7 @@
 import {CdkAccordionItem, CdkAccordionModule} from '@angular/cdk/accordion';
 import {CdkMenuModule} from '@angular/cdk/menu';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectorRef, Component, effect, ElementRef, HostListener, inject, output, TemplateRef, viewChild, viewChildren,} from '@angular/core';
+import {ChangeDetectorRef, Component, effect, ElementRef, HostListener, Inject, output, TemplateRef, viewChild, viewChildren,} from '@angular/core';
 import {FormControl, FormsModule, ReactiveFormsModule, ValidationErrors, Validators,} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatDividerModule} from '@angular/material/divider';
@@ -36,14 +36,13 @@ import {downloadFromUrl} from '@common/download';
 import {Timestamp} from '@common/time/time';
 import {TimeDuration} from '@common/time/time_duration';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
-import {objectUrlFromSafeSource, unwrapSafeUrl} from '@compat/safevalues';
 import {Analytics} from '@logging/analytics';
 import {UserNotifier} from '@services/user_notifier';
 import {CurrentSearch, ListedSearch, UiData} from '@ui/search/ui_data';
 import {CollapsibleSectionType} from '@ui/shared/collapsible_sections/collapsible_section_type';
 import {CollapsibleSections} from '@ui/shared/collapsible_sections/collapsible_sections';
-import {ClickableProperty, LogFilterChangeDetail, LogTextFilterChangeDetail,} from '@ui/shared/log/ui_data_log';
-import {SaveQueryClickDetail, SearchQueryClickDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
+import {ClickableProperty} from '@ui/shared/log/ui_data_log';
+import {LogFilterChangeDetail, LogTextFilterChangeDetail, SaveQueryClickDetail, SearchQueryClickDetail, TimestampClickDetail,} from '@ui/shared/viewers/viewer_event_details';
 import {makeWarningExportTooLarge, makeWarningFailedToExportToCsv, makeWarningNoResultsToExport,} from '@ui/trace_loading/warnings';
 
 import {ActiveSearchComponent} from './active_search_component';
@@ -180,10 +179,11 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
   `;
   readonly SEARCH_VIEWS = SEARCH_VIEWS;
 
-  private changeDetectorRef = inject(ChangeDetectorRef);
-
-  constructor() {
-    super();
+  constructor(
+    @Inject(ElementRef) elementRef: ElementRef<HTMLElement>,
+    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
+  ) {
+    super(elementRef);
 
     effect(() => {
       const data = this.inputData();
@@ -292,7 +292,7 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
     return 'calc(100% - ' + this.globalSearchTitleHeight + 'px)';
   }
 
-  @HostListener('window:resize')
+  @HostListener('window:resize', ['$event'])
   onResize() {
     this.globalSearchTitleHeight =
       this.globalSearchTitle()?.nativeElement.clientHeight ?? 48;
@@ -357,7 +357,7 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
       const blob = new Blob(['\ufeff' + csvContent], {
         type: 'text/csv;charset=utf-8;',
       });
-      const url = unwrapSafeUrl(objectUrlFromSafeSource(blob));
+      const url = window.URL.createObjectURL(blob);
       download(url, `search_results_${search.uid}.csv`);
       Analytics.TraceSearch.logQueryExportedToCsv();
     } catch (e) {

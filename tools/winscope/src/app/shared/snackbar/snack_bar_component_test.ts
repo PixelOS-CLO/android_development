@@ -19,16 +19,11 @@ import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {MAT_SNACK_BAR_DATA, MatSnackBarRef} from '@angular/material/snack-bar';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 
 import {SnackBarComponent} from './snack_bar_component';
 
 describe('SnackBarComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const messages = ['test message 1', 'test message 2'];
   let dom: DOMTestHelper<SnackBarComponent>;
   let mockCopyText: jasmine.Spy;

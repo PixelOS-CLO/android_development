@@ -74,7 +74,8 @@ export class AbtChromeExtensionProtocol
       await this.onOpenFromBuganizerResponseMessageReceived(message);
     } else {
       this.logger.warn(
-        'ABT chrome extension protocol received unexpected message: ' + message,
+        'ABT chrome extension protocol received unexpected message:',
+        message,
       );
     }
   }
@@ -83,8 +84,8 @@ export class AbtChromeExtensionProtocol
     message: OpenBuganizerResponse,
   ) {
     this.logger.info(
-      'ABT chrome extension protocol received OpenBuganizerResponse message: ' +
-        message,
+      'ABT chrome extension protocol received OpenBuganizerResponse message:',
+      message,
     );
 
     if (message.attachments.length === 0) {

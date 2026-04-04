@@ -214,16 +214,9 @@ Please note that this is a synthetic example. Typically, apps will use the
 
 #### 3. Launch and Compare
 
-To see a **truly cold** start where the system must read code from storage, we
-will drop the kernel's page cache before launching each app. This requires root
-access.
-
-Launch the unoptimized app:
+Launch the unoptimized app and check its memory footprint:
 
 ```bash
-adb shell am force-stop com.android.codebloat
-# Drop page cache to ensure the start is truly cold
-adb shell "echo 3 > /proc/sys/vm/drop_caches"
 adb shell am start -W -n com.android.codebloat/.MainActivity
 sleep 5 # Wait for the background thread to load classes
 adb shell dumpsys meminfo -s com.android.codebloat
@@ -232,9 +225,6 @@ adb shell dumpsys meminfo -s com.android.codebloat
 Now do the same for the optimized app:
 
 ```bash
-adb shell am force-stop com.android.codebloat.optimized
-# Drop page cache to ensure the start is truly cold
-adb shell "echo 3 > /proc/sys/vm/drop_caches"
 adb shell am start -W -n com.android.codebloat.optimized/com.android.codebloat.MainActivity
 sleep 5
 adb shell dumpsys meminfo -s com.android.codebloat.optimized
@@ -253,163 +243,56 @@ actually doing anything useful (the `doSomething()` method only calls
 `method0()`, and the results are ignored), it stripped almost all of the
 artificially generated code out of the final APK.
 
-#### 4. See the Impact in Perfetto
+#### 4. View Startup in Perfetto
 
-The impact of code bloat is clearly visible during the initial loading phase of
-the application. Specifically, look for the **`bindApplication`** slice on the
-main thread, and nested slices starting with **`madvising`**, which indicate the
-system preparing to load files from the APK and its compiled code (`.odex`).
+The impact of this code bloat is extremely visible during application startup.
 
-On an interactive cold start, the system will `mmap()` and `madvise()` code and
-other data from these files that is necessary for the app to load and run. The
-value after "size=" in the **`madvising`** slices indicates how much data needs
-to be loaded. This prefetching of the app's code is done to accelerate app
-startup.
+**Unoptimized App (`mem.rss.file` climbs massively):**
 
-From the comparison we can see that the amount of app code that needed to be
-loaded from storage to RAM was much greater in the bloated app case, resulting
-in longer durations that contributed to a slower app start. Additionally, the
-trace of the bloated app's start shows slices for loading secondary DEX files
-(`classes2.dex`, `classes3.dex`) that the bloated app was forced to "spill" into
-because it wouldn't fit in one DEX file.
+![A screenshot of the Perfetto UI showing the com.android.codebloat process
+startup with the mem.rss.file track climbing significantly, resulting in a 1.2s
+startup delay](images/app-code/code-bloat-perfetto.png)
 
-**In Comparison (Cold Start on Pixel 10a):**
+In the unoptimized app, the `mem.rss.file` track (representing file-backed
+memory) increases dramatically during the application startup phase. As the app
+touches the bloated, artificially generated classes, the operating system is
+forced to page in large amounts of code from the compiled `.oat` file on storage.
+You can visually see this impact in the thread state track for the main thread:
+the high frequency of **yellow slices** indicates the thread is frequently
+blocked and stalling on file I/O while waiting for these code pages to be read.
+The bottom panel shows a massive delta value, adding up to over 141MB of
+file-backed memory paged into RAM. This heavy I/O causes the startup to take
+over 1.2 seconds, resulting in a noticeably sluggish user experience.
 
-Metric                          | Unoptimized (CodeBloat) | Optimized (CodeBloatOptimized)
-:------------------------------ | :---------------------- | :-----------------------------
-**`base.odex` madvise size**    | ~7.9 MB (2.0 ms)        | ~16 KB (0.003 ms)
-**`base.apk` madvise size**     | ~2.4 MB (2.4 ms)        | ~4 KB (0.001 ms)
-**`classes2.dex` madvise size** | ~7.3 MB (8.6 ms)        | N/A
-**`classes3.dex` madvise size** | ~7.3 MB (8.0 ms)        | N/A
-**Total `madvising` duration**  | **~21 ms**              | **~0.004 ms**
+Note: the trace screenshots demonstrate a memory trend, but actual magnitudes
+will vary by device characteristics.
 
-*Note: These traces were captured on a physical Pixel 10a. This device has
-relatively fast storage (UFS 3.1) for its launch year (2025), and was tested
-under ideal conditions (the device was idle so nothing was competing for I/O).
-On a device with slower UFS or eMMC storage, or under real-world I/O pressure,
-or with a much larger real-world app, these "madvising" slices can take
-significantly more time during a cold start.*
-
-**Unoptimized App Loading Performance:**
-
-![A screenshot of the Perfetto UI showing the com.android.codebloat process with
-the madvising slices for the primary and secondary DEX
-files](images/app-code/code-bloat-loading.png)
-
-**Optimized App Loading Performance:**
+**Optimized App (`mem.rss.file` peaks at a lower value):**
 
 ![A screenshot of the Perfetto UI showing the com.android.codebloat.optimized
-process with a single, tiny madvising
-slice](images/app-code/code-opt-loading.png)
+process startup with a relatively flat mem.rss.file track, taking only
+743ms](images/app-code/code-opt-perfetto.png)
 
-The impact of code bloat varies by the size of the app, the characteristics of
-the user's device, and system load.
+<--! TODO retake screenshots, showing the breakdown of thread state time, and
+zooming on classloading slices. -->
 
-#### PerfettoSQL for Loading Analysis
+In the optimized app, R8 has stripped the dead code out of the APK during the
+build process, leaving far fewer executable pages to read from storage. The
+`mem.rss.file` track climbs much less (a delta of only ~114MB), and the total
+startup time is drastically reduced to roughly 743ms. This prevents I/O stalls
+and leaves more free memory for the rest of the system.
 
-You can use the following queries to extract these metrics from your traces.
+**Startup Comparison:**
 
-**1. App Startup Duration:**
+Metric                   | Unoptimized (CodeBloat) | Optimized (CodeBloatOptimized)
+:----------------------- | :---------------------- | :-----------------------------
+**Startup Time**         | ~1.25 seconds           | ~743 ms
+**`mem.rss.file` Delta** | ~141 MB                 | ~114 MB
 
-This shows the time from when an app's Activity is launched until the Activity
-has drawn a first frame.
+#### PerfettoSQL for File-Backed Memory
 
-```sql
-INCLUDE PERFETTO MODULE android.startup.startups;
-
-SELECT package, dur, startup_type
-FROM android_startups
-WHERE package LIKE 'com.android.codebloat%';
-```
-
-See:
-[Understand the different app startup states](https://developer.android.com/topic/performance/vitals/launch-time#startup-state)
-
-An app's startup duration is sensitive to many factors other than the ones
-covered in this guide!
-
-**2. Extract `madvising` sizes and durations:**
-
-This query zooms in on the `madvising` part that we saw above.
-
-```sql
-INCLUDE PERFETTO MODULE slices.with_context;
-
-SELECT
-  name,
-  dur/1e6 AS dur_ms
-FROM thread_slice
-WHERE process_name LIKE 'com.android.codebloat%'
-  AND name LIKE 'madvising %';
-```
-
-**3. Main thread state breakdown (Total duration per state):**
-
-This query shows how much time the app's main thread spent in different states.
-
-```sql
-SELECT
-  p.name AS process_name,
-  state,
-  sum(dur)/1e6 AS total_dur_ms
-FROM thread_state ts
-JOIN thread t USING (utid)
-JOIN process p USING (upid)
-WHERE p.name LIKE 'com.android.codebloat%'
-  AND t.is_main_thread = 1
-GROUP BY p.name, state;
-```
-
-You can refine the query to only look at main thread states during the app's
-startup duration.
-
-```sql
-INCLUDE PERFETTO MODULE android.startup.startups;
-
-SELECT
-  p.name AS process_name,
-  ts.state,
-  -- Calculate only the duration that falls within the startup window
-  SUM(
-    MAX(0,
-      MIN(ts.ts + ts.dur, s.ts + s.dur) - MAX(ts.ts, s.ts)
-    )
-  ) / 1e6 AS startup_dur_ms
-FROM thread_state ts
-JOIN thread t USING (utid)
-JOIN process p USING (upid)
--- Join on the package name to align thread states with the correct startup
-JOIN android_startups s ON s.package = p.name
-WHERE p.name LIKE 'com.android.codebloat%'
-  AND t.is_main_thread = 1
-  -- Only select thread states that overlap with the startup interval
-  AND ts.ts + ts.dur > s.ts
-  AND ts.ts < s.ts + s.dur
-GROUP BY 1, 2
-ORDER BY startup_dur_ms DESC;
-```
-
-This can expose some interesting problems, for instance:
-
-*   **High time spent Runnable (R) but not Running**: This indicates that the
-    app's startup was delayed by CPU contention, i.e. the app's main thread
-    could not run because other threads (possibly from other apps) were
-    occupying the CPUs.
-*   **High time spent in Interruptible Sleep (D)**: This usually indicates slow
-    I/O or memory pressure that is stalling the app's startup.
-*   **High time spent Sleeping (S)**: This means that the main thread was
-    waiting for other threads to do work. Sometimes this indicates lock
-    contention in the app's startup path (i.e. the main thread was blocked on an
-    exclusive resource that was occupied by another thread in the app).
-
-**4. Maximum File-Backed Memory (RSS File):**
-
-This metric correlates well with how much code and data the app loads at
-startup. A more "bloated" app will reach a higher number here, causing memory
-pressure on the system. Such pressure may in turn delay the app's startup, as
-the system struggles to satisfy allocation requests, or diverts CPU time from
-focusing on starting the app and towards reclaiming memory from other processes
-to satisfy the starting app's immediate needs.
+You can run a query to track the maximum amount of file-backed memory that any
+`codebloat` application touched during its execution:
 
 ```sql
 SELECT
@@ -418,8 +301,7 @@ SELECT
 FROM counter c
 JOIN process_counter_track t ON c.track_id = t.id
 JOIN process p USING (upid)
-WHERE p.name LIKE 'com.android.codebloat%'
-  AND t.name = 'mem.rss.file'
+WHERE p.name LIKE 'com.android.codebloat%' AND t.name = 'mem.rss.file'
 GROUP BY p.name;
 ```
 

@@ -20,7 +20,6 @@ import {TestBed} from '@angular/core/testing';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {VirtualRow, VirtualScrollViewportComponent,} from '@app/shared/scroll/virtual_scroll_viewport_component';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {RectShowState} from '@ui/shared/rects/rect_show_state';
@@ -34,10 +33,6 @@ import {TreeNodeComponent} from './tree_node_component';
 import {TreeNodeHeightPredictor} from './tree_node_height_predictor';
 
 describe('TreeComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: TreeComponent<UiTreeNode>;
   let dom: DOMTestHelper<TreeComponent<UiTreeNode>>;
   let mockCopyText: jasmine.Spy;

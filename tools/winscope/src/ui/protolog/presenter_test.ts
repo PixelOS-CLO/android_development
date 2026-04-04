@@ -29,8 +29,8 @@ import {ProtologColumnType} from '@trace/protolog/protolog_column_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {HierarchyTreeBuilder} from '@tree_node/testing/hierarchy_tree_builder';
 import {NotifyLogViewCallbackType} from '@ui/shared/log/abstract_log_viewer_presenter';
+import {AbstractLogViewerPresenterTest} from '@ui/shared/log/abstract_log_viewer_presenter_test';
 import {LogSelectFilter, LogTextFilter} from '@ui/shared/log/log_filters';
-import {AbstractLogViewerPresenterTest} from '@ui/shared/log/testing/abstract_log_viewer_presenter_test';
 import {LogHeader} from '@ui/shared/log/ui_data_log';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
 

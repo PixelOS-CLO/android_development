@@ -15,7 +15,7 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {ChangeDetectionStrategy, Component, Directive, effect, ElementRef, HostListener, inject, InjectionToken, input, NgZone, output, ViewChild,} from '@angular/core';
+import {ChangeDetectionStrategy, Component, Directive, effect, ElementRef, HostListener, Inject, InjectionToken, input, NgZone, output, ViewChild,} from '@angular/core';
 import {assertDefined} from '@common/assert';
 import {fromEvent, Observable, ReplaySubject, Subject} from 'rxjs';
 import {debounceTime, map, takeUntil} from 'rxjs/operators';
@@ -46,9 +46,10 @@ export interface RenderedRange {
   exportAs: 'virtualRow',
 })
 export class VirtualRow {
-  private readonly host = inject(HOST);
-
-  constructor(private readonly elementRef: ElementRef<HTMLElement>) {}
+  constructor(
+    @Inject(HOST) private readonly host: VirtualScrollViewportHost,
+    private readonly elementRef: ElementRef<HTMLElement>,
+  ) {}
 
   rowIndex = input.required<number>();
 

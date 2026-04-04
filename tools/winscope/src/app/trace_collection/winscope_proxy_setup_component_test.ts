@@ -21,7 +21,6 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {DownloadRequest} from '@common/download';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
 import {ConnectionState} from '@trace_collection/connection_state';
@@ -29,10 +28,6 @@ import {ConnectionState} from '@trace_collection/connection_state';
 import {WinscopeProxySetupComponent} from './winscope_proxy_setup_component';
 
 describe('WinscopeProxySetupComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: WinscopeProxySetupComponent;
   let dom: DOMTestHelper<WinscopeProxySetupComponent>;
 

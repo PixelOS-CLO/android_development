@@ -28,7 +28,6 @@ import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {CollapsibleSectionTitleComponent} from '@app/shared/collapsible_sections/collapsible_section_title_component';
 import {VirtualRow, VirtualScrollViewportComponent,} from '@app/shared/scroll/virtual_scroll_viewport_component';
 import {SearchBoxComponent} from '@app/shared/search_box/search_box_component';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {TreeComponent} from '@app/shared/tree/tree_component';
 import {TreeNodeComponent} from '@app/shared/tree/tree_node_component';
 import {UserOptionsComponent} from '@app/shared/user_options/user_options_component';
@@ -50,10 +49,6 @@ import {PropertiesComponent} from './properties_component';
 import {PropertyTreeNodeDataViewComponent} from './property_tree_node_data_view_component';
 
 describe('PropertiesComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   let component: PropertiesComponent;
   let dom: DOMTestHelper<PropertiesComponent>;
 
@@ -167,7 +162,7 @@ describe('PropertiesComponent', () => {
     const tsSpy = spyOn(component.timestampClick, 'emit');
     const tsDetail = new TimestampClickDetail(
       undefined,
-      makeElapsedTimestamp(BigInt(2)),
+      makeElapsedTimestamp(2n),
     );
     dataView.timestampClick.emit(tsDetail);
     expect(tsSpy).toHaveBeenCalledOnceWith(tsDetail);

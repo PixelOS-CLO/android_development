@@ -85,7 +85,7 @@ export class TracingSession {
   }
 
   async onDestroy(device: AdbDeviceConnection) {
-    await this.stop(device);
+    this.stop(device);
   }
 
   private async setup(device: AdbDeviceConnection) {

@@ -16,7 +16,7 @@
 
 import {ClipboardModule} from '@angular/cdk/clipboard';
 import {CommonModule} from '@angular/common';
-import {Component, ElementRef, inject} from '@angular/core';
+import {Component, ElementRef, Inject} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MAT_SNACK_BAR_DATA, MatSnackBarRef} from '@angular/material/snack-bar';
 
@@ -31,9 +31,12 @@ import {MAT_SNACK_BAR_DATA, MatSnackBarRef} from '@angular/material/snack-bar';
   styleUrls: ['snack_bar_component.scss'],
 })
 export class SnackBarComponent {
-  snackBarRef: MatSnackBarRef<SnackBarComponent> = inject(MatSnackBarRef);
-  messages: string[] = inject(MAT_SNACK_BAR_DATA);
-  elementRef: ElementRef = inject(ElementRef);
+  constructor(
+    @Inject(MatSnackBarRef)
+    public snackBarRef: MatSnackBarRef<SnackBarComponent>,
+    @Inject(MAT_SNACK_BAR_DATA) public messages: string[],
+    @Inject(ElementRef) public elementRef: ElementRef,
+  ) {}
 
   formatMessages(): string {
     return this.messages.join('\n\n');

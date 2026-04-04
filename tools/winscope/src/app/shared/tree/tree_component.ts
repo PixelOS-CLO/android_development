@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, ElementRef, HostListener, inject, input, output, TemplateRef, viewChild,} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, ElementRef, HostListener, Inject, input, output, TemplateRef, viewChild,} from '@angular/core';
 import {VirtualRow, VirtualScrollViewportComponent,} from '@app/shared/scroll/virtual_scroll_viewport_component';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventKey} from '@common/dom';
@@ -78,10 +78,10 @@ export class TreeComponent<T extends UiTreeNode> {
     this.viewInitialized = true;
   }
 
-  elementRef: ElementRef<HTMLElement> = inject(ElementRef);
-  private changeDetectorRef = inject(ChangeDetectorRef);
-
-  constructor() {
+  constructor(
+    @Inject(ElementRef) public elementRef: ElementRef<HTMLElement>,
+    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
+  ) {
     effect(() => {
       this.heightPredictor().setViewportWidthCallback(() => {
         if (!this.viewInitialized) {

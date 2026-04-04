@@ -15,7 +15,7 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {Component, computed, ElementRef, inject, input, output, viewChild,} from '@angular/core';
+import {Component, computed, ElementRef, Inject, input, output, viewChild,} from '@angular/core';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
@@ -108,8 +108,6 @@ export class HierarchyComponent {
     });
   });
 
-  private readonly elementRef: ElementRef<HTMLElement> = inject(ElementRef);
-
   readonly heightPredictor = new HierarchyNodeHeightPredictor(
     this.elementRef,
     (index: number) => {
@@ -118,6 +116,10 @@ export class HierarchyComponent {
   );
 
   private readonly tree = viewChild(TreeComponent<UiHierarchyTreeNode>);
+
+  constructor(
+    @Inject(ElementRef) private readonly elementRef: ElementRef<HTMLElement>,
+  ) {}
 
   trackById(_: number, child: UiHierarchyTreeNode): string {
     return child.id;

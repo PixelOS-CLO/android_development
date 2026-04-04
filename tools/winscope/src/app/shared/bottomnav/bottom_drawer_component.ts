@@ -16,7 +16,7 @@
 
 import {animate, AnimationTriggerMetadata, state, style, transition, trigger,} from '@angular/animations';
 import {CommonModule} from '@angular/common';
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, ElementRef, forwardRef, inject, Injectable, input, NgZone, ViewEncapsulation,} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, ElementRef, forwardRef, Inject, Injectable, input, NgZone, ViewEncapsulation,} from '@angular/core';
 import {assertDefined} from '@common/assert';
 import {Subject} from 'rxjs';
 import {debounceTime, takeUntil} from 'rxjs/operators';
@@ -102,8 +102,11 @@ export class MatDrawerContent /*extends MatDrawerContentBase*/ {
     bottom: undefined,
   };
 
-  private changeDetectorRef = inject(ChangeDetectorRef);
-  container: MatDrawerContainer = inject(forwardRef(() => MatDrawerContainer));
+  constructor(
+    @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
+    @Inject(forwardRef(() => MatDrawerContainer))
+    public container: MatDrawerContainer,
+  ) {}
 
   ngAfterContentInit() {
     this.container.contentMarginChanges.subscribe(() => {
@@ -161,7 +164,7 @@ export class MatDrawerContainer /*extends MatDrawerContainerBase*/ {
   /** Emits when the component is destroyed. */
   private readonly destroyed = new Subject<void>();
 
-  private ngZone = inject(NgZone);
+  constructor(@Inject(NgZone) private ngZone: NgZone) {}
 
   ngAfterContentInit() {
     this.updateContentMargins();

@@ -15,7 +15,7 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {Component, effect, output} from '@angular/core';
+import {Component, effect, ElementRef, Inject, output} from '@angular/core';
 import {CollapsedSectionsComponent} from '@app/shared/collapsible_sections/collapsed_sections_component';
 import {HierarchyComponent} from '@app/shared/hierarchy/hierarchy_component';
 import {HierarchyViewerComponent} from '@app/shared/hierarchy/hierarchy_viewer_component';
@@ -79,8 +79,8 @@ export class ViewerSurfaceFlingerComponent extends HierarchyViewerComponent<UiDa
   readonly onRectsDblClick = output<string>();
   readonly onRectTypeButtonClick = output<TraceRectType>();
 
-  constructor() {
-    super();
+  constructor(@Inject(ElementRef) elementRef: ElementRef) {
+    super(elementRef);
 
     effect(() => {
       const data = this.inputData();

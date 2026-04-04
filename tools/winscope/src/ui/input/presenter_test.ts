@@ -19,7 +19,7 @@ import {Transform} from '@common/geometry/transform';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {makeRealTimestamp} from '@common/time/testing/test_helpers';
 import {Timer} from '@common/time/timer';
-import {getParserInput} from '@parsers/testing/fixture_utils';
+import {getParserInput} from '@parsers/fixture_utils';
 import {CustomQueryType} from '@trace_api/custom_query';
 import {Parser} from '@trace_api/parser';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
@@ -35,15 +35,15 @@ import {InputEventType} from '@trace/input/input_event_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {HierarchyTreeBuilder} from '@tree_node/testing/hierarchy_tree_builder';
 import {TraceRectBuilder} from '@tree_node/trace_rect_builder';
+import {TabbedViewSwitchRequest} from '@ui/shared/events/tabbed_view_events';
 import {NotifyLogViewCallbackType} from '@ui/shared/log/abstract_log_viewer_presenter';
+import {AbstractLogViewerPresenterTest} from '@ui/shared/log/abstract_log_viewer_presenter_test';
 import {LogSelectFilter} from '@ui/shared/log/log_filters';
-import {AbstractLogViewerPresenterTest} from '@ui/shared/log/testing/abstract_log_viewer_presenter_test';
 import {LogField, LogHeader} from '@ui/shared/log/ui_data_log';
 import {TraceRectType} from '@ui/shared/rects/rect_spec';
 import {VISIBLE_CHIP} from '@ui/shared/user_input/chip';
 import {TextFilter} from '@ui/shared/user_input/text_filter';
 import {UserOptions} from '@ui/shared/user_input/user_options';
-import {TabbedViewSwitchRequest} from '@ui/shared/viewers/tabbed_view_events';
 
 import {Presenter} from './presenter';
 import {UiData} from './ui_data';
@@ -420,7 +420,7 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
         expect(
           motionDispatchProperties
             .find((row) => row.node.name === 'windowId')
-            ?.node.getValue<number>(),
+            ?.node.getValue(),
         ).toBe(98);
       });
 
@@ -961,9 +961,7 @@ class PresenterInputTest extends AbstractLogViewerPresenterTest<UiData> {
   ) {
     const propertyNodes = assertDefined(uiData.propertyNodes);
     expect(
-      propertyNodes
-        .find((row) => row.node.name === 'eventId')
-        ?.node.getValue<number>(),
+      propertyNodes.find((row) => row.node.name === 'eventId')?.node.getValue(),
     ).toBe(eventId);
     expect(
       propertyNodes

@@ -16,7 +16,6 @@
 
 import {ComponentRef} from '@angular/core';
 import {TestBed} from '@angular/core/testing';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {TraceBuilder} from '@trace_api/testing/trace_builder';
 import {Trace} from '@trace_api/trace';
@@ -30,10 +29,6 @@ import {ViewerViewCapture} from './viewer_view_capture';
 import {ViewerViewCaptureComponent} from './viewer_view_capture_component';
 
 describe('ViewerViewCapture', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const node = new HierarchyTreeBuilder()
     .setId('Test Trace')
     .setName('entry 1')

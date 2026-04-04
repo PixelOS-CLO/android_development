@@ -34,9 +34,7 @@ describe('UiHierarchyTreeNode', () => {
     const uiNode = UiHierarchyTreeNode.from(node);
     expect(uiNode.id).toEqual(node.id);
     expect(uiNode.name).toEqual(node.name);
-    expect(uiNode.getEagerPropertyByName('prop')?.getValue<boolean>()).toEqual(
-      true,
-    );
+    expect(uiNode.getEagerPropertyByName('prop')?.getValue()).toEqual(true);
   });
 
   it('transfers rects', () => {

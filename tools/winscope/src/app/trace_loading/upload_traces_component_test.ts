@@ -24,7 +24,6 @@ import {MatProgressBarModule} from '@angular/material/progress-bar';
 import {MatSnackBar, MatSnackBarModule} from '@angular/material/snack-bar';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {NoopAnimationsModule} from '@angular/platform-browser/animations';
-import {setupTestEnvironment} from '@app/shared/testing/test_environment';
 import {assertDefined} from '@common/assert';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {DOMTestHelper} from '@common/testing/dom_test_helpers';
@@ -40,10 +39,6 @@ import {LoadProgressComponent} from './load_progress_component';
 import {UploadTracesComponent} from './upload_traces_component';
 
 describe('UploadTracesComponent', () => {
-  beforeAll(() => {
-    setupTestEnvironment();
-  });
-
   const uploadSelector = '.upload-btn';
   const clearAllSelector = '.clear-all-btn';
   const viewTracesSelector = '.load-btn';

@@ -23,6 +23,8 @@ import {LegacyFileReader} from '@legacy_file_readers/common/legacy_file_reader';
 import {TraceFile} from '@trace_api/trace_file';
 import {TraceType} from '@trace_api/trace_type';
 
+import './input_method_service_patch';
+
 export class FileReaderInputMethodService extends AbstractFileReader<InputMethodServiceTraceProtoUdc> {
   private static readonly MAGIC_NUMBER = [
     0x09, 0x49, 0x4d, 0x53, 0x54, 0x52, 0x41, 0x43, 0x45,

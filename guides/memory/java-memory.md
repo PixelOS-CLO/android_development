@@ -5,53 +5,14 @@ When objects are no longer reachable, the garbage collector (GC) eventually
 reclaims their space. Memory leaks occur when objects that are no longer needed
 are still held by "GC roots," preventing them from being reclaimed.
 
-## Core Concepts
+The following diagram illustrates how a "GC root" can keep an entire tree of
+objects alive in memory, even if the application no longer needs them.
 
-### GC Roots
-
-A **GC Root** is a special type of object that the garbage collector treats as
-always reachable. Examples include:
-
--   **Active threads** (and objects referenced from their currently executing
-    Java stack frames).
--   **Classes** with actively running methods.
--   **JNI references** (global or local references held by native code).
-
-### Path to GC Root
-
-As long as there is a chain of references from a GC Root to an object, that
-object is "reachable" and cannot be garbage collected. This chain is called the
-**Path to GC Root**. To fix a memory leak, you must identify and break this
-chain.
-
-![Path to GC Root](images/java-memory/path_to_gc_root.png)
+![GC Root Leak Example](images/java-memory/gc_root_leak.png)
 
 <!--
-Source: images/java-memory/path_to_gc_root.dot
-To regenerate: `dot -Tpng images/java-memory/path_to_gc_root.dot -o images/java-memory/path_to_gc_root.png`
--->
-
-### Dominator Trees
-
-While the path to GC root tells you *why* an object is alive, it doesn't tell you
-how much memory would be reclaimed if that reference was broken. For this, we
-use **Dominator Trees**.
-
-Object **A** is said to **dominate** object **B** if every path from any GC root
-to **B** must pass through **A**. If **A** dominates **B**, then reclaiming
-**A** will also guarantee that **B** can be reclaimed, because there are no
-other paths from any root to **B**.
-
-The following diagram shows an object graph and its corresponding dominator
-tree. Notice how object **D** is reached by both **A** and **B** in the graph,
-so neither **A** nor **B** dominates **D**; instead, the **GC Root** is its
-nearest dominator.
-
-![Dominator Tree](images/java-memory/dominator_tree.png)
-
-<!--
-Source: images/java-memory/dominator_tree.dot
-To regenerate: `dot -Tpng images/java-memory/dominator_tree.dot -o images/java-memory/dominator_tree.png`
+Source for the above diagram is located at: images/java-memory/gc_root_leak.dot
+To regenerate: `dot -Tpng images/java-memory/gc_root_leak.dot -o images/java-memory/gc_root_leak.png`
 -->
 
 ## Setup Instructions for Exercises
@@ -157,130 +118,40 @@ Then open your browser to [http://localhost:7100](http://localhost:7100).
 
 ### Key Analysis Workflows
 
-#### Finding Leaks
+-   **Finding Leaks**: Search for your Activity class (`MainActivity`) in the
+    **Objects** or **Classes** view.
 
-Search for your Activity class (`MainActivity`) in the **Allocations** view.
+![AHAT object instance view for MainActivity](images/java-memory/ahat-leaked-activity.png)
 
-![AHAT view showing instances](images/java-memory/ahat-instances.png)
-
-Click the class to find all **Instances**.
-
-![AHAT view showing MainActivity instances](images/java-memory/ahat-MainActivity-instances.png)
-
-Click on the `MainActivity` instance to inspect it.
+-   Click on a specific `MainActivity` instance to inspect it.
 
 ![AHAT showing an instance details](images/java-memory/MainActivity.png)
 
-In the instance view, you can find the **Sample Path from GC Root**, which shows
-the chain of references preventing the object from being garbage collected, and
-the **Object Size**, which shows how much memory is being retained by this
-specific instance.
+-   In the instance view, you can find the **Path from Root**, which shows the
+    chain of references preventing the object from being garbage collected.
 
-![AHAT Sample Path from GC Root and Object Size](images/java-memory/MainActivity-path-gc-root.png)
+![AHAT Path from Root](images/java-memory/MainActivity-path-gc-root.png)
 
-#### Activity Leaks Page
+-   **Analyzing Bitmaps**: AHAT has special support for viewing
+    `android.graphics.Bitmap` objects, which are often large memory consumers.
+    Click on a Bitmap instance to see a rendered preview of its contents.
 
-AHAT has a specialized view for identifying leaked Activities, which are one of
-the most common and impactful memory leaks in Android.
+-   **Diffing Dumps**: Comparing two heap dumps is an excellent way to identify
+    leaks by seeing which objects are growing over time.
 
-1.  **Action**: In MemoryLab, tap **Trigger Java Memory Leak**. This launches
-    `LeakedActivity` which intentionally leaks itself.
-2.  **Dump**: Take a heap dump.
-3.  **Analyze**: Click on **Activity Leaks** in the AHAT sidebar.
-4.  **Verify**: AHAT will list `com.android.memorylab.LeakedActivity` as leaked
-    because its `mDestroyed` field is true (indicating the Activity lifecycle
-    has ended) but it is still reachable from a GC root.
-
-![AHAT Activity Leaks Page](images/java-memory/ahat-activity-leaks.png)
-
-#### Analyzing Bitmaps
-
-AHAT has special support for viewing `android.graphics.Bitmap` objects, which are
-often large memory consumers. Click on a Bitmap instance to see a rendered
-preview of its contents.
-
-![AHAT Bitmap Preview](images/java-memory/ahat-bitmaps.png)
-
-#### Diffing Heap Dumps
-
-Comparing two heap dumps is one of the most powerful ways to identify memory
-issues. By comparing a "clean" baseline dump with a dump taken after performing
-some actions, you can immediately see which objects have accumulated.
-
-**Exercise: Identifying Leaks through Diffing**
-
-1.  **Baseline**: Launch MemoryLab and take a baseline heap dump:
+    1.  **Baseline**: Take a heap dump after the app starts (`heap_1.hprof`).
+    2.  **Action**: In the MemoryLab app, tap **Trigger Java Memory Leak** or
+        **Allocate Java Objects**.
+    3.  **Final**: Take a second heap dump (`heap_2.hprof`).
+    4.  **Compare**: Start AHAT with the second dump as primary and the first as
+        the baseline:
 
     ```bash
-    adb shell am dumpheap com.android.memorylab /data/local/tmp/base.hprof
-    adb pull /data/local/tmp/base.hprof .
+    java -jar ahat.jar --baseline heap_1.hprof heap_2.hprof
     ```
 
-2.  **Action**: Tap **Allocate Java Objects** several times in the app.
-
-3.  **Final**: Take a second heap dump:
-
-    ```bash
-    adb shell am dumpheap com.android.memorylab /data/local/tmp/leaked.hprof
-    adb pull /data/local/tmp/leaked.hprof .
-    ```
-
-4.  **Compare**: Start AHAT with the second dump as primary and the first as
-    the baseline:
-
-    ```bash
-    java -jar out/host/linux-x86/framework/ahat.jar leaked.hprof --baseline base.hprof
-    ```
-
-5.  **Analyze Overview**: The **Overview** page now includes a **Δ (Delta)**
-    column. You will see a large positive delta for the `app` heap, indicating
-    significant memory growth.
-
-![AHAT Overview with Delta](images/java-memory/ahat-overview-diff.png)
-
-6.  **Drill Down**: Click on **rooted** in the menu. This page shows objects
-    reachable from GC roots, sorted by their retained size. You'll see
-    `MainActivity` at the top with a large positive delta.
-
-![AHAT Rooted View with Delta](images/java-memory/ahat-rooted-diff.png)
-
-#### Recording Allocation Stack Traces
-
-While the **Sample Path from GC Root** tells you *why* an object is still alive,
-it doesn't tell you *how* it was created. Allocation stack traces provide the
-exact line of code that allocated an object.
-
-**Concept & Trade-offs**: Recording every allocation's stack trace is
-computationally expensive and consumes significant memory. In a large
-production app, this can make the app nearly unusable. However,
-**MemoryLab** is a small enough application that we can safely enable this
-tracking to pinpoint the source of allocations.
-
-**Exercise: Identifying the source of Byte Arrays**
-
-1.  **Start with Tracking**: Force-stop MemoryLab and restart it with the
-    `--track-allocation` flag. Increase the default stack depth to capture more
-    context.
-
-    ```bash
-    # Increase the allocation tracker's stack depth (requires a process restart)
-    adb shell setprop dalvik.vm.allocTrackerMaxStack 16
-
-    adb shell am force-stop com.android.memorylab
-    adb shell am start --track-allocation -n com.android.memorylab/.MainActivity
-    ```
-
-2.  **Action**: Tap **Allocate Java Objects** a few times.
-
-3.  **Dump**: Take a heap dump and pull it.
-
-4.  **Analyze**: Open the dump in AHAT. Navigate to a large `byte[]` instance
-    (found under `mJavaAllocations` in `MainActivity`).
-
-5.  **Verify**: In the instance view, look at the **Allocation Site** section.
-    It will show the full stack trace leading to `MainActivity.allocateJava`.
-
-![AHAT Allocation Site](images/java-memory/ahat-allocation-site.png)
+    In the resulting view, AHAT will highlight objects that were added or
+    increased in size between the two snapshots.
 
 ## Analyzing Java Allocation Churn
 

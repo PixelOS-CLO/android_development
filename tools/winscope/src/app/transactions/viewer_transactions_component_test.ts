@@ -67,7 +67,7 @@ class ViewerTransactionsComponentTest extends AbstractLogViewerComponentTest<Vie
       .setValue(undefined)
       .build();
 
-    const ts = makeElapsedTimestamp(BigInt(1));
+    const ts = makeElapsedTimestamp(1n);
 
     const trace = new TraceBuilder<HierarchyTreeNode>()
       .setEntries([hierarchyTree, hierarchyTree])
@@ -124,7 +124,7 @@ class ViewerTransactionsComponentTest extends AbstractLogViewerComponentTest<Vie
       .setValue(undefined)
       .build();
 
-    const ts = makeElapsedTimestamp(BigInt(1));
+    const ts = makeElapsedTimestamp(1n);
 
     const trace = new TraceBuilder<HierarchyTreeNode>()
       .setType(TraceType.TRANSACTIONS)

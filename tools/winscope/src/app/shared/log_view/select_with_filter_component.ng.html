@@ -69,43 +69,24 @@ limitations under the License.
       >
     </div>
     @if (totalSelected > 0) {
-      <cdk-accordion class="selected-options selected-options-accordion">
-        <cdk-accordion-item class="accordion-item" #accordionItem="cdkAccordionItem">
-          <span class="mat-body-1 accordion-item-header" (click)="accordionItem.toggle()">
-            <mat-icon>
-              {{ accordionItem.expanded ? 'arrow_drop_down' : 'chevron_right' }}
-            </mat-icon>
-            <span>Selected:</span>
-          </span>
-          @if (accordionItem.expanded) {
-            <div class="accordion-item-body">
-              @let selected = selectedOptions();
-              <cdk-virtual-scroll-viewport
-                [itemSize]="48"
-                [maxBufferPx]="1000"
-                [style.height]="selectedScrollHeight()"
-                [style.max-height]="scrollMaxHeight()"
-                [style.width]="scrollWidth()"
-                [style.min-width]="'100%'"
-                [style.max-width]="'50vw'"
-              >
-                <div
-                  *cdkVirtualFor="let option of selected"
-                  class="mat-mdc-option mat-mdc-option-active mat-mdc-option-multiple mdc-list-item mdc-list-item--selected selected-option"
-                  (click)="onSelectedOptionClick(option)"
-                >
-                  <mat-pseudo-checkbox
-                    color="primary"
-                    state="checked"
-                    class="mat-option-pseudo-checkbox"
-                  ></mat-pseudo-checkbox>
-                  <div class="mat-option-text">{{ option }}</div>
-                </div>
-              </cdk-virtual-scroll-viewport>
-            </div>
-          }
-        </cdk-accordion-item>
-      </cdk-accordion>
+      <div class="selected-options">
+        <span class="mat-mdc-option mat-mdc-option-active mdc-list-item mdc-list-item--selected"
+          >Selected:</span
+        >
+        @for (option of selectedOptions(); track option) {
+          <div
+            class="mat-mdc-option mat-mdc-option-active mat-mdc-option-multiple mdc-list-item mdc-list-item--selected selected-option"
+            (click)="onSelectedOptionClick(option)"
+          >
+            <mat-pseudo-checkbox
+              color="primary"
+              state="checked"
+              class="mat-option-pseudo-checkbox"
+            ></mat-pseudo-checkbox>
+            <div class="mat-option-text">{{ option }}</div>
+          </div>
+        }
+      </div>
     }
     <mat-divider [vertical]="false"></mat-divider>
     <cdk-virtual-scroll-viewport
