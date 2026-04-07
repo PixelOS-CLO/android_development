@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component, ElementRef, Inject, input} from '@angular/core';
+import {Component, computed, ElementRef, Inject, input} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {assertDefined} from '@common/assert';
 import {Timestamp} from '@common/time/time';
 import {DiffType} from '@viewers/common/diff_type';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
-import {
-  TimestampClickDetail,
-  ViewerEvents,
-} from '@viewers/common/viewer_events';
+import {TimestampClickDetail, ViewerEvents,} from '@viewers/common/viewer_events';
 
 @Component({
   selector: 'property-tree-node-data-view',
@@ -33,20 +30,49 @@ import {
   styleUrls: ['property_tree_node_data_view_component.css'],
 })
 export class PropertyTreeNodeDataViewComponent {
-  node = input<UiPropertyTreeNode>();
+  node = input.required<UiPropertyTreeNode>();
 
   constructor(@Inject(ElementRef) private elementRef: ElementRef) {}
 
-  getKey(node: UiPropertyTreeNode) {
-    if (!node?.formattedValue()) {
+  readonly isTimestamp = computed<boolean>(() => {
+    return this.node().getValue() instanceof Timestamp;
+  });
+
+  readonly valueClass = computed<string | undefined>(() => {
+    const property = this.node().formattedValue();
+    if (property === 'null') {
+      return property;
+    }
+    if (property === 'true') {
+      return property;
+    }
+    if (property === 'false') {
+      return property;
+    }
+    if (!isNaN(Number(property))) {
+      return 'number';
+    }
+    return undefined;
+  });
+
+  readonly timeClass = computed<string | null>(() => {
+    if (this.isTimestamp()) {
+      return 'time';
+    }
+    return null;
+  });
+
+  readonly isModified = computed<boolean>(() => {
+    return this.node().getDiff() === DiffType.MODIFIED;
+  });
+
+  readonly key = computed<string>(() => {
+    const node = this.node();
+    if (!node.formattedValue()) {
       return node.getDisplayName();
     }
     return node.getDisplayName() + ': ';
-  }
-
-  isTimestamp() {
-    return this.node()?.getValue() instanceof Timestamp;
-  }
+  });
 
   onTimestampClicked(timestampNode: UiPropertyTreeNode) {
     const timestamp: Timestamp = assertDefined(
@@ -65,33 +91,5 @@ export class PropertyTreeNodeDataViewComponent {
       detail: node,
     });
     this.elementRef.nativeElement.dispatchEvent(event);
-  }
-
-  valueClass(): string | undefined {
-    const property = assertDefined(this.node()).formattedValue();
-    if (property === 'null') {
-      return property;
-    }
-    if (property === 'true') {
-      return property;
-    }
-    if (property === 'false') {
-      return property;
-    }
-    if (!isNaN(Number(property))) {
-      return 'number';
-    }
-    return undefined;
-  }
-
-  timeClass() {
-    if (this.isTimestamp()) {
-      return 'time';
-    }
-    return null;
-  }
-
-  isModified() {
-    return assertDefined(this.node()).getDiff() === DiffType.MODIFIED;
   }
 }

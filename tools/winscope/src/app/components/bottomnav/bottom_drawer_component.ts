@@ -14,28 +14,9 @@
  * limitations under the License.
  */
 
-import {
-  animate,
-  AnimationTriggerMetadata,
-  state,
-  style,
-  transition,
-  trigger,
-} from '@angular/animations';
+import {animate, AnimationTriggerMetadata, state, style, transition, trigger,} from '@angular/animations';
 import {CommonModule} from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  ContentChild,
-  ElementRef,
-  forwardRef,
-  Inject,
-  Injectable,
-  Input,
-  NgZone,
-  ViewEncapsulation,
-} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, ContentChild, ElementRef, forwardRef, Inject, Injectable, input, NgZone, ViewEncapsulation,} from '@angular/core';
 import {assertDefined} from '@common/assert';
 import {Subject} from 'rxjs';
 import {debounceTime, takeUntil} from 'rxjs/operators';
@@ -94,12 +75,8 @@ const transformDrawer: AnimationTriggerMetadata =
   encapsulation: ViewEncapsulation.None,
 })
 export class MatDrawer {
-  @Input() mode: 'push' | 'overlay' = 'overlay';
-  @Input() baseHeight = 0;
-
-  getBaseHeight() {
-    return this.baseHeight;
-  }
+  mode = input<'push' | 'overlay'>('overlay');
+  baseHeight = input(0);
 }
 
 /**
@@ -224,10 +201,10 @@ export class MatDrawerContainer /*extends MatDrawerContainerBase*/ {
     let bottom: number | undefined = 0;
 
     const drawer = assertDefined(this.drawer);
-    const baseHeight = drawer.getBaseHeight();
+    const baseHeight = drawer.baseHeight();
     const height = this.getDrawerHeight();
     const shiftAmount =
-      drawer.mode === 'push' ? Math.max(0, height - baseHeight) : 0;
+      drawer.mode() === 'push' ? Math.max(0, height - baseHeight) : 0;
 
     top -= shiftAmount;
     bottom += baseHeight + shiftAmount;

@@ -26,10 +26,8 @@ import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
-import {
-  SearchQueryClickDetail,
-  ViewerEvents,
-} from '@viewers/common/viewer_events';
+import {SearchQueryClickDetail, ViewerEvents,} from '@viewers/common/viewer_events';
+
 import {ActiveSearchComponent} from './active_search_component';
 
 describe('ActiveSearchComponent', () => {
@@ -228,7 +226,7 @@ describe('ActiveSearchComponent', () => {
     template: `
       <ng-template #testTemplate let-control="control" let-query="query">
         <span class="test-query"> {{query}} </span>
-        <span class="test-control-value"> {{control?.value}} </span>
+        <span class="test-control-value"> {{control.value}} </span>
       </ng-template>
     `,
   })

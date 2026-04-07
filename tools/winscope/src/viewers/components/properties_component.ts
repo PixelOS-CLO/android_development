@@ -14,14 +14,7 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {
-  Component,
-  ElementRef,
-  Inject,
-  input,
-  output,
-  ViewChild,
-} from '@angular/core';
+import {Component, computed, ElementRef, Inject, input, output,} from '@angular/core';
 import {MatDividerModule} from '@angular/material/divider';
 import {PersistentStore} from '@common/store/persistent_store';
 import {Analytics} from '@logging/analytics';
@@ -36,6 +29,7 @@ import {ViewerEvents} from '@viewers/common/viewer_events';
 import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
 import {UserOptionsComponent} from '@viewers/components/user_options_component';
 import {ViewCapturePropertyGroupsComponent} from '@viewers/components/view_capture_property_groups_component';
+
 import {SearchBoxComponent} from './search_box_component';
 import {TreeComponent} from './tree_component';
 
@@ -59,10 +53,10 @@ export class PropertiesComponent {
   CollapsibleSectionType = CollapsibleSectionType;
   ViewerEvents = ViewerEvents;
 
+  nodeRows = input.required<Array<FlattenedTreeRow<UiPropertyTreeNode>>>();
   title = input('PROPERTIES');
   userOptions = input<UserOptions>({});
   placeholderText = input('');
-  nodeRows = input<Array<FlattenedTreeRow<UiPropertyTreeNode>>>();
   highlightedProperty = input('');
   curatedProperties = input<CuratedProperties>();
   isProtoDump = input(false);
@@ -73,7 +67,17 @@ export class PropertiesComponent {
 
   collapseButtonClicked = output();
 
-  @ViewChild(SearchBoxComponent) searchBox: SearchBoxComponent | undefined;
+  readonly hasUserOptions = computed(() => {
+    return Object.keys(this.userOptions()).length > 0;
+  });
+
+  readonly showPlaceholderText = computed(() => {
+    return (
+      this.nodeRows().length === 0 &&
+      !this.curatedProperties() &&
+      !!this.placeholderText()
+    );
+  });
 
   constructor(@Inject(ElementRef) private elementRef: ElementRef) {}
 
@@ -93,10 +97,6 @@ export class PropertiesComponent {
     this.elementRef.nativeElement.dispatchEvent(event);
   }
 
-  hasUserOptions() {
-    return Object.keys(this.userOptions()).length > 0;
-  }
-
   showViewCaptureFormat(): boolean {
     return (
       this.traceType() === TraceType.VIEW_CAPTURE &&
@@ -108,14 +108,6 @@ export class PropertiesComponent {
   }
 
   showPropertiesTree(): boolean {
-    return (this.nodeRows()?.length ?? 0) > 0 && !this.showViewCaptureFormat();
-  }
-
-  showPlaceholderText(): boolean {
-    return (
-      (this.nodeRows()?.length ?? 0) === 0 &&
-      !this.curatedProperties() &&
-      !!this.placeholderText()
-    );
+    return this.nodeRows().length > 0 && !this.showViewCaptureFormat();
   }
 }

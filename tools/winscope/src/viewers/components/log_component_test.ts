@@ -15,13 +15,9 @@
  */
 
 import {Clipboard, ClipboardModule} from '@angular/cdk/clipboard';
+import {CdkMenuModule} from '@angular/cdk/menu';
 import {ScrollingModule} from '@angular/cdk/scrolling';
-import {Component, ViewChild} from '@angular/core';
-import {
-  ComponentFixture,
-  ComponentFixtureAutoDetect,
-  TestBed,
-} from '@angular/core/testing';
+import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatPseudoCheckboxModule} from '@angular/material/core';
@@ -32,41 +28,28 @@ import {MatInputModule} from '@angular/material/input';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {NoopAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
 import {KeyboardEventKey} from '@common/dom';
+import {makeElapsedTimestamp, makeRealTimestamp,} from '@common/time/test_helpers';
 import {Timestamp} from '@common/time/time';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
-import {
-  makeElapsedTimestamp,
-  makeRealTimestamp,
-} from '@common/time/test_helpers';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
 import {TraceEntry} from '@trace_api/trace';
 import {TraceType} from '@trace_api/trace_type';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {LogSelectFilter, LogTextFilter} from '@viewers/common/log_filters';
 import {TextFilter} from '@viewers/common/text_filter';
-import {
-  ColumnSpec,
-  LogEntry,
-  LogField,
-  LogHeader,
-} from '@viewers/common/ui_data_log';
+import {ColumnSpec, LogEntry, LogField, LogHeader,} from '@viewers/common/ui_data_log';
 import {VariableHeightScrollDirective} from '@viewers/common/variable_height_scroll_directive';
-import {
-  LogFilterChangeDetail,
-  LogTextFilterChangeDetail,
-  TimestampClickDetail,
-  ViewerEvents,
-} from '@viewers/common/viewer_events';
+import {LogFilterChangeDetail, LogTextFilterChangeDetail, TimestampClickDetail, ViewerEvents,} from '@viewers/common/viewer_events';
 import {CollapsedSectionsComponent} from '@viewers/components/collapsed_sections_component';
 import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
 import {PropertiesComponent} from '@viewers/components/properties_component';
 import {SearchBoxComponent} from '@viewers/components/search_box_component';
 import {SelectWithFilterComponent} from '@viewers/components/select_with_filter_component';
+
 import {LogComponent} from './log_component';
-import {CdkMenuModule} from '@angular/cdk/menu';
 
 describe('LogComponent', () => {
   const testColumn1: ColumnSpec = {name: 'test1', cssClass: 'test-1'};
@@ -75,24 +58,21 @@ describe('LogComponent', () => {
 
   const tooltipMessage = 'Test tooltip message';
 
-  let fixture: ComponentFixture<TestHostComponent>;
-  let component: TestHostComponent;
-  let dom: DOMTestHelper<TestHostComponent>;
+  let fixture: ComponentFixture<LogComponent>;
+  let component: LogComponent;
+  let dom: DOMTestHelper<LogComponent>;
   let mockCopyText: jasmine.Spy;
 
   beforeEach(async () => {
     mockCopyText = jasmine.createSpy();
     await TestBed.configureTestingModule({
-      providers: [
-        {provide: Clipboard, useValue: {copy: mockCopyText}},
-        {provide: ComponentFixtureAutoDetect, useValue: true},
-      ],
+      providers: [{provide: Clipboard, useValue: {copy: mockCopyText}}],
       imports: [
         ScrollingModule,
         MatFormFieldModule,
         FormsModule,
         MatInputModule,
-        BrowserAnimationsModule,
+        NoopAnimationsModule,
         MatSelectModule,
         MatDividerModule,
         MatButtonModule,
@@ -102,7 +82,6 @@ describe('LogComponent', () => {
         MatTooltipModule,
         ClipboardModule,
         CdkMenuModule,
-        TestHostComponent,
         LogComponent,
         SelectWithFilterComponent,
         CollapsedSectionsComponent,
@@ -112,12 +91,11 @@ describe('LogComponent', () => {
         VariableHeightScrollDirective,
       ],
     }).compileComponents();
-    fixture = TestBed.createComponent(TestHostComponent);
+    fixture = TestBed.createComponent(LogComponent);
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
-    setComponentInputData();
-    dom.detectChanges();
-    await dom.whenStable();
+    await setComponentInputData();
+    await dom.detectChangesAndWaitStable();
   });
 
   it('can be created', () => {
@@ -137,10 +115,7 @@ describe('LogComponent', () => {
   });
 
   it('emits event and scrolls to first entry on button click', () => {
-    const spy = spyOn(
-      assertDefined(component.logComponent?.scrollComponent),
-      'scrollToIndex',
-    );
+    const spy = spyOn(component.scrollComponent(), 'scrollToIndex');
     let clicked: TraceEntry<unknown> | undefined;
     dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
       clicked = (event as CustomEvent).detail.entry;
@@ -151,21 +126,15 @@ describe('LogComponent', () => {
   });
 
   it('scrolls to current entry on button click', () => {
-    component.currentIndex = 1;
+    dom.setComponentInput('currentIndex', 1);
     dom.detectChanges();
-    const spy = spyOn(
-      assertDefined(component.logComponent?.scrollComponent),
-      'scrollToIndex',
-    );
+    const spy = spyOn(component.scrollComponent(), 'scrollToIndex');
     dom.findAndClick('.go-to-current-entry');
     expect(spy).toHaveBeenCalledWith(1);
   });
 
   it('emits event and scrolls to last entry on button click', () => {
-    const spy = spyOn(
-      assertDefined(component.logComponent?.scrollComponent),
-      'scrollToIndex',
-    );
+    const spy = spyOn(component.scrollComponent(), 'scrollToIndex');
     let clicked: TraceEntry<unknown> | undefined;
     dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
       clicked = (event as CustomEvent).detail.entry;
@@ -176,26 +145,26 @@ describe('LogComponent', () => {
   });
 
   it('does not show time controls if flag not set', () => {
-    component.showTraceEntryTimes = false;
+    dom.setComponentInput('showTraceEntryTimes', false);
     dom.detectChanges();
     expect(dom.find('.time-controls')).toBeUndefined();
   });
 
   it('does not show current time button if no header without filter and trace entry times flag not set', () => {
-    component.showTraceEntryTimes = false;
+    dom.setComponentInput('showTraceEntryTimes', false);
     dom.detectChanges();
     expect(dom.find('.time-controls-trigger')).toBeUndefined();
   });
 
   it('does not show current time button if flag not set', () => {
-    component.showTimeControls = false;
+    dom.setComponentInput('showTimeControls', false);
     dom.detectChanges();
     expect(dom.find('.time-controls-trigger')).toBeUndefined();
   });
 
   it('shows time controls menu if header without filter and trace entry times flag set', async () => {
-    component.headers = [new LogHeader(testColumn1)];
-    component.showTraceEntryTimes = false;
+    dom.setComponentInput('headers', [new LogHeader(testColumn1)]);
+    dom.setComponentInput('showTraceEntryTimes', false);
     dom.detectChanges();
     expect(dom.findInDocument('.time-controls')).toBeUndefined();
     const trigger = dom.get('.time-controls-trigger');
@@ -209,22 +178,25 @@ describe('LogComponent', () => {
   });
 
   it('applies select filter correctly', async () => {
-    const allEntries = component.entries.slice();
+    const allEntries = component.entries().slice();
     dom.addEventListener(ViewerEvents.LogFilterChange, (event) => {
       const detail: LogFilterChangeDetail = (event as CustomEvent).detail;
       if (detail.value.length === 0) {
-        component.entries = allEntries;
+        dom.setComponentInput('entries', allEntries);
         return;
       }
-      component.entries = allEntries.filter((entry) => {
-        const entryValue = assertDefined(
-          entry.fields.find((f) => f.spec === detail.header.spec),
-        ).value.toString();
-        if (Array.isArray(detail.value)) {
-          return detail.value.includes(entryValue);
-        }
-        return entryValue.includes(detail.value);
-      });
+      dom.setComponentInput(
+        'entries',
+        allEntries.filter((entry) => {
+          const entryValue = assertDefined(
+            entry.fields.find((f) => f.spec === detail.header.spec),
+          ).value.toString();
+          if (Array.isArray(detail.value)) {
+            return detail.value.includes(entryValue);
+          }
+          return entryValue.includes(detail.value);
+        }),
+      );
     });
     expect(dom.findAll('.entry').length).toBe(2);
     await dom.openMatSelect();
@@ -238,19 +210,22 @@ describe('LogComponent', () => {
   });
 
   it('applies text filter correctly', async () => {
-    const allEntries = component.entries.slice();
+    const allEntries = component.entries().slice();
     dom.addEventListener(ViewerEvents.LogTextFilterChange, (event) => {
       const detail: LogTextFilterChangeDetail = (event as CustomEvent).detail;
       if (detail.filter.filterString.length === 0) {
-        component.entries = allEntries;
+        dom.setComponentInput('entries', allEntries);
         return;
       }
-      component.entries = allEntries.filter((entry) => {
-        const entryValue = assertDefined(
-          entry.fields.find((f) => f.spec === detail.header.spec),
-        ).value.toString();
-        return entryValue.includes(detail.filter.filterString);
-      });
+      dom.setComponentInput(
+        'entries',
+        allEntries.filter((entry) => {
+          const entryValue = assertDefined(
+            entry.fields.find((f) => f.spec === detail.header.spec),
+          ).value.toString();
+          return entryValue.includes(detail.filter.filterString);
+        }),
+      );
     });
     expect(dom.findAll('.entry').length).toBe(2);
 
@@ -308,7 +283,7 @@ describe('LogComponent', () => {
     // Force viewport layout update
     dom.detectChanges();
     await dom.whenRenderingDone();
-    component.logComponent?.scrollComponent?.checkViewportSize();
+    component.scrollComponent().checkViewportSize();
     dom.detectChanges();
     await dom.whenRenderingDone();
 
@@ -325,28 +300,26 @@ describe('LogComponent', () => {
     expect(dom.findAll(`.${testColumn3.cssClass} .time-button`).length).toEqual(
       2,
     );
-    spyOn(component.entries[1].traceEntry, 'hasValidTimestamp').and.returnValue(
-      false,
-    );
+    spyOn(
+      component.entries()[1].traceEntry,
+      'hasValidTimestamp',
+    ).and.returnValue(false);
     dom.detectChanges();
     expect(dom.findAll(`.${testColumn3.cssClass} .time-button`).length).toEqual(
       1,
     );
   });
 
-  it('changes css class on entry click and does not scroll', () => {
+  it('changes css class on entry click and does not scroll', async () => {
     dom.addEventListener(ViewerEvents.LogEntryClick, (event) => {
       const index = (event as CustomEvent).detail;
-      component.selectedIndex = index;
+      dom.setComponentInput('selectedIndex', index);
       dom.detectChanges();
     });
 
     const entry = dom.get('.entry[item-id="1"]');
     entry.checkClassName('selected', false);
-    const spy = spyOn(
-      assertDefined(component.logComponent?.scrollComponent),
-      'scrollToIndex',
-    );
+    const spy = spyOn(component.scrollComponent(), 'scrollToIndex');
     entry.click();
     expect(spy).not.toHaveBeenCalled();
     entry.checkClassName('selected', true);
@@ -354,34 +327,32 @@ describe('LogComponent', () => {
 
   it('shows placeholder text', () => {
     expect(dom.find('.placeholder-text')).toBeUndefined();
-    component.entries = [];
+    dom.setComponentInput('entries', []);
     dom.detectChanges();
     expect(dom.find('.placeholder-text')).toBeDefined();
-    component.isFetchingData = true;
+    dom.setComponentInput('isFetchingData', true);
     dom.detectChanges();
     expect(dom.find('.placeholder-text')).toBeUndefined();
   });
 
   it('shows fetching data message', () => {
     expect(dom.find('.fetching-data')).toBeUndefined();
-    component.isFetchingData = true;
+    dom.setComponentInput('isFetchingData', true);
     dom.detectChanges();
     expect(dom.find('.fetching-data')).toBeDefined();
   });
 
-  it('formats timestamp without date unless multiple dates present', () => {
+  it('formats timestamp without date unless multiple dates present', async () => {
     const entry = dom.get('.scroll .entry');
     entry.checkTextExact('1ns Test tag 1123 2ns');
 
-    const spy = spyOn(
-      assertDefined(component.logComponent),
-      'areMultipleDatesPresent',
-    ).and.returnValue(true);
+    const spy = spyOn(component, 'areMultipleDatesPresent').and.returnValue(
+      true,
+    );
     dom.detectChanges();
     entry.checkTextExact('1ns Test tag 1123 2ns');
 
-    setComponentInputData(false);
-    dom.detectChanges();
+    await setComponentInputData(false);
     entry.checkTextExact('1970-01-01, 00:00:00.000 Test tag 21234 N/A');
 
     spy.and.returnValue(false);
@@ -392,7 +363,7 @@ describe('LogComponent', () => {
   it('shows copy button for spec that can be copied', () => {
     const entry = dom.get('.scroll .entry .test-2');
     expect(entry.find('.copy-button')).toBeUndefined();
-    component.entries[0].fields[1].spec = {
+    component.entries()[0].fields[1].spec = {
       name: 'test2',
       cssClass: 'test-2',
       canCopy: true,
@@ -412,35 +383,35 @@ describe('LogComponent', () => {
       key: KeyboardEventKey.ENTER,
     });
 
-    component.selectedIndex = undefined;
+    dom.setComponentInput('selectedIndex', undefined);
     dom.detectChanges();
     dom.dispatchEventInDocument(keydownEnter);
     expect(entry).toBeUndefined();
 
-    component.selectedIndex = 1;
+    dom.setComponentInput('selectedIndex', 1);
     dom.detectChanges();
     dom.dispatchEventInDocument(keydownEnter);
-    expect(entry).toEqual(component.entries[1].traceEntry);
+    expect(entry).toEqual(component.entries()[1].traceEntry);
   });
 
   it('checks scroll viewport size if flag set', () => {
     const spy = spyOn(
-      assertDefined(component.logComponent?.scrollComponent),
+      component.scrollComponent(),
       'checkViewportSize',
     ).and.callThrough();
 
-    component.checkScrollViewportCount = 1;
+    dom.setComponentInput('checkScrollViewportCount', 1);
     dom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(1);
 
-    component.checkScrollViewportCount = 0;
+    dom.setComponentInput('checkScrollViewportCount', 0);
     dom.detectChanges();
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it('checks scroll viewport size on window resize', () => {
     const spy = spyOn(
-      assertDefined(component.logComponent?.scrollComponent),
+      component.scrollComponent(),
       'checkViewportSize',
     ).and.callThrough();
     window.dispatchEvent(new Event('resize'));
@@ -449,22 +420,22 @@ describe('LogComponent', () => {
 
   it('scrolls to scrollToIndex - 1', () => {
     const spy = spyOn(
-      assertDefined(component.logComponent?.scrollComponent),
+      component.scrollComponent(),
       'scrollToIndex',
     ).and.callThrough();
 
-    component.scrollToIndex = 1;
+    dom.setComponentInput('scrollToIndex', 1);
     dom.detectChanges();
     expect(spy).toHaveBeenCalledOnceWith(0);
   });
 
   it('copies formatted log', () => {
     const onDocumentCopySpy = spyOn(
-      assertDefined(component.logComponent),
+      component,
       'onDocumentCopy',
     ).and.callThrough();
 
-    component.traceType = TraceType.PROTO_LOG;
+    dom.setComponentInput('traceType', TraceType.PROTO_LOG);
     dom.detectChanges();
 
     const copyEvent = new ClipboardEvent('copy', {
@@ -528,13 +499,13 @@ describe('LogComponent', () => {
       ),
     ];
 
-    component.entries = [entry];
-    component.headers = headers;
-    component.selectedIndex = 0;
-    component.traceType = TraceType.CUJS;
+    dom.setComponentInput('entries', [entry]);
+    dom.setComponentInput('headers', headers);
+    dom.setComponentInput('selectedIndex', 0);
+    dom.setComponentInput('traceType', TraceType.CUJS);
   }
 
-  function setComponentInputData(elapsed = true) {
+  async function setComponentInputData(elapsed = true) {
     let entryTime: Timestamp;
     let fieldTime: Timestamp;
     if (elapsed) {
@@ -581,14 +552,15 @@ describe('LogComponent', () => {
       new LogHeader(testColumn2, new LogTextFilter(new TextFilter())),
     ];
 
-    component.entries = entries;
-    component.headers = headers;
-    component.selectedIndex = 0;
-    component.traceType = TraceType.CUJS;
+    dom.setComponentInput('entries', entries);
+    dom.setComponentInput('headers', headers);
+    dom.setComponentInput('selectedIndex', 0);
+    dom.setComponentInput('traceType', TraceType.CUJS);
+    await dom.detectChangesAndWaitStable();
   }
 
   function checkEntryPropagatedOnTimestampClick(
-    button: DOMTestHelper<TestHostComponent>,
+    button: DOMTestHelper<LogComponent>,
   ) {
     let entry: TraceEntry<unknown> | undefined;
     dom.addEventListener(ViewerEvents.TimestampClick, (event) => {
@@ -597,38 +569,5 @@ describe('LogComponent', () => {
     });
     button.click();
     expect(entry).toBeDefined();
-  }
-
-  @Component({
-    imports: [LogComponent],
-    selector: 'host-component',
-    template: `
-        <log-view
-          [entries]="entries"
-          [headers]="headers"
-          [currentIndex]="currentIndex"
-          [selectedIndex]="selectedIndex"
-          [scrollToIndex]="scrollToIndex"
-          [traceType]="traceType"
-          [isFetchingData]="isFetchingData"
-          [checkScrollViewportCount]="checkScrollViewportCount"
-          [showTimeControls]="showTimeControls"
-          [showTraceEntryTimes]="showTraceEntryTimes"
-        ></log-view>
-      `,
-  })
-  class TestHostComponent {
-    currentIndex: number | undefined;
-    selectedIndex: number | undefined;
-    scrollToIndex: number | undefined;
-    entries: LogEntry[] = [];
-    headers: LogHeader[] = [];
-    traceType: TraceType | undefined;
-    isFetchingData = false;
-    checkScrollViewportCount = 0;
-    showTimeControls = true;
-    showTraceEntryTimes = true;
-
-    @ViewChild(LogComponent) logComponent: LogComponent | undefined;
   }
 });

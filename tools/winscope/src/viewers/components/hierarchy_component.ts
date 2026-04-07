@@ -15,14 +15,13 @@
  */
 
 import {CommonModule} from '@angular/common';
-import {Component, ElementRef, Inject, input, output} from '@angular/core';
+import {Component, computed, ElementRef, Inject, input, output,} from '@angular/core';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatIconModule} from '@angular/material/icon';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {isElementOverflowing} from '@common/dom';
 import {InMemoryStorage} from '@common/store/in_memory_storage';
 import {PersistentStore} from '@common/store/persistent_store';
-import {Warning} from '@common/warning';
 import {Analytics} from '@logging/analytics';
 import {TRACE_INFO} from '@trace_api/trace_info';
 import {TraceType} from '@trace_api/trace_type';
@@ -31,6 +30,7 @@ import {RectShowState} from '@viewers/common/rect_show_state';
 import {TableProperties} from '@viewers/common/table_properties';
 import {TextFilter} from '@viewers/common/text_filter';
 import {UiHierarchyTreeNode} from '@viewers/common/ui_hierarchy_tree_node';
+import {UiTreeNode} from '@viewers/common/ui_tree_node';
 import {isHighlighted} from '@viewers/common/ui_tree_node_helpers';
 import {UserOptions} from '@viewers/common/user_options';
 import {ViewerEvents} from '@viewers/common/viewer_events';
@@ -41,7 +41,6 @@ import {TreeNodeComponent} from '@viewers/components/tree_node_component';
 import {UserOptionsComponent} from '@viewers/components/user_options_component';
 
 import {TreeComponent} from './tree_component';
-import {UiTreeNode} from '@viewers/common/ui_tree_node';
 
 @Component({
   selector: 'hierarchy-view',
@@ -68,7 +67,7 @@ export class HierarchyComponent {
   Analytics = Analytics;
   readonly treeStorage = new InMemoryStorage();
 
-  nodeRows = input<Array<FlattenedTreeRow<UiHierarchyTreeNode>>>([]);
+  nodeRows = input.required<Array<FlattenedTreeRow<UiHierarchyTreeNode>>>();
   tableProperties = input<TableProperties>();
   dependencies = input<TraceType[]>([]);
   highlightedItem = input('');
@@ -80,6 +79,28 @@ export class HierarchyComponent {
   textFilter = input<TextFilter>();
 
   collapseButtonClicked = output();
+
+  readonly showPlaceholderText = computed(() => {
+    return this.nodeRows().length === 0 && !!this.placeholderText();
+  });
+
+  readonly getPlaceholderText = computed(() => {
+    return (
+      this.placeholderText() +
+      ` There may be no ${
+        this.dependencies().length > 0
+          ? TRACE_INFO[this.dependencies()[0]].name + ' state'
+          : 'state for this trace'
+      } associated with the current state in the active trace.` +
+      ' Try changing timeline position.'
+    );
+  });
+
+  readonly warnings = computed(() => {
+    return this.nodeRows().flatMap((row) => {
+      return row.node.getWarnings();
+    });
+  });
 
   constructor(
     @Inject(ElementRef) private elementRef: ElementRef<HTMLElement>,
@@ -93,14 +114,8 @@ export class HierarchyComponent {
     return this.userOptions()['flat']?.enabled;
   }
 
-  showPlaceholderText(): boolean {
-    return this.nodeRows().length === 0 && !!this.placeholderText();
-  }
-
-  getWarnings(): Warning[] {
-    return this.nodeRows().flatMap((row) => {
-      return row.node.getWarnings();
-    });
+  disableTooltip(el: HTMLElement): boolean {
+    return !isElementOverflowing(el);
   }
 
   onPinnedNodeClick(event: MouseEvent, pinnedItem: UiTreeNode) {
@@ -133,21 +148,5 @@ export class HierarchyComponent {
       detail: {pinnedItem: item as UiHierarchyTreeNode},
     });
     this.elementRef.nativeElement.dispatchEvent(event);
-  }
-
-  disableTooltip(el: HTMLElement): boolean {
-    return !isElementOverflowing(el);
-  }
-
-  getPlaceholderText(): string {
-    return (
-      this.placeholderText() +
-      ` There may be no ${
-        this.dependencies().length > 0
-          ? TRACE_INFO[this.dependencies()[0]].name + ' state'
-          : 'state for this trace'
-      } associated with the current state in the active trace.` +
-      ' Try changing timeline position.'
-    );
   }
 }

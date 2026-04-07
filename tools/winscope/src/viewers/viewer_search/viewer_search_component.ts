@@ -17,69 +17,38 @@
 import {CdkAccordionItem, CdkAccordionModule} from '@angular/cdk/accordion';
 import {CdkMenuModule} from '@angular/cdk/menu';
 import {CommonModule} from '@angular/common';
-import {
-  ChangeDetectorRef,
-  Component,
-  ElementRef,
-  HostListener,
-  Inject,
-  QueryList,
-  SimpleChanges,
-  TemplateRef,
-  ViewChild,
-  ViewChildren,
-} from '@angular/core';
-import {
-  FormControl,
-  FormsModule,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import {ChangeDetectorRef, Component, ElementRef, HostListener, Inject, SimpleChanges, TemplateRef, viewChild, viewChildren,} from '@angular/core';
+import {FormControl, FormsModule, ReactiveFormsModule, ValidationErrors, Validators,} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
-import {
-  MatTabChangeEvent,
-  MatTabGroup,
-  MatTabsModule,
-} from '@angular/material/tabs';
+import {MatTabChangeEvent, MatTabGroup, MatTabsModule,} from '@angular/material/tabs';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {SEARCH_VIEWS} from '@app/trace_search/trace_search_initializer';
+import {makeWarningExportTooLarge, makeWarningFailedToExportToCsv, makeWarningNoResultsToExport,} from '@app/warnings';
 import {assertDefined} from '@common/assert';
 import {downloadFromUrl} from '@common/download';
 import {Timestamp} from '@common/time/time';
 import {TimeDuration} from '@common/time/time_duration';
 import {TIME_UNIT_TO_NANO} from '@common/time/time_units';
 import {Analytics} from '@logging/analytics';
+import {UserNotifier} from '@services/user_notifier';
 import {TraceType} from '@trace_api/trace_type';
 import {CollapsibleSectionType} from '@viewers/common/collapsible_section_type';
 import {CollapsibleSections} from '@viewers/common/collapsible_sections';
 import {ClickableProperty} from '@viewers/common/ui_data_log';
-import {
-  AddQueryClickDetail,
-  ClearQueryClickDetail,
-  DeleteSavedQueryClickDetail,
-  SaveQueryClickDetail,
-  SearchQueryClickDetail,
-  ViewerEvents,
-} from '@viewers/common/viewer_events';
+import {AddQueryClickDetail, ClearQueryClickDetail, DeleteSavedQueryClickDetail, SaveQueryClickDetail, SearchQueryClickDetail, ViewerEvents,} from '@viewers/common/viewer_events';
 import {CollapsedSectionsComponent} from '@viewers/components/collapsed_sections_component';
 import {CollapsibleSectionTitleComponent} from '@viewers/components/collapsible_section_title_component';
 import {LogComponent} from '@viewers/components/log_component';
 import {ViewerComponent} from '@viewers/components/viewer_component';
+
 import {ActiveSearchComponent} from './active_search_component';
 import {ListItemOption, SearchListComponent} from './search_list_component';
 import {CurrentSearch, ListedSearch, UiData} from './ui_data';
-import {UserNotifier} from '@services/user_notifier';
-import {
-  makeWarningExportTooLarge,
-  makeWarningFailedToExportToCsv,
-  makeWarningNoResultsToExport,
-} from '@app/warnings';
 
 @Component({
   standalone: true,
@@ -108,12 +77,10 @@ import {
   styleUrls: ['./viewer_search_component.css'],
 })
 export class ViewerSearchComponent extends ViewerComponent<UiData> {
-  @ViewChild('saveQueryField') saveQueryField: TemplateRef<unknown> | undefined;
-  @ViewChild('globalSearchTitle') globalSearchTitle: ElementRef | undefined;
-  @ViewChildren(MatTabGroup) matTabGroups: QueryList<MatTabGroup> | undefined;
-  @ViewChildren(ActiveSearchComponent) activeSearchComponents:
-    | QueryList<ActiveSearchComponent>
-    | undefined;
+  saveQueryField = viewChild<TemplateRef<unknown>>('saveQueryField');
+  globalSearchTitle = viewChild<ElementRef<HTMLElement>>('globalSearchTitle');
+  matTabGroups = viewChildren(MatTabGroup);
+  activeSearchComponents = viewChildren(ActiveSearchComponent);
 
   CollapsibleSectionType = CollapsibleSectionType;
   TraceType = TraceType;
@@ -199,8 +166,8 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
 
   ngAfterViewInit() {
     this.globalSearchTitleHeight =
-      this.globalSearchTitle?.nativeElement.clientHeight ?? 48;
-    this.saveOption.menu = this.saveQueryField;
+      this.globalSearchTitle()?.nativeElement.clientHeight ?? 48;
+    this.saveOption.menu = this.saveQueryField();
     this.changeDetectorRef.detectChanges();
   }
 
@@ -298,9 +265,12 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
   }
 
   onSearchTabChanged() {
-    const finalComponent = assertDefined(this.activeSearchComponents).last;
-    if (assertDefined(this.matTabGroups).first.selectedIndex === 0) {
-      finalComponent.elementRef.nativeElement.scrollIntoView();
+    const activeSearchComponents = this.activeSearchComponents();
+    const finalComponent = activeSearchComponents.at(
+      activeSearchComponents.length - 1,
+    );
+    if (this.matTabGroups().at(0)?.selectedIndex === 0) {
+      finalComponent?.elementRef.nativeElement.scrollIntoView();
     }
   }
 
@@ -311,7 +281,7 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
   @HostListener('window:resize', ['$event'])
   onResize() {
     this.globalSearchTitleHeight =
-      this.globalSearchTitle?.nativeElement.clientHeight ?? 48;
+      this.globalSearchTitle()?.nativeElement.clientHeight ?? 48;
     this.changeDetectorRef.detectChanges();
   }
 
@@ -436,7 +406,8 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
   private tryPropagateEditFromOptions() {
     if (this.editFromOptions) {
       const currentSearches = assertDefined(this.inputData).currentSearches;
-      if (currentSearches.length !== this.activeSearchComponents?.length) {
+      const activeSearchComponents = this.activeSearchComponents();
+      if (currentSearches.length !== activeSearchComponents?.length) {
         return;
       }
       const lastSearch = currentSearches[currentSearches.length - 1];
@@ -449,9 +420,9 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
 
   private updateLastSectionTextAndShowTab(text: string) {
     assertDefined(
-      this.activeSearchComponents?.get(this.searchSections.length - 1),
+      this.activeSearchComponents().at(this.searchSections.length - 1),
     ).updateText(text);
-    assertDefined(this.matTabGroups).first.selectedIndex = 0;
+    assertDefined(this.matTabGroups())[0].selectedIndex = 0;
   }
 
   private tryHandleQueryCompleted() {
@@ -467,20 +438,21 @@ export class ViewerSearchComponent extends ViewerComponent<UiData> {
       const section = this.searchSections[sectionIndex];
 
       if (!this.inputData?.lastTraceFailed) {
-        this.activeSearchComponents
-          ?.get(sectionIndex)
+        this.activeSearchComponents()
+          ?.at(sectionIndex)
           ?.updateText(currentSearch?.query ?? '');
         section.saveQueryNameControl.setValue(
           this.getQueryLabel(assertDefined(this.runningQueryUid)),
         );
-        assertDefined(this.matTabGroups).last.selectedIndex = sectionIndex;
+        const matTabGroups = this.matTabGroups();
+        matTabGroups[matTabGroups.length - 1].selectedIndex = sectionIndex;
       }
 
       const executionTimeMs =
         Date.now() - assertDefined(section.lastQueryStartTime);
       Analytics.TraceSearch.logQueryExecutionTime(executionTimeMs);
       section.lastQueryExecutionTime = new TimeDuration(
-        BigInt(executionTimeMs * TIME_UNIT_TO_NANO.ms),
+        BigInt(executionTimeMs) * TIME_UNIT_TO_NANO.ms,
       ).format();
       section.lastQueryStartTime = undefined;
 

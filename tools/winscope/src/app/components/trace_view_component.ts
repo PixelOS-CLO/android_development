@@ -16,21 +16,8 @@
 
 import {OverlayModule} from '@angular/cdk/overlay';
 import {CommonModule} from '@angular/common';
-import {
-  ChangeDetectorRef,
-  Component,
-  ElementRef,
-  Inject,
-  Input,
-  NgZone,
-  SimpleChanges,
-} from '@angular/core';
-import {
-  FormControl,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import {ChangeDetectorRef, Component, computed, effect, ElementRef, Inject, input, NgZone, signal,} from '@angular/core';
+import {FormControl, ReactiveFormsModule, ValidationErrors, Validators,} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatDividerModule} from '@angular/material/divider';
 import {MatFormFieldModule} from '@angular/material/form-field';
@@ -38,28 +25,19 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatTabsModule} from '@angular/material/tabs';
 import {MatTooltipModule} from '@angular/material/tooltip';
+import {FilterPresetApplyRequest, FilterPresetSaveRequest,} from '@app/misc_events';
+import {ParsingErrorType} from '@app/parsing_error_type';
+import {TabbedViewSwitched, TabbedViewSwitchRequest,} from '@app/tabbed_view_events';
 import {assertDefined} from '@common/assert';
 import {Store} from '@common/store/store';
-import {Analytics} from '@logging/analytics';
-import {
-  FilterPresetApplyRequest,
-  FilterPresetSaveRequest,
-} from '@app/misc_events';
-import {
-  TabbedViewSwitched,
-  TabbedViewSwitchRequest,
-} from '@app/tabbed_view_events';
-import {
-  EmitEvent,
-  WinscopeEventEmitter,
-} from '@messaging/winscope_event_emitter';
-import {WinscopeEvent} from '@messaging/winscope_event';
-import {WinscopeEventListener} from '@messaging/winscope_event_listener';
 import {getLogger} from '@compat/logging';
+import {Analytics} from '@logging/analytics';
+import {WinscopeEvent} from '@messaging/winscope_event';
+import {EmitEvent, WinscopeEventEmitter,} from '@messaging/winscope_event_emitter';
+import {WinscopeEventListener} from '@messaging/winscope_event_listener';
 import {TRACE_INFO} from '@trace_api/trace_info';
 import {TraceType} from '@trace_api/trace_type';
 import {View, Viewer, ViewType} from '@viewers/viewer';
-import {ParsingErrorType} from '@app/parsing_error_type';
 
 interface Tab {
   view: View;
@@ -91,37 +69,64 @@ interface Tab {
 export class TraceViewComponent
   implements WinscopeEventEmitter, WinscopeEventListener
 {
-  @Input() viewers: Viewer[] = [];
-  @Input() store: Store | undefined;
-  @Input() traceTypesWithParsingErrors: Map<TraceType, ParsingErrorType> =
-    new Map();
+  viewers = input.required<Viewer[]>();
+  store = input.required<Store>();
+  traceTypesWithParsingErrors = input<Map<TraceType, ParsingErrorType>>(
+    new Map(),
+  );
+
+  private allFilterPresets = signal<string[]>([]);
+  private currentActiveTab = signal<Tab | undefined>(undefined);
 
   TRACE_INFO = TRACE_INFO;
   tabs: Tab[] = [];
   isFilterPresetsPanelOpen = false;
   filterPresetNameControl = new FormControl(
     '',
-    assertDefined(
-      Validators.compose([
-        Validators.required,
-        (control: FormControl) =>
-          this.validateFilterPresetName(
-            control,
-            this.allFilterPresets,
-            (input: string) =>
-              this.makeFilterPresetName(
-                input,
-                assertDefined(this.getCurrentTabTraceType()),
-              ),
-          ),
-      ]),
-    ),
+    Validators.compose([
+      Validators.required,
+      (control: FormControl) =>
+        this.validateFilterPresetName(
+          control,
+          this.allFilterPresets(),
+          (input: string) =>
+            this.makeFilterPresetName(
+              input,
+              assertDefined(this.getCurrentTabTraceType()),
+            ),
+        ),
+    ]),
   );
 
-  private currentActiveTab: undefined | Tab;
+  private getCurrentTabTraceType = computed<TraceType | undefined>(() => {
+    return this.currentActiveTab()?.view.traces.at(0)?.type;
+  });
+
+  readonly currentTabHasFilterPresets = computed(() => {
+    const currentTabTraceType = this.getCurrentTabTraceType();
+    return (
+      currentTabTraceType !== undefined &&
+      [
+        TraceType.SURFACE_FLINGER,
+        TraceType.WINDOW_MANAGER,
+        TraceType.INPUT_METHOD_CLIENTS,
+        TraceType.INPUT_METHOD_MANAGER_SERVICE,
+        TraceType.INPUT_METHOD_SERVICE,
+        TraceType.VIEW_CAPTURE,
+      ].includes(currentTabTraceType)
+    );
+  });
+
+  readonly getCurrentFilterPresets = computed(() => {
+    const currentTabTraceType = this.getCurrentTabTraceType();
+    if (currentTabTraceType === undefined) return [];
+    return this.allFilterPresets().filter((preset) =>
+      preset.includes(TRACE_INFO[currentTabTraceType].name),
+    );
+  });
+
   private emitAppEvent: EmitEvent = () => Promise.resolve();
   private filterPresetsStoreKey = 'filterPresets';
-  private allFilterPresets: string[] = [];
 
   traceTypesWithParsingErrorsWarningTooltip: string = '';
 
@@ -129,17 +134,22 @@ export class TraceViewComponent
     @Inject(ElementRef) private elementRef: ElementRef,
     @Inject(ChangeDetectorRef) private changeDetectorRef: ChangeDetectorRef,
     @Inject(NgZone) private ngZone: NgZone,
-  ) {}
+  ) {
+    const firstViewersChange = effect(() => {
+      const viewers = this.viewers();
+      this.renderViewsTab(viewers);
+      this.renderViewsOverlay(viewers);
+      firstViewersChange.destroy();
+    });
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['store']?.firstChange) {
-      const storedPresets = this.store?.get(this.filterPresetsStoreKey);
+    const firstStoreChange = effect(() => {
+      const store = this.store();
+      const storedPresets = store.get(this.filterPresetsStoreKey);
       if (storedPresets) {
-        this.allFilterPresets = JSON.parse(storedPresets);
+        this.allFilterPresets.set(JSON.parse(storedPresets));
       }
-    }
-    this.renderViewsTab(changes['viewers']?.firstChange ?? false);
-    this.renderViewsOverlay();
+      firstStoreChange.destroy();
+    });
   }
 
   getTabIconColor(tab: Tab): string {
@@ -174,13 +184,6 @@ export class TraceViewComponent
     await this.showTab(tab, false);
   }
 
-  private async onTabbedViewSwitchRequest(event: TabbedViewSwitchRequest) {
-    const tab = this.tabs.find((tab) =>
-      tab.view.traces.some((trace) => trace === event.newActiveTrace),
-    );
-    await this.showTab(assertDefined(tab), false);
-  }
-
   async onWinscopeEvent(event: WinscopeEvent) {
     switch (event.constructor) {
       case TabbedViewSwitchRequest:
@@ -199,7 +202,7 @@ export class TraceViewComponent
   }
 
   isCurrentActiveTab(tab: Tab) {
-    return tab === this.currentActiveTab;
+    return tab === this.currentActiveTab();
   }
 
   getTabTooltip(view: View): string {
@@ -213,14 +216,6 @@ export class TraceViewComponent
   getTitle(view: View): string {
     const isDump = view.traces.length === 1 && view.traces.at(0)?.isDump();
     return view.title + (isDump ? ' Dump' : '');
-  }
-
-  getCurrentFilterPresets(): string[] {
-    const currentTabTraceType = this.getCurrentTabTraceType();
-    if (currentTabTraceType === undefined) return [];
-    return this.allFilterPresets.filter((preset) =>
-      preset.includes(TRACE_INFO[currentTabTraceType].name),
-    );
   }
 
   onFilterPresetsClick() {
@@ -237,13 +232,11 @@ export class TraceViewComponent
       const currentTabTraceType = assertDefined(this.getCurrentTabTraceType());
       const presetName = this.makeFilterPresetName(value, currentTabTraceType);
 
-      this.allFilterPresets.push(presetName);
-      if (this.store) {
-        this.store?.add(
-          this.filterPresetsStoreKey,
-          JSON.stringify(this.allFilterPresets),
-        );
-      }
+      this.allFilterPresets.update((presets) => [...presets, presetName]);
+      this.store().add(
+        this.filterPresetsStoreKey,
+        JSON.stringify(this.allFilterPresets()),
+      );
 
       this.filterPresetNameControl.reset();
       this.changeDetectorRef.detectChanges();
@@ -263,37 +256,52 @@ export class TraceViewComponent
   }
 
   deletePreset(preset: string) {
-    this.allFilterPresets = this.allFilterPresets.filter((p) => p !== preset);
-    this.store?.clear(preset);
-    this.store?.add(
+    this.allFilterPresets.update((presets) =>
+      presets.filter((p) => p !== preset),
+    );
+    const store = this.store();
+    store.clear(preset);
+    store.add(
       this.filterPresetsStoreKey,
-      JSON.stringify(this.allFilterPresets),
+      JSON.stringify(this.allFilterPresets()),
     );
     this.filterPresetNameControl.updateValueAndValidity();
     this.changeDetectorRef.detectChanges();
   }
 
-  currentTabHasFilterPresets(): boolean {
-    const currentTabTraceType = this.getCurrentTabTraceType();
-    return (
-      currentTabTraceType !== undefined &&
-      [
-        TraceType.SURFACE_FLINGER,
-        TraceType.WINDOW_MANAGER,
-        TraceType.INPUT_METHOD_CLIENTS,
-        TraceType.INPUT_METHOD_MANAGER_SERVICE,
-        TraceType.INPUT_METHOD_SERVICE,
-        TraceType.VIEW_CAPTURE,
-      ].includes(currentTabTraceType)
+  showTraceTypesWithParsingErrorsWarning(tab: Tab): boolean {
+    const trace = tab.view.traces.at(0);
+    const traceType = trace?.type;
+
+    if (traceType !== undefined) {
+      const traceTypesWithParsingErrors = this.traceTypesWithParsingErrors();
+      if (traceTypesWithParsingErrors.has(traceType)) {
+        if (
+          traceTypesWithParsingErrors.get(traceType) ===
+          ParsingErrorType.DATA_INCORRECT
+        ) {
+          this.traceTypesWithParsingErrorsWarningTooltip =
+            'Trace processor errors occurred - data may be incorrect';
+        } else {
+          this.traceTypesWithParsingErrorsWarningTooltip =
+            'Trace processor errors occurred - data may be incomplete';
+        }
+
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private async onTabbedViewSwitchRequest(event: TabbedViewSwitchRequest) {
+    const tab = this.tabs.find((tab) =>
+      tab.view.traces.some((trace) => trace === event.newActiveTrace),
     );
+    await this.showTab(assertDefined(tab), false);
   }
 
-  private getCurrentTabTraceType(): TraceType | undefined {
-    return this.currentActiveTab?.view.traces.at(0)?.type;
-  }
-
-  private renderViewsTab(firstToRender: boolean) {
-    this.tabs = this.viewers
+  private renderViewsTab(viewers: Viewer[]) {
+    this.tabs = viewers
       .map((viewer) => viewer.getViews())
       .flat()
       .filter((view) => view.type !== ViewType.OVERLAY)
@@ -309,12 +317,12 @@ export class TraceViewComponent
       const tabToShow = assertDefined(
         this.tabs.find((tab) => tab.view.type !== ViewType.GLOBAL_SEARCH),
       );
-      this.showTab(tabToShow, firstToRender);
+      this.showTab(tabToShow, true);
     }
   }
 
-  private renderViewsOverlay() {
-    const views: View[] = this.viewers
+  private renderViewsOverlay(viewers: Viewer[]) {
+    const views: View[] = viewers
       .map((viewer) => viewer.getViews())
       .flat()
       .filter((view) => view.type === ViewType.OVERLAY);
@@ -339,8 +347,9 @@ export class TraceViewComponent
 
   private async showTab(tab: Tab, firstToRender: boolean) {
     const startTimeMs = Date.now();
-    if (this.currentActiveTab) {
-      this.currentActiveTab.view.htmlElement.style.display = 'none';
+    const currentActiveTab = this.currentActiveTab();
+    if (currentActiveTab) {
+      currentActiveTab.view.htmlElement.style.display = 'none';
     }
 
     const firstSwitch = !tab.addedToDom;
@@ -359,7 +368,7 @@ export class TraceViewComponent
       tab.view.htmlElement.style.display = '';
     }
 
-    this.currentActiveTab = tab;
+    this.currentActiveTab.set(tab);
 
     if (!firstToRender) {
       await this.emitAppEvent(new TabbedViewSwitched(tab.view));
@@ -387,28 +396,5 @@ export class TraceViewComponent
 
   private makeFilterPresetName(input: string, traceType: TraceType) {
     return input + '.' + TRACE_INFO[traceType].name;
-  }
-
-  showTraceTypesWithParsingErrorsWarning(tab: Tab): boolean {
-    const trace = tab.view.traces.at(0);
-    const traceType = trace?.type;
-
-    if (traceType !== undefined) {
-      if (this.traceTypesWithParsingErrors.has(traceType)) {
-        if (
-          this.traceTypesWithParsingErrors.get(traceType) ===
-          ParsingErrorType.DATA_INCORRECT
-        ) {
-          this.traceTypesWithParsingErrorsWarningTooltip =
-            'Trace processor errors occurred - data may be incorrect';
-        } else {
-          this.traceTypesWithParsingErrorsWarningTooltip =
-            'Trace processor errors occurred - data may be incomplete';
-        }
-
-        return true;
-      }
-    }
-    return false;
   }
 }

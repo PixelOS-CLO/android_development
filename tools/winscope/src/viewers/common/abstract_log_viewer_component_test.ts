@@ -15,10 +15,7 @@
  */
 
 import {ClipboardModule} from '@angular/cdk/clipboard';
-import {
-  CdkVirtualScrollViewport,
-  ScrollingModule,
-} from '@angular/cdk/scrolling';
+import {CdkVirtualScrollViewport, ScrollingModule,} from '@angular/cdk/scrolling';
 import {provideHttpClient, withInterceptorsFromDi} from '@angular/common/http';
 import {Type} from '@angular/core';
 import {ComponentFixtureAutoDetect, TestBed} from '@angular/core/testing';
@@ -45,15 +42,13 @@ import {SearchBoxComponent} from '@viewers/components/search_box_component';
 import {SelectWithFilterComponent} from '@viewers/components/select_with_filter_component';
 import {TreeComponent} from '@viewers/components/tree_component';
 import {TreeNodeComponent} from '@viewers/components/tree_node_component';
-import {
-  VirtualRow,
-  VirtualScrollViewportComponent,
-} from '@viewers/components/virtual_scroll_viewport_component';
+import {VirtualRow, VirtualScrollViewportComponent,} from '@viewers/components/virtual_scroll_viewport_component';
 import {ViewerInputComponent} from '@viewers/viewer_input/viewer_input_component';
 import {ViewerJankCujsComponent} from '@viewers/viewer_jank_cujs/viewer_jank_cujs_component';
 import {ViewerProtologComponent} from '@viewers/viewer_protolog/viewer_protolog_component';
 import {ViewerTransactionsComponent} from '@viewers/viewer_transactions/viewer_transactions_component';
 import {ViewerTransitionsComponent} from '@viewers/viewer_transitions/viewer_transitions_component';
+
 import {ColumnSpec, UiDataLog} from './ui_data_log';
 import {VariableHeightScrollDirective} from './variable_height_scroll_directive';
 
@@ -116,12 +111,12 @@ export abstract class AbstractLogViewerComponentTest<
         });
 
         it('passes data to log component', () => {
-          const logComponent = assertDefined(component.logComponent);
-          expect(logComponent.isFetchingData).toBeFalse();
-          expect(logComponent.checkScrollViewportCount).toBe(0);
-          expect(logComponent.selectedIndex).not.toBe(10);
-          expect(logComponent.scrollToIndex).not.toBe(20);
-          expect(logComponent.currentIndex).not.toBe(30);
+          const logComponent = assertDefined(component.logComponent());
+          expect(logComponent.isFetchingData()).toBeFalse();
+          expect(logComponent.checkScrollViewportCount()).toBe(0);
+          expect(logComponent.selectedIndex()).not.toBe(10);
+          expect(logComponent.scrollToIndex()).not.toBe(20);
+          expect(logComponent.currentIndex()).not.toBe(30);
 
           const inputData = assertDefined(component.inputData);
           inputData.checkScrollViewportCount = 1;
@@ -131,11 +126,11 @@ export abstract class AbstractLogViewerComponentTest<
           inputData.currentIndex = 30;
           dom.detectChanges();
 
-          expect(logComponent.isFetchingData).toBeTrue();
-          expect(logComponent.checkScrollViewportCount).toBe(1);
-          expect(logComponent.selectedIndex).toBe(10);
-          expect(logComponent.scrollToIndex).toBe(20);
-          expect(logComponent.currentIndex).toBe(30);
+          expect(logComponent.isFetchingData()).toBeTrue();
+          expect(logComponent.checkScrollViewportCount()).toBe(1);
+          expect(logComponent.selectedIndex()).toBe(10);
+          expect(logComponent.scrollToIndex()).toBe(20);
+          expect(logComponent.currentIndex()).toBe(30);
         });
 
         if (this.testProperties) {
@@ -296,7 +291,7 @@ export abstract class AbstractLogViewerComponentTest<
     scrollElement.style.minWidth = '1440px';
     scrollElement.style.maxWidth = '1440px';
     dom.detectChanges();
-    const viewport = assertDefined(component.logComponent?.scrollComponent);
+    const viewport = assertDefined(component.logComponent()?.scrollComponent());
     return [dom, viewport, component];
   }
 

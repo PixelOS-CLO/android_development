@@ -16,7 +16,7 @@
 import {ClipboardModule} from '@angular/cdk/clipboard';
 import {CommonModule} from '@angular/common';
 import {provideHttpClient, withInterceptorsFromDi} from '@angular/common/http';
-import {Component, EventEmitter, Input, Output} from '@angular/core';
+import {Component, input, output} from '@angular/core';
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
@@ -28,62 +28,53 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatListModule} from '@angular/material/list';
+import {MatMenuModule} from '@angular/material/menu';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
 import {MatSelectModule} from '@angular/material/select';
 import {MatSliderModule} from '@angular/material/slider';
-import {MatMenuModule} from '@angular/material/menu';
 import {MatSnackBarModule} from '@angular/material/snack-bar';
 import {MatTabsModule} from '@angular/material/tabs';
 import {MatToolbarModule} from '@angular/material/toolbar';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {Title} from '@angular/platform-browser';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
-import {assertDefined} from '@common/assert';
-import {RequestData} from '@cross_tool/g3_proxy';
-import {
-  makeWarningNoValidFiles,
-  makeWarningFailedToInitializeTimelineData,
-} from '@app/warnings';
 import {AppRefreshDumpsRequest, AppResetRequest} from '@app/app_events';
-import {
-  BookmarksChanged,
-  BugreportFileSelected,
-  BugreportFileSelectionRequest,
-} from '@app/misc_events';
+import {FilesSource} from '@app/files_source';
+import {LoadedFileData} from '@app/loaded_file_data';
+import {Mediator} from '@app/mediator';
+import {BookmarksChanged, BugreportFileSelected, BugreportFileSelectionRequest,} from '@app/misc_events';
+import {ParsingErrorType} from '@app/parsing_error_type';
 import {TabbedViewSwitchRequest} from '@app/tabbed_view_events';
+import {TimelineData} from '@app/timeline_data';
 import {ViewersLoaded, ViewersUnloaded} from '@app/viewers_events';
-import {TracePositionUpdate, TraceSearchRequest} from '@trace/trace_events';
-import {TraceType} from '@trace_api/trace_type';
-import {View, Viewer, ViewType} from '@viewers/viewer';
+import {makeWarningFailedToInitializeTimelineData, makeWarningNoValidFiles,} from '@app/warnings';
+import {assertDefined} from '@common/assert';
+import {Store} from '@common/store/store';
+import {makeConverterZeroRteOffsets, makeRealTimestamp,} from '@common/time/test_helpers';
+import {Timestamp} from '@common/time/time';
+import {RequestData} from '@cross_tool/g3_proxy';
+import {WinscopeEvent} from '@messaging/winscope_event';
+import {EmitEvent} from '@messaging/winscope_event_emitter';
+import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
 import {UserNotifier} from '@services/user_notifier';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
-import {
-  makeConverterZeroRteOffsets,
-  makeRealTimestamp,
-} from '@common/time/test_helpers';
 import {waitToBeCalled} from '@test/unit/spy_utils';
+import {TestFileReaderAndParserBuilder} from '@test/unit/test_file_reader_and_parser_builder';
+import {TestFileReaderBuilder} from '@test/unit/test_file_reader_builder';
 import {TracesBuilder} from '@test/unit/trace_api/traces_builder';
+import {TracePositionUpdate, TraceSearchRequest} from '@trace_api/trace_events';
+import {TraceType} from '@trace_api/trace_type';
+import {Traces} from '@trace_api/traces';
+import {View, Viewer, ViewType} from '@viewers/viewer';
+
 import {AppComponent} from './app_component';
-import {
-  MatDrawer,
-  MatDrawerContainer,
-  MatDrawerContent,
-} from './bottomnav/bottom_drawer_component';
+import {MatDrawer, MatDrawerContainer, MatDrawerContent,} from './bottomnav/bottom_drawer_component';
 import {CollectTracesComponent} from './collect_traces_component';
 import {TimelineComponent} from './timeline/timeline_component';
 import {TraceViewComponent} from './trace_view_component';
 import {UploadTracesComponent} from './upload_traces_component';
 import {WdpSetupComponent} from './wdp_setup_component';
 import {WinscopeProxySetupComponent} from './winscope_proxy_setup_component';
-import {Traces} from '@trace_api/traces';
-import {TestFileReaderBuilder} from '@test/unit/test_file_reader_builder';
-import {FilesSource} from '@app/files_source';
-import {TestFileReaderAndParserBuilder} from '@test/unit/test_file_reader_and_parser_builder';
-import {TraceGeometryData} from '@parsers/helpers/trace_geometry_data';
-import {Mediator} from '@app/mediator';
-import {LoadedFileData} from '@app/loaded_file_data';
-import {TimelineData} from '@app/timeline_data';
-import {ParsingErrorType} from '@app/parsing_error_type';
 
 @Component({
   selector: 'trace-view',
@@ -94,10 +85,11 @@ import {ParsingErrorType} from '@app/parsing_error_type';
   ],
 })
 class MockTraceViewComponent {
-  @Input() viewers: unknown[] = [];
-  @Input() store: unknown;
-  setEmitEvent(_: unknown) {}
-  async onWinscopeEvent(_: unknown) {}
+  viewers = input.required<Viewer[]>();
+  store = input.required<Store>();
+  traceTypesWithParsingErrors = input<TraceType[]>();
+  setEmitEvent(_: EmitEvent) {}
+  async onWinscopeEvent(_: WinscopeEvent) {}
 }
 
 @Component({
@@ -107,14 +99,13 @@ class MockTraceViewComponent {
   providers: [{provide: TimelineComponent, useExisting: MockTimelineComponent}],
 })
 class MockTimelineComponent {
-  @Input() timelineData: unknown;
-  @Input() availableTraces: unknown;
-  @Input() allTraces: unknown;
-  @Input() store: unknown;
-  @Input() initialTabTraceType: unknown;
-  bookmarks: unknown[] = [];
-  setEmitEvent(_: unknown) {}
-  async onWinscopeEvent(_: unknown) {}
+  timelineData = input.required<TimelineData>();
+  allTraces = input.required<Traces>();
+  store = input.required<Store>();
+  initialTabTraceType = input<TraceType>();
+  bookmarks: Timestamp[] = [];
+  setEmitEvent(_: EmitEvent) {}
+  async onWinscopeEvent(_: WinscopeEvent) {}
 }
 
 @Component({
@@ -126,9 +117,9 @@ class MockTimelineComponent {
   ],
 })
 class MockCollectTracesComponent {
-  @Input() storage: unknown;
-  setEmitEvent(_: unknown) {}
-  async onWinscopeEvent(_: unknown) {}
+  storage = input.required<Store>();
+  setEmitEvent(_: EmitEvent) {}
+  async onWinscopeEvent(_: WinscopeEvent) {}
 }
 
 @Component({
@@ -141,14 +132,13 @@ class MockCollectTracesComponent {
   ],
 })
 class MockUploadTracesComponent {
-  @Input() traceData: unknown;
-  @Input() storage: unknown;
-  @Input() loadedFileReaders: unknown;
-  @Output() downloadTracesClick = new EventEmitter<void>();
-  @Output() removeTrace = new EventEmitter<unknown>();
-  @Output() removeAllTraces = new EventEmitter<void>();
-  setEmitEvent(_: unknown) {}
-  async onWinscopeEvent(_: unknown) {}
+  storage = input.required<Store>();
+  loadedFileReaders = input.required<FileReader[]>();
+  downloadTracesClick = output<void>();
+  removeTrace = output<FileReader>();
+  removeAllTraces = output<void>();
+  setEmitEvent(_: EmitEvent) {}
+  async onWinscopeEvent(_: WinscopeEvent) {}
 }
 @Component({
   selector: 'mat-drawer',
@@ -157,11 +147,8 @@ class MockUploadTracesComponent {
   standalone: true,
 })
 class MockMatDrawer {
-  @Input() mode: 'push' | 'overlay' = 'overlay';
-  @Input() baseHeight = 0;
-  getBaseHeight() {
-    return this.baseHeight;
-  }
+  mode = input<'push' | 'overlay'>('overlay');
+  baseHeight = input(0);
 }
 
 @Component({
@@ -421,7 +408,7 @@ describe('AppComponent', () => {
       'setLoadedFileData',
     ).and.callThrough();
 
-    component.uploadTracesComponent?.removeTrace.emit(reader);
+    component.uploadTracesComponent()?.removeTrace.emit(reader);
     dom.detectChanges();
 
     expect(removeReaderSpy).toHaveBeenCalledOnceWith(reader);
@@ -442,7 +429,7 @@ describe('AppComponent', () => {
       'setLoadedFileData',
     ).and.callThrough();
 
-    component.uploadTracesComponent?.removeTrace.emit(reader);
+    component.uploadTracesComponent()?.removeTrace.emit(reader);
     dom.detectChanges();
 
     expect(removeReaderSpy).toHaveBeenCalledOnceWith(reader);
@@ -459,7 +446,7 @@ describe('AppComponent', () => {
       'setLoadedFileData',
     ).and.callThrough();
 
-    component.uploadTracesComponent?.removeAllTraces.emit();
+    component.uploadTracesComponent()?.removeAllTraces.emit();
     dom.detectChanges();
     expect(spyLoadedFileData).toHaveBeenCalledTimes(1);
     expect(component.loadedFileData).not.toBe(loadedFileData);
@@ -524,7 +511,7 @@ describe('AppComponent', () => {
     );
     dom.findAndClick('upload-traces .download-btn');
     expect(downloadButtonClickSpy).toHaveBeenCalledOnceWith(
-      component.uploadTracesComponent,
+      component.uploadTracesComponent(),
     );
   });
 
@@ -979,7 +966,7 @@ describe('AppComponent', () => {
       expect(bookmarksChangedEvent.bookmarks.length).toEqual(2);
       expect(bookmarksChangedEvent.bookmarks[0].getValueNs()).toEqual(10n);
       expect(bookmarksChangedEvent.bookmarks[1].getValueNs()).toEqual(20n);
-      expect(component.timelineComponent?.bookmarks.length).toEqual(2);
+      expect(component.timelineComponent()?.bookmarks.length).toEqual(2);
     });
 
     it('processes timestamp', async () => {
@@ -1073,7 +1060,8 @@ describe('AppComponent', () => {
         onWinscopeEvent: jasmine.createSpy(),
         setEmitEvent: jasmine.createSpy(),
         getName: () => 'MockViewer',
-      } as unknown as Viewer;
+        onDestroy: () => {},
+      } as Viewer;
 
       await sendOnViewersLoadedEvent([mockViewer]);
 

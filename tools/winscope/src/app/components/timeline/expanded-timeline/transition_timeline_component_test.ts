@@ -24,24 +24,21 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {
-  BrowserAnimationsModule,
-  NoopAnimationsModule,
-} from '@angular/platform-browser/animations';
-import {assertDefined} from '@common/assert';
+import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
 import {Rect} from '@common/geometry/rect';
+import {makeConverterZeroRteOffsets} from '@common/time/test_helpers';
 import {TimeRange, Timestamp} from '@common/time/time';
+import {SetFormatters} from '@parsers/operations/set_formatters';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
-import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
 import {waitToBeCalled} from '@test/unit/spy_utils';
 import {TraceBuilder} from '@test/unit/trace_api/trace_builder';
-import {TransitionStatus} from '@trace/transitions/status';
+import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
 import {TraceType} from '@trace_api/trace_type';
+import {TransitionStatus} from '@trace/transitions/status';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {TransitionTimelineComponent} from './transition_timeline_component';
-import {SetFormatters} from '@parsers/operations/set_formatters';
-import {makeConverterZeroRteOffsets} from '@common/time/test_helpers';
 import {PENDING_TO_PLAY_COLOR} from 'app/components/timeline/common/transition_timeline_helpers';
+
+import {TransitionTimelineComponent} from './transition_timeline_component';
 
 describe('TransitionTimelineComponent', () => {
   let component: TransitionTimelineComponent;
@@ -87,8 +84,8 @@ describe('TransitionTimelineComponent', () => {
     const fixture = TestBed.createComponent(TransitionTimelineComponent);
     component = fixture.componentInstance;
     dom = new DOMTestHelper(fixture, fixture.nativeElement);
-    component.timestampConverter = converter;
-    component.fullRange = range0to160;
+    dom.setComponentInput('timestampConverter', converter);
+    dom.setComponentInput('fullRange', range0to160);
   });
 
   it('can be created', () => {
@@ -108,11 +105,12 @@ describe('TransitionTimelineComponent', () => {
     const oneRowTotalHeight = 30;
     const oneRowHeight = oneRowTotalHeight - padding;
     const width = component.canvasDrawer.getScaledCanvasWidth();
+    const color = component.color();
 
     expect(drawRectSpy).toHaveBeenCalledTimes(2);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, padding, Math.floor(width / 5), oneRowHeight),
-      component.color,
+      color,
       1,
       false,
       false,
@@ -124,7 +122,7 @@ describe('TransitionTimelineComponent', () => {
         Math.floor(width / 2),
         oneRowHeight,
       ),
-      component.color,
+      color,
       1,
       false,
       false,
@@ -154,11 +152,12 @@ describe('TransitionTimelineComponent', () => {
       (component.canvasDrawer.getScaledCanvasHeight() - 2 * padding) / 3;
     const oneRowHeight = oneRowTotalHeight - padding;
     const width = component.canvasDrawer.getScaledCanvasWidth();
+    const color = component.color();
 
     expect(drawRectSpy).toHaveBeenCalledTimes(2);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, padding, Math.floor(width / 10), oneRowHeight),
-      component.color,
+      color,
       1,
       false,
       false,
@@ -170,7 +169,7 @@ describe('TransitionTimelineComponent', () => {
         Math.floor(width / 2),
         oneRowHeight,
       ),
-      component.color,
+      color,
       1,
       false,
       false,
@@ -190,7 +189,7 @@ describe('TransitionTimelineComponent', () => {
     const expectedRect = getExpectedBorderedRect();
     expect(drawRectSpy).toHaveBeenCalledOnceWith(
       expectedRect,
-      component.color,
+      component.color(),
       1,
       false,
       false,
@@ -203,10 +202,11 @@ describe('TransitionTimelineComponent', () => {
     const drawRectSpy = spyOn(component.canvasDrawer, 'drawRect');
     await setDefaultTraceAndSelectionRange();
     const expectedRect = getExpectedBorderedRect();
+    const color = component.color();
 
     expect(drawRectSpy).toHaveBeenCalledOnceWith(
       expectedRect,
-      component.color,
+      color,
       1,
       false,
       false,
@@ -226,7 +226,7 @@ describe('TransitionTimelineComponent', () => {
     await dispatchMousemoveEvent();
     expect(drawRectSpy).toHaveBeenCalledOnceWith(
       expectedRect,
-      component.color,
+      color,
       1,
       false,
       false,
@@ -249,7 +249,7 @@ describe('TransitionTimelineComponent', () => {
 
     expect(drawRectSpy).toHaveBeenCalledOnceWith(
       getExpectedBorderedRect(),
-      component.color,
+      component.color(),
       1,
       false,
       false,
@@ -270,11 +270,12 @@ describe('TransitionTimelineComponent', () => {
       (component.canvasDrawer.getScaledCanvasHeight() - 2 * padding) / rows;
     const oneRowHeight = oneRowTotalHeight - padding;
     const width = component.canvasDrawer.getScaledCanvasWidth();
+    const color = component.color();
 
     expect(drawRectSpy).toHaveBeenCalledTimes(2);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, padding, Math.floor((width * 3) / 4), oneRowHeight),
-      component.color,
+      color,
       1,
       false,
       false,
@@ -286,7 +287,7 @@ describe('TransitionTimelineComponent', () => {
         Math.floor(width / 2),
         oneRowHeight,
       ),
-      component.color,
+      color,
       1,
       false,
       false,
@@ -307,11 +308,12 @@ describe('TransitionTimelineComponent', () => {
       (component.canvasDrawer.getScaledCanvasHeight() - 2 * padding) / rows;
     const oneRowHeight = oneRowTotalHeight - padding;
     const width = component.canvasDrawer.getScaledCanvasWidth();
+    const color = component.color();
 
     expect(drawRectSpy).toHaveBeenCalledTimes(2);
     expect(drawRectSpy).toHaveBeenCalledWith(
       new Rect(0, padding, Math.floor((width * 3) / 4), oneRowHeight),
-      component.color,
+      color,
       1,
       false,
       false,
@@ -323,7 +325,7 @@ describe('TransitionTimelineComponent', () => {
         Math.floor(width / 4),
         oneRowHeight,
       ),
-      component.color,
+      color,
       1,
       false,
       false,
@@ -398,7 +400,7 @@ describe('TransitionTimelineComponent', () => {
         oneRowHeight,
         oneRowHeight,
       ),
-      component.color,
+      component.color(),
       1,
       false,
       true,
@@ -409,13 +411,15 @@ describe('TransitionTimelineComponent', () => {
     const transition0 = makeTransition(time10, time30);
     const transition1 = makeTransition(time60, time110);
 
-    component.trace = new TraceBuilder<HierarchyTreeNode>()
+    const trace = new TraceBuilder<HierarchyTreeNode>()
       .setType(TraceType.TRANSITION)
       .setEntries([transition0, transition1])
       .setTimestamps([time10, time20])
       .build();
-    component.transitionEntries = [transition0, undefined];
-    component.selectionRange = range10to110;
+
+    dom.setComponentInput('trace', trace);
+    dom.setComponentInput('transitionEntries', [transition0, undefined]);
+    dom.setComponentInput('selectionRange', range10to110);
 
     const drawRectSpy = spyOn(component.canvasDrawer, 'drawRect');
 
@@ -434,7 +438,7 @@ describe('TransitionTimelineComponent', () => {
     await setDefaultTraceAndSelectionRange();
 
     const spy = spyOn(component.onMouseXRatioUpdate, 'emit');
-    const canvas = assertDefined(component.canvasRef).nativeElement;
+    const canvas = component.canvasRef().nativeElement;
 
     const mouseMoveEvent = new MouseEvent('mousemove');
     Object.defineProperty(mouseMoveEvent, 'target', {value: canvas});
@@ -452,14 +456,18 @@ describe('TransitionTimelineComponent', () => {
 
   async function setDefaultTraceAndSelectionRange(setSelectedEntry = false) {
     const transitions = [makeTransition(time35, time85)];
-    component.trace = new TraceBuilder<HierarchyTreeNode>()
+    const trace = new TraceBuilder<HierarchyTreeNode>()
       .setType(TraceType.TRANSITION)
       .setEntries(transitions)
       .setTimestamps([time35])
       .build();
-    component.transitionEntries = transitions;
-    component.selectionRange = range10to110;
-    if (setSelectedEntry) component.selectedEntry = component.trace.getEntry(0);
+
+    dom.setComponentInput('trace', trace);
+    dom.setComponentInput('transitionEntries', transitions);
+    dom.setComponentInput('selectionRange', range10to110);
+    if (setSelectedEntry) {
+      dom.setComponentInput('selectedEntry', trace.getEntry(0));
+    }
     await dom.detectChangesAndRenderingDone();
   }
 
@@ -491,13 +499,14 @@ describe('TransitionTimelineComponent', () => {
     timestamps: Timestamp[],
     range = range10to110,
   ) {
-    component.trace = new TraceBuilder<HierarchyTreeNode>()
+    const trace = new TraceBuilder<HierarchyTreeNode>()
       .setType(TraceType.TRANSITION)
       .setEntries(transitions)
       .setTimestamps(timestamps)
       .build();
-    component.transitionEntries = transitions;
-    component.selectionRange = range;
+    dom.setComponentInput('trace', trace);
+    dom.setComponentInput('transitionEntries', transitions);
+    dom.setComponentInput('selectionRange', range);
     await dom.detectChangesAndRenderingDone();
   }
 

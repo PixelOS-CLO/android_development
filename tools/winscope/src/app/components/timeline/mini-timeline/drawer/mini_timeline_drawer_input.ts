@@ -14,23 +14,16 @@
  * limitations under the License.
  */
 
-import {Transformer} from '@app/components/timeline/mini-timeline/transformer';
 import {TimelineSegment} from '@app/components/timeline/common/segment';
-import {
-  convertLifecycle,
-  getLifecycleForTransition,
-} from '@app/components/timeline/common/transition_timeline_helpers';
+import {convertLifecycle, getLifecycleForTransition,} from '@app/components/timeline/common/transition_timeline_helpers';
+import {Transformer} from '@app/components/timeline/mini-timeline/transformer';
 import {TimelineData} from '@app/timeline_data';
-import {assertDefined} from '@common/assert';
 import {TimeRange, Timestamp} from '@common/time/time';
 import {Trace, TraceEntry} from '@trace_api/trace';
 import {TraceType} from '@trace_api/trace_type';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
-import {
-  MiniCanvasDrawerData,
-  TimelineTrace,
-  TimelineTraces,
-} from './mini_canvas_drawer_data';
+
+import {MiniCanvasDrawerData, TimelineTrace, TimelineTraces,} from './mini_canvas_drawer_data';
 import {RenderedRange} from './rendered_range';
 
 /**
@@ -52,7 +45,7 @@ export class MiniTimelineDrawerInput {
     const transformer = new Transformer(
       this.zoomRange,
       mapToRange,
-      assertDefined(this.timelineData.getTimestampConverter()),
+      this.timelineData.getTimestampConverter(),
     );
 
     return new MiniCanvasDrawerData(
@@ -142,7 +135,7 @@ export class MiniTimelineDrawerInput {
     const lifecycle = getLifecycleForTransition(
       transition,
       this.selection,
-      assertDefined(this.timelineData.getTimestampConverter()),
+      this.timelineData.getTimestampConverter(),
     );
 
     if (!lifecycle) {

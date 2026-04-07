@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
+import {Directive} from '@angular/core';
 import {MatOption} from '@angular/material/core';
 import {MatSelect} from '@angular/material/select';
 import {KeyboardEventCode} from '@common/dom';
+
 import {AbstractFormFieldComponent} from './abstract_form_field_component';
 
+@Directive()
 export abstract class AbstractSelectComponent<
   T = undefined,
 > extends AbstractFormFieldComponent {

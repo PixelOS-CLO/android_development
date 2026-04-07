@@ -13,23 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {ComponentFixtureAutoDetect, TestBed} from '@angular/core/testing';
+import {TestBed} from '@angular/core/testing';
 import {MatButtonModule} from '@angular/material/button';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {assertDefined} from '@common/assert';
+import {makeRealTimestamp} from '@common/time/test_helpers';
 import {Timestamp} from '@common/time/time';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
 import {PropertyTreeBuilder} from '@test/unit/tree_node/property_tree_builder';
-import {makeRealTimestamp} from '@common/time/test_helpers';
-import {
-  DEFAULT_PROPERTY_FORMATTER,
-  FixedStringFormatter,
-  HEX_FORMATTER,
-  TIMESTAMP_NODE_FORMATTER,
-} from '@trace/formatters';
+import {DEFAULT_PROPERTY_FORMATTER, FixedStringFormatter, HEX_FORMATTER, TIMESTAMP_NODE_FORMATTER,} from '@trace/formatters';
 import {DiffType} from '@viewers/common/diff_type';
 import {UiPropertyTreeNode} from '@viewers/common/ui_property_tree_node';
 import {ViewerEvents} from '@viewers/common/viewer_events';
+
 import {PropertyTreeNodeDataViewComponent} from './property_tree_node_data_view_component';
 
 describe('PropertyTreeNodeDataViewComponent', () => {
@@ -38,7 +34,6 @@ describe('PropertyTreeNodeDataViewComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      providers: [{provide: ComponentFixtureAutoDetect, useValue: true}],
       imports: [
         MatButtonModule,
         BrowserAnimationsModule,
@@ -141,34 +136,33 @@ describe('PropertyTreeNodeDataViewComponent', () => {
   });
 
   it('adds correct css class for property value', () => {
-    const node = UiPropertyTreeNode.from(
-      new PropertyTreeBuilder()
-        .setRootId('test node')
-        .setName('property')
-        .setValue(12345)
-        .setFormatter(DEFAULT_PROPERTY_FORMATTER)
-        .build(),
-    );
-    dom.setComponentInput('node', node);
-    dom.detectChanges();
-    const valueElement = dom.get('.new-value');
-    valueElement.checkClassName('number');
-    valueElement.checkTextExact('12345');
-
-    checkValueClass(node, 'null');
-    checkValueClass(node, 'true');
-    checkValueClass(node, 'false');
-    checkValueClass(node, 'test', false);
+    checkValueClass('number', true, 12345);
+    checkValueClass('null');
+    checkValueClass('true');
+    checkValueClass('false');
+    checkValueClass('test', false);
   });
 
   function checkValueClass(
-    node: UiPropertyTreeNode,
     valueClass: string,
     hasClass = true,
+    value?: number,
   ) {
-    node.setFormatter(new FixedStringFormatter(valueClass));
+    const formatter = value
+      ? DEFAULT_PROPERTY_FORMATTER
+      : new FixedStringFormatter(valueClass);
+    const propertyValue = value ?? valueClass;
+    const node = new PropertyTreeBuilder()
+      .setRootId('test node')
+      .setName('property')
+      .setValue(propertyValue)
+      .setFormatter(formatter)
+      .build();
+    const uiNode = UiPropertyTreeNode.from(node);
+    dom.setComponentInput('node', uiNode);
     dom.detectChanges();
     const valueElement = dom.get('.new-value');
+    valueElement.checkTextExact(propertyValue.toString());
     ['null', 'true', 'false', 'number'].forEach((c) => {
       valueElement.checkClassName(c, c === valueClass && hasClass);
     });

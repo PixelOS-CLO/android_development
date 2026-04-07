@@ -24,21 +24,19 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {
-  BrowserAnimationsModule,
-  NoopAnimationsModule,
-} from '@angular/platform-browser/animations';
+import {BrowserAnimationsModule, NoopAnimationsModule,} from '@angular/platform-browser/animations';
 import {TimelineData} from '@app/timeline_data';
 import {assertDefined} from '@common/assert';
+import {makeConverterZeroRteOffsets} from '@common/time/test_helpers';
 import {DOMTestHelper} from '@test/unit/common/dom_test_helpers';
-import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
 import {TracesBuilder} from '@test/unit/trace_api/traces_builder';
+import {HierarchyTreeBuilder} from '@test/unit/tree_node/hierarchy_tree_builder';
 import {TracePosition} from '@trace_api/trace_position';
 import {TraceType} from '@trace_api/trace_type';
+
 import {DefaultTimelineRowComponent} from './default_timeline_row_component';
 import {ExpandedTimelineComponent} from './expanded_timeline_component';
 import {TransitionTimelineComponent} from './transition_timeline_component';
-import {makeConverterZeroRteOffsets} from '@common/time/test_helpers';
 
 describe('ExpandedTimelineComponent', () => {
   const converter = makeConverterZeroRteOffsets();
@@ -109,7 +107,7 @@ describe('ExpandedTimelineComponent', () => {
       .setTimestamps(TraceType.PROTO_LOG, [time12, time12])
       .build();
     await timelineData.initialize(traces, undefined, converter);
-    component.timelineData = timelineData;
+    dom.setComponentInput('timelineData', timelineData);
   });
 
   it('can be created', () => {
@@ -129,63 +127,57 @@ describe('ExpandedTimelineComponent', () => {
   it('passes initial selectedEntry of correct type into each timeline', () => {
     dom.detectChanges();
 
-    const singleTimelines = assertDefined(component.singleTimelines);
+    const singleTimelines = component.singleTimelines();
     expect(singleTimelines.length).toBe(4);
 
     // initially only first entry of SF is set
     singleTimelines.forEach((timeline) => {
-      if (assertDefined(timeline.trace).type === TraceType.SURFACE_FLINGER) {
-        const entry = assertDefined(timeline.selectedEntry);
+      if (timeline.trace().type === TraceType.SURFACE_FLINGER) {
+        const entry = assertDefined(timeline.selectedEntry());
         expect(entry.getFullTrace().type).toEqual(TraceType.SURFACE_FLINGER);
       } else {
-        expect(timeline.selectedEntry).toBeUndefined();
+        expect(timeline.selectedEntry()).toBeUndefined();
       }
     });
 
-    const transitionTimeline = assertDefined(
-      component.transitionTimelines,
-    ).first;
-    assertDefined(transitionTimeline.selectedEntry);
+    const transitionTimeline = component.transitionTimelines()[0];
+    assertDefined(transitionTimeline.selectedEntry());
   });
 
   it('passes selectedEntry of correct type into each timeline on position change', () => {
     // 3 out of the 5 traces have timestamps before or at 11n
-    assertDefined(component.timelineData).setPosition(
-      TracePosition.fromTimestamp(time11),
-    );
+    component.timelineData().setPosition(TracePosition.fromTimestamp(time11));
     dom.detectChanges();
 
-    const singleTimelines = assertDefined(component.singleTimelines);
+    const singleTimelines = component.singleTimelines();
     expect(singleTimelines.length).toBe(4);
 
     singleTimelines.forEach((timeline) => {
       // protolog and transactions traces have no timestamps before current position
+      const trace = timeline.trace();
       if (
-        assertDefined(timeline.trace).type === TraceType.PROTO_LOG ||
-        assertDefined(timeline.trace).type === TraceType.TRANSACTIONS
+        trace.type === TraceType.PROTO_LOG ||
+        trace.type === TraceType.TRANSACTIONS
       ) {
-        expect(timeline.selectedEntry).toBeUndefined();
+        expect(timeline.selectedEntry()).toBeUndefined();
       } else {
-        const selectedEntry = assertDefined(timeline.selectedEntry);
-        expect(selectedEntry.getFullTrace().type).toEqual(
-          assertDefined(timeline.trace).type,
-        );
+        const selectedEntry = assertDefined(timeline.selectedEntry());
+        expect(selectedEntry.getFullTrace().type).toEqual(trace.type);
       }
     });
 
-    const transitionTimeline = assertDefined(
-      component.transitionTimelines,
-    ).first;
-    const selectedEntry = assertDefined(transitionTimeline.selectedEntry);
+    const transitionTimeline = component.transitionTimelines()[0];
+    const selectedEntry = assertDefined(transitionTimeline.selectedEntry());
     expect(selectedEntry.getFullTrace().type).toEqual(
-      assertDefined(transitionTimeline.trace).type,
+      transitionTimeline.trace().type,
     );
   });
 
   it('getAllLoadedTraces causes timelines to render in correct order', () => {
     // traces in timelineData are in order of being set in Traces API
     expect(
-      assertDefined(component.timelineData)
+      component
+        .timelineData()
         .getTraces()
         .mapTrace((trace) => trace.type),
     ).toEqual([

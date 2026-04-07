@@ -14,21 +14,16 @@
  * limitations under the License.
  */
 import {CommonModule} from '@angular/common';
-import {Component, ElementRef, Inject, input, output} from '@angular/core';
+import {Component, computed, ElementRef, Inject, input, output,} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {EMPTY_OBJ_STRING} from '@trace/formatters';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {PropertyTreeNode} from '@tree_node/property_tree_node';
 import {TreeNode} from '@tree_node/tree_node';
 import {ImeAdditionalProperties} from '@viewers/common/ime_additional_properties';
-import {
-  ImeContainerProperties,
-  InputMethodSurfaceProperties,
-} from '@viewers/common/ime_utils';
-import {
-  AdditionalPropertySelectedDetail,
-  ViewerEvents,
-} from '@viewers/common/viewer_events';
+import {ImeContainerProperties, InputMethodSurfaceProperties,} from '@viewers/common/ime_utils';
+import {AdditionalPropertySelectedDetail, ViewerEvents,} from '@viewers/common/viewer_events';
+
 import {CollapsibleSectionTitleComponent} from './collapsible_section_title_component';
 import {CoordinatesTableComponent} from './coordinates_table_component';
 
@@ -53,6 +48,23 @@ export class ImeAdditionalPropertiesComponent {
 
   constructor(@Inject(ElementRef) private elementRef: ElementRef) {}
 
+  readonly formattedWindowColor = computed<string>(() => {
+    const color =
+      this.additionalProperties()?.sf?.properties.focusedWindowColor;
+    if (!color) return EMPTY_OBJ_STRING;
+    return color.formattedValue();
+  });
+
+  readonly sfRootLabel = computed<string>(() => {
+    const props = this.additionalProperties();
+    const rootProps = props?.sf?.properties.root;
+    if (!rootProps) {
+      return props?.sf?.name ?? 'root';
+    }
+
+    return rootProps.timestamp;
+  });
+
   isHighlighted(
     item:
       | TreeNode
@@ -67,42 +79,27 @@ export class ImeAdditionalPropertiesComponent {
     return this.isHighlighted(node) ? undefined : 'primary';
   }
 
-  formattedWindowColor(): string {
-    const color =
-      this.additionalProperties()?.sf?.properties.focusedWindowColor;
-    if (!color) return EMPTY_OBJ_STRING;
-    return color.formattedValue();
-  }
-
-  sfRootLabel(): string {
-    const props = this.additionalProperties();
-    const rootProps = props?.sf?.properties.root;
-    if (!rootProps) {
-      return props?.sf?.name ?? 'root';
-    }
-
-    return rootProps.timestamp;
-  }
-
-  wmRootLabel(): string {
+  readonly wmRootLabel = computed<string>(() => {
     const props = this.additionalProperties();
     const timestamp = props?.wm?.wmStateProperties.timestamp;
     if (!timestamp) {
       return props?.wm?.name ?? 'root';
     }
     return timestamp;
-  }
+  });
 
-  wmHierarchyTree(): HierarchyTreeNode | undefined {
+  readonly wmHierarchyTree = computed<HierarchyTreeNode | undefined>(() => {
     return this.additionalProperties()?.wm?.hierarchyTree;
-  }
+  });
 
-  wmInsetsSourceProvider(): PropertyTreeNode | undefined {
-    return this.additionalProperties()?.wm?.wmStateProperties
-      .imeInsetsSourceProvider;
-  }
+  readonly wmInsetsSourceProvider = computed<PropertyTreeNode | undefined>(
+    () => {
+      return this.additionalProperties()?.wm?.wmStateProperties
+        .imeInsetsSourceProvider;
+    },
+  );
 
-  wmControlTargetFrame(): PropertyTreeNode | undefined {
+  readonly wmControlTargetFrame = computed<PropertyTreeNode | undefined>(() => {
     return this.additionalProperties()
       ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
         'insetsSourceProvider',
@@ -110,9 +107,9 @@ export class ImeAdditionalPropertiesComponent {
       ?.getChildByName('controlTarget')
       ?.getChildByName('windowFrames')
       ?.getChildByName('frame');
-  }
+  });
 
-  wmInsetsSourceProviderPosition(): string {
+  readonly wmInsetsSourceProviderPosition = computed<string>(() => {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
@@ -122,9 +119,9 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('position')
         ?.formattedValue() ?? 'null'
     );
-  }
+  });
 
-  wmInsetsSourceProviderIsLeashReady(): string {
+  readonly wmInsetsSourceProviderIsLeashReady = computed<string>(() => {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
@@ -133,9 +130,9 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('isLeashReadyForDispatching')
         ?.formattedValue() ?? 'null'
     );
-  }
+  });
 
-  wmInsetsSourceProviderControllable(): string {
+  readonly wmInsetsSourceProviderControllable = computed<string>(() => {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
@@ -144,15 +141,17 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('controllable')
         ?.formattedValue() ?? 'null'
     );
-  }
+  });
 
-  wmInsetsSourceProviderSourceFrame(): PropertyTreeNode | undefined {
+  readonly wmInsetsSourceProviderSourceFrame = computed<
+    PropertyTreeNode | undefined
+  >(() => {
     return this.additionalProperties()
       ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName('source')
       ?.getChildByName('frame');
-  }
+  });
 
-  wmInsetsSourceProviderSourceVisible(): string {
+  readonly wmInsetsSourceProviderSourceVisible = computed<string>(() => {
     return (
       this.additionalProperties()
         ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName(
@@ -161,84 +160,75 @@ export class ImeAdditionalPropertiesComponent {
         ?.getChildByName('visible')
         ?.formattedValue() ?? 'null'
     );
-  }
+  });
 
-  wmInsetsSourceProviderSourceVisibleFrame(): PropertyTreeNode | undefined {
+  readonly wmInsetsSourceProviderSourceVisibleFrame = computed<
+    PropertyTreeNode | undefined
+  >(() => {
     return this.additionalProperties()
       ?.wm?.wmStateProperties.imeInsetsSourceProvider?.getChildByName('source')
       ?.getChildByName('visibleFrame');
-  }
+  });
 
-  wmImeControlTarget(): PropertyTreeNode | undefined {
+  readonly wmImeControlTarget = computed<PropertyTreeNode | undefined>(() => {
     return this.additionalProperties()?.wm?.wmStateProperties.imeControlTarget;
-  }
+  });
 
-  wmImeControlTargetTitle(): string | undefined {
-    return (
-      this.additionalProperties()
-        ?.wm?.wmStateProperties.imeControlTarget?.getChildByName(
-          'windowContainer',
-        )
-        ?.getChildByName('identifier')
-        ?.getChildByName('title')
-        ?.formattedValue() ?? undefined
-    );
-  }
+  readonly wmImeControlTargetTitle = computed<string | undefined>(() => {
+    return this.additionalProperties()
+      ?.wm?.wmStateProperties.imeControlTarget?.getChildByName(
+        'windowContainer',
+      )
+      ?.getChildByName('identifier')
+      ?.getChildByName('title')
+      ?.formattedValue();
+  });
 
-  wmImeInputTarget(): PropertyTreeNode | undefined {
+  readonly wmImeInputTarget = computed<PropertyTreeNode | undefined>(() => {
     return this.additionalProperties()?.wm?.wmStateProperties.imeInputTarget;
-  }
+  });
 
-  wmImeInputTargetTitle(): string | undefined {
-    return (
-      this.additionalProperties()
-        ?.wm?.wmStateProperties.imeInputTarget?.getChildByName(
-          'windowContainer',
-        )
-        ?.getChildByName('identifier')
-        ?.getChildByName('title')
-        ?.formattedValue() ?? undefined
-    );
-  }
+  readonly wmImeInputTargetTitle = computed<string | undefined>(() => {
+    return this.additionalProperties()
+      ?.wm?.wmStateProperties.imeInputTarget?.getChildByName('windowContainer')
+      ?.getChildByName('identifier')
+      ?.getChildByName('title')
+      ?.formattedValue();
+  });
 
-  wmImeLayeringTarget(): PropertyTreeNode | undefined {
+  readonly wmImeLayeringTarget = computed<PropertyTreeNode | undefined>(() => {
     return this.additionalProperties()?.wm?.wmStateProperties.imeLayeringTarget;
-  }
+  });
 
-  wmImeLayeringTargetTitle(): string | undefined {
-    return (
-      this.additionalProperties()
-        ?.wm?.wmStateProperties.imeLayeringTarget?.getChildByName(
-          'windowContainer',
-        )
-        ?.getChildByName('identifier')
-        ?.getChildByName('title')
-        ?.formattedValue() ?? undefined
-    );
-  }
+  readonly wmImeLayeringTargetTitle = computed<string | undefined>(() => {
+    return this.additionalProperties()
+      ?.wm?.wmStateProperties.imeLayeringTarget?.getChildByName(
+        'windowContainer',
+      )
+      ?.getChildByName('identifier')
+      ?.getChildByName('title')
+      ?.formattedValue();
+  });
 
-  sfImeContainerScreenBounds(): PropertyTreeNode | undefined {
-    return (
-      this.additionalProperties()?.sf?.properties.inputMethodSurface
-        ?.screenBounds ?? undefined
-    );
-  }
+  readonly sfImeContainerScreenBounds = computed<PropertyTreeNode | undefined>(
+    () => {
+      return this.additionalProperties()?.sf?.properties.inputMethodSurface
+        ?.screenBounds;
+    },
+  );
 
-  sfImeContainerRect(): PropertyTreeNode | undefined {
-    return (
-      this.additionalProperties()?.sf?.properties.inputMethodSurface?.rect ??
-      undefined
-    );
-  }
+  readonly sfImeContainerRect = computed<PropertyTreeNode | undefined>(() => {
+    return this.additionalProperties()?.sf?.properties.inputMethodSurface?.rect;
+  });
 
-  isAllPropertiesUndefined(): boolean {
+  readonly isAllPropertiesUndefined = computed<boolean>(() => {
     const props = this.additionalProperties();
     if (this.isImeManagerService()) {
       return !props?.wm;
     } else {
       return !(props?.wm || props?.sf);
     }
-  }
+  });
 
   onClickShowInPropertiesPanelWm(item: TreeNode | undefined, name: string) {
     if (!item) {
