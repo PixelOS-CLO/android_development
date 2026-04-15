@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import {makeRealTimestamp, timestampEqualityTester,} from '@common/time/test_helpers';
-import {getParserInput} from '@test/unit/parsers/fixture_utils';
-import {UserNotifierChecker} from '@test/unit/user_notifier_checker';
+import {makeRealTimestamp, timestampEqualityTester,} from '@common/time/testing/test_helpers';
+import {getParserInput} from '@parsers/fixture_utils';
+import {UserNotifierChecker} from '@services/testing/user_notifier_checker';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {CustomQueryType} from '@trace_api/custom_query';
 import {Parser} from '@trace_api/parser';
@@ -72,17 +72,17 @@ describe('ParserInput', () => {
 
     it('provides correct entries from individual event traces', async () => {
       const keyEvent = await parser.getEntry(6);
-      expect(keyEvent.getEagerPropertyByName('eventId')?.getValue()).toEqual(
-        759309047n,
-      );
+      expect(
+        keyEvent.getEagerPropertyByName('eventId')?.getValue()?.toString(),
+      ).toEqual('759309047');
       expect(keyEvent.getEagerPropertyByName('type')?.formattedValue()).toEqual(
         'KEY',
       );
 
       const motionEvent = await parser.getEntry(0);
-      expect(motionEvent.getEagerPropertyByName('eventId')?.getValue()).toEqual(
-        330184796n,
-      );
+      expect(
+        motionEvent.getEagerPropertyByName('eventId')?.getValue()?.toString(),
+      ).toEqual('330184796');
       expect(motionEvent.getEagerPropertyByName('type')?.formattedValue()).toBe(
         'MOTION',
       );

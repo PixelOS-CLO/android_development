@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
+// organize-imports-ignore
 import '@angular/compiler';
-import {globalConfig} from '@common/global_config';
-import {getLogger} from '@compat/logging';
-globalConfig.set({
-  MODE: 'PROD',
-});
+import {globalConfig} from '@compat/global_config';
+globalConfig.enableProdMode();
 
 import {provideHttpClient, withInterceptorsFromDi} from '@angular/common/http';
 import {enableProdMode, ErrorHandler} from '@angular/core';
 import {bootstrapApplication} from '@angular/platform-browser';
 import {provideAnimations} from '@angular/platform-browser/animations';
-import {AppComponent} from '@app/components/app_component';
+import {AppComponent} from '@app/app_component';
 import {GlobalErrorHandler} from '@app/global_error_handler';
+import {getLogger} from '@compat/logging';
 
 enableProdMode();
 

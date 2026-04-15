@@ -1,0 +1,76 @@
+<!--
+Copyright (C) 2025 The Android Open Source Project
+
+Licensed under the Apache License, Version 2.0 (the "License");
+ou may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+@let hasOptions = hasUserOptions();
+<div class="view-header">
+  <div class="title-section">
+    <collapsible-section-title
+      class="properties-title"
+      [class.padded-title]="!hasOptions"
+      [title]="title()"
+      (collapseButtonClicked)="collapseButtonClicked.emit()"
+    ></collapsible-section-title>
+    <search-box
+      formFieldClass="applied-field mat-form-field-appearance-none"
+      [textFilter]="textFilter()"
+      (filterChange)="onFilterChange($event)"
+    ></search-box>
+  </div>
+
+  @if (hasOptions) {
+    <user-options
+      class="view-controls"
+      [userOptions]="userOptions()"
+      (optionsChange)="optionsChange.emit($event)"
+      [traceType]="traceType()"
+      [logCallback]="Analytics.Navigation.logPropertiesSettingsChanged"
+    >
+    </user-options>
+  }
+</div>
+
+@if (hasOptions) {
+  <mat-divider></mat-divider>
+}
+@if (showPlaceholderText()) {
+  <span class="mat-body-1 placeholder-text"> {{ placeholderText() }} </span>
+}
+@let curatedView = curatedPropertiesView();
+@if (showCuratedView() && curatedView !== undefined) {
+  <ng-container
+    [ngTemplateOutlet]="curatedView"
+    [ngTemplateOutletContext]="{properties: curatedProperties()}"
+  ></ng-container>
+}
+@if (showPropertiesTree()) {
+  <ng-template #dataView let-node="node">
+    <property-tree-node-data-view
+      [node]="node"
+      (timestampClick)="onTimestampClick($event)"
+      (propagatePropertyClick)="onPropagatePropertyClick($event)"
+    ></property-tree-node-data-view>
+  </ng-template>
+
+  <tree-view
+    class="tree"
+    [nodeRows]="nodeRows()"
+    [heightPredictor]="heightPredictor"
+    [useStoredExpandedState]="!!store()"
+    [itemsClickable]="true"
+    [highlightedItem]="highlightedProperty()"
+    [dataView]="dataView"
+    (highlightedChange)="onHighlightedPropertyChange($event)"
+  ></tree-view>
+}

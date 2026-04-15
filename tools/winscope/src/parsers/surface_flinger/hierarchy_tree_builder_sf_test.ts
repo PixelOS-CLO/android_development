@@ -15,12 +15,12 @@
  */
 
 import {assertDefined} from '@common/assert';
-import {ChildProperty, PropertyTreeBuilder,} from '@test/unit/tree_node/property_tree_builder';
-import {treeNodeEqualityTester} from '@test/unit/tree_node/tree_node_test_helpers';
 import {HierarchyTreeNode} from '@tree_node/hierarchy_tree_node';
 import {OperationChain} from '@tree_node/operation_chain';
 import {PropertiesProvider} from '@tree_node/properties_provider';
 import {PropertySource, PropertyTreeNode} from '@tree_node/property_tree_node';
+import {ChildProperty, PropertyTreeBuilder,} from '@tree_node/testing/property_tree_builder';
+import {treeNodeEqualityTester} from '@tree_node/testing/tree_node_test_helpers';
 
 import {HierarchyTreeBuilderSf} from './hierarchy_tree_builder_sf';
 
@@ -181,9 +181,11 @@ describe('HierarchyTreeBuilderSf', () => {
     const recursiveRootId = assertDefined(
       recursiveRootProps.getChildByName('layerId'),
     );
-    expect(recursiveRootId.getValue()).toBe(2n);
+    expect(recursiveRootId.getValue()?.toString()).toBe('2');
     expect(recursiveRootId.formattedValue()).toBe('2');
-    expect(recursiveRootProps.getChildByName('detail')?.getValue()).toBe(
+    expect(
+      recursiveRootProps.getChildByName('detail')?.getValue<string>(),
+    ).toBe(
       'This node was artificially created by Winscope as a parent for all recursive layers',
     );
   });

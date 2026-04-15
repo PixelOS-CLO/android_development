@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 import {assertDefined} from '@common/assert';
-import {makeRealTimestamp, timestampEqualityTester,} from '@common/time/test_helpers';
-import {getPerfettoParser} from '@test/unit/parsers/fixture_utils';
+import {makeRealTimestamp, timestampEqualityTester,} from '@common/time/testing/test_helpers';
+import {getPerfettoParser} from '@parsers/fixture_utils';
 import {CoarseVersion} from '@trace_api/coarse_version';
 import {CustomQueryType} from '@trace_api/custom_query';
 import {EntriesRange} from '@trace_api/index_types';
@@ -77,15 +77,19 @@ describe('PerfettoParserWindowManager', () => {
     const state = assertDefined(
       entry.findDfs((node) => node.name.includes(title)),
     );
-    expect(state.getEagerPropertyByName('token')?.getValue()).toBe(160447612);
-    expect(state.getEagerPropertyByName('title')?.getValue()).toBe(title);
-    expect(state.getEagerPropertyByName('containerType')?.getValue()).toBe(
-      'WindowState',
+    expect(state.getEagerPropertyByName('token')?.getValue<number>()).toBe(
+      160447612,
     );
+    expect(state.getEagerPropertyByName('title')?.getValue<string>()).toBe(
+      title,
+    );
+    expect(
+      state.getEagerPropertyByName('containerType')?.getValue<string>(),
+    ).toBe('WindowState');
     expect(state.getEagerPropertyByName('isVisible')?.getValue()).toBeTrue();
-    expect(state.getEagerPropertyByName('parentToken')?.getValue()).toBe(
-      193718205,
-    );
+    expect(
+      state.getEagerPropertyByName('parentToken')?.getValue<number>(),
+    ).toBe(193718205);
 
     const task = assertDefined(
       state
@@ -97,9 +101,9 @@ describe('PerfettoParserWindowManager', () => {
     );
     expect(task.name).toBe('2');
     expect(task.getEagerPropertyByName('isVisible')?.getValue()).toBeFalse();
-    expect(task.getEagerPropertyByName('containerType')?.getValue()).toBe(
-      'Task',
-    );
+    expect(
+      task.getEagerPropertyByName('containerType')?.getValue<string>(),
+    ).toBe('Task');
   });
 
   it('provides rects', async () => {

@@ -16,10 +16,11 @@
 
 import {Timestamp} from '@common/time/time';
 import {WinscopeEvent} from '@messaging/winscope_event';
-import {PlaybackPrefetchedEntries} from '@trace_api/playback_prefetched_entries';
-import {Trace, TraceEntry} from '@trace_api/trace';
-import {TracePosition} from '@trace_api/trace_position';
 import {MediaBasedTraceEntry} from '@trace/media_based/media_based_trace_entry';
+
+import {PlaybackPrefetchedEntries} from './playback_prefetched_entries';
+import {Trace, TraceEntry} from './trace';
+import {TracePosition} from './trace_position';
 
 export class TracePositionUpdate implements WinscopeEvent {
   constructor(
@@ -72,7 +73,10 @@ export class ShowTraceUploadWarning implements WinscopeEvent {
 }
 
 export class ActiveTraceChanged implements WinscopeEvent {
-  constructor(readonly trace: Trace<unknown>) {}
+  constructor(
+    readonly trace: Trace<unknown>,
+    readonly metadata?: unknown,
+  ) {}
 }
 
 export class ScreenRecordingChange implements WinscopeEvent {
